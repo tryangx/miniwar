@@ -1,0 +1,21 @@
+PolicyType =
+{
+	--Combat Result
+	TREAT_SURRENDER_SOLDIER = 100,
+	
+	TREAT_SURRENDER_CHARACTER = 101,
+}
+
+TreatSurrednerSoldier = 
+{
+	BURY_SURRENDER_SOLDIER   = -100,
+	
+	ACCEPT_SURRENDER_SOLDIER = 100,
+}
+
+TreatSurrednerCharacter = 
+{
+	KILL_SURRENDER_CHARACTER = -100,
+	
+	ACCEPT_SURRENDER_CHARACTER = 100,
+}
