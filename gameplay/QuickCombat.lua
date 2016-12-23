@@ -166,6 +166,9 @@ function Combat:__init()
 	self.stage = 0
 	
 	self.result = CombatResult.DRAW
+	
+	self.atkGroup = nil
+	self.defGroup = nil
 		
 	self.corps = {}	
 	self.troops = {}
@@ -189,13 +192,15 @@ function Combat:Dump()
 	self:Log( "Day     : ".. self.day )
 	self:Log( "Time    : ".. math.ceil( self.time / 60 ) )
 	self:Log( "Weather : ".. self.weatherTable.name .. "/" .. self.weatherDuration )
+	self:Log( "VS      : ".. ( self.atkGroup and self.atkGroup.name or "Unkown" ) .. " / " .. ( self.defGroup and self.defGroup.name or "Unkown" ) )
+	self:Log( "Location: ".. ( self.location and self.location.name or "" ) )
 	self:Log( "Line    : ".. "Melee=" .. #self.meleeLine .. "," .. "Charge=" .. #self.chargeLine .. "," .. "Front=" .. #self.frontLine .. "," .. "Back=" .. #self.backLine .. "," .. "Defence=" .. #self.defenceLine )
-	self:Log( "Round       : ".. MathUtility_FindEnumName( CombatRound, self.round ) )
-	self:Log( "Score       : " .. self.atkScore .. "/" .. self.defScore )
+	self:Log( "Round   : ".. MathUtility_FindEnumName( CombatRound, self.round ) )
+	self:Log( "Score   : " .. self.atkScore .. "/" .. self.defScore )
 	local atkNumber, defNumber = 0, 0
 	function dumpTroop( troops )
 		for k, troop in ipairs( troops ) do
-			print( "	" .. troop.name .. " 	id=" .. troop.id .. " num=" .. troop.number .. " side=" .. MathUtility_FindEnumName( CombatSide, troop._combatSide ) .. " Line=" .. MathUtility_FindEnumName( TroopStartLine, troop._startLine ) .. " Mor=" .. troop.morale .. "/" .. troop.maxMorale )
+			print( "	" .. troop.name .. " 	id=" .. troop.id .. " num=" .. troop.number .. " side=" .. MathUtility_FindEnumName( CombatSide, troop._combatSide ) .. " Line=" .. MathUtility_FindEnumName( TroopStartLine, troop._startLine ) .. " Mor=" .. troop.morale .. "/" .. troop.maxMorale .. " In="..(troop:IsInCombat() and "true" or "false" ) )
 			if troop:IsCombatUnit() then
 				if troop._combatSide == CombatSide.ATTACKER then
 					atkNumber = atkNumber + troop.number
@@ -254,6 +259,12 @@ function Combat:AddTroopToSide( side, troop )
 	end
 end
 
+function Combat:ForeachCorps( fn )
+	for k, corps in ipairs( self.corps ) do
+		fn( corps )
+	end
+end
+
 function Combat:AddCorpsToSide( side, corps )
 	table.insert( self.corps, corps )
 
@@ -264,6 +275,14 @@ end
 
 function Combat:SetType( combatType )
 	self.type = combatType
+end
+
+function Combat:SetGroup( side, group )
+	if side == CombatSide.ATTACKER then
+		self.atkGroup = group
+	elseif side == CombatSide.DEFENDER then
+		self.defGroup = group
+	end
 end
 
 function Combat:SetLocation( id )
@@ -370,10 +389,17 @@ function Combat:GetLocation()
 end
 
 function Combat:GetSideGroup( side )
+	if side == CombatSide.ATTACKER then
+		return self.atkGroup
+	elseif side == CombatSide.DEFENDER then
+		return self.defGroup
+	end
+	--[[
 	local sideCorps = side == CombatSide.ATTACKER and self.attackers or self.defenders
 	if #sideCorps > 0 and sideCorps[1]:GetEncampment() then
 		return sideCorps[1]:GetEncampment():GetGroup()
 	end
+	]]
 	return nil
 end
 
@@ -395,25 +421,27 @@ end
 
 
 function Combat:IsCombatEnd()
-	return self.result > CombatResult.TACTICAL_LOSE or self.round >= CombatRound.END_ROUND
+	return self.result > CombatResult.TACTICAL_LOSE
 end
 
-function Combat:IsEnd()
-	return self:IsCombatEnd()
+function Combat:IsDayEnd()
+	return self.round >= CombatRound.END_ROUND or self:IsCombatEnd()
 end
 
 function Combat:GetSideStatus( side, includeWounded )
 	local number, morale, fatigue, startNumber, maxNumber, count = 0, 0, 0, 0, 0, 0
 	for k, target in ipairs( self.troops ) do
-		if target._combatSide == side and target:IsInCombat() and target:IsCombatUnit() then
-			count = count + 1
-			number = number + target.number
-			startNumber = startNumber + target._startNumber
-			maxNumber = maxNumber + target.maxNumber
-			morale = morale + target.morale
-			fatigue = fatigue + target.fatigue
-			if includeWounded then
-				number = number + target.wounded
+		if target._combatSide == side and target:IsCombatUnit() then
+			if target:IsInCombat() then
+				count = count + 1
+				number = number + target.number
+				startNumber = startNumber + target._startNumber
+				maxNumber = maxNumber + target.maxNumber
+				morale = morale + target.morale
+				fatigue = fatigue + target.fatigue
+				if includeWounded then
+					number = number + target.wounded
+				end
 			end
 		end
 	end
@@ -479,7 +507,7 @@ function Combat:RunOneDay()
 	self:NextDay()
 	repeat		
 		self:Run()
-	until self:IsEnd()
+	until self:IsDayEnd()
 	
 	print( "Combat=", self.id, " Result=", MathUtility_FindEnumName( CombatResult, self.result ) )
 end
@@ -489,7 +517,7 @@ function Combat:Run()
 		self:Log( "Battlefield invalid" ) return
 	end
 	
-	if self:IsEnd() then
+	if self:IsDayEnd() then
 		return
 	end
 	
@@ -515,8 +543,6 @@ function Combat:Run()
 	
 	self:Dump()
 		
-	InputUtility_Pause()
-		
 	if self.type == CombatType.FIELD_COMBAT then
 		if self.round == CombatRound.PREPARE_ROUND then
 			self.round = CombatRound.SHOOT_ROUND
@@ -530,7 +556,6 @@ function Combat:Run()
 		elseif self.round == CombatRound.FIGHT_ROUND then
 			self:Fight()
 		elseif self.round == CombatRound.PURSUE_ROUND then
-			print( "purse ", self:HasStatus( CombatStatus.SIDE_FLEE ) )
 			if self:HasStatus( CombatStatus.SIDE_FLEE ) then				
 				self:Pursue()
 			end
@@ -735,13 +760,19 @@ function Combat:CalcDamage( troop, target, weapon, armor, params )
 		if criticalProb > 0 and Random_SyncGetRange( 1, RandomParams.MAX_PROBABILITY, "critical prob" ) < criticalProb then dmg = dmg * 1.5 end
 	end
 	
+	--print( "first dmg=", dmg )
+	
 	-- Damage Modification
 	if params.isCounter then dmg = dmg * 0.65 end
 	if params.isMissile and target._startLine == TroopStartLine.CHARGE then dmg = dmg * 0.65 print( "!!!!!!!!!!!!!!shoot moving" ) end	
 	if target:IsAttacked() then dmg = dmg * MathUtility_Clamp( 1 - 0.35 * target:IsAttacked(), 0.2, 2 ) end
 	if target:IsDefended() then dmg = dmg * MathUtility_Clamp( 1 + 0.35 * target:IsDefended(), 0.3, 2.5 ) end
-	if troop._combatSide == CombatSide.ATTACKER and self.type == CombatType.SIEGE_COMBAT then dmg = dmg * 0.35 end
-	if troop._combatSide == CombatSide.DEFENDER and self.type == CombatType.SIEGE_COMBAT then dmg = dmg * 0.5 end
+	if troop._combatSide == CombatSide.ATTACKER and self.type == CombatType.SIEGE_COMBAT then		
+		dmg = dmg * 0.25
+	end
+	if troop._combatSide == CombatSide.DEFENDER and self.type == CombatType.SIEGE_COMBAT then
+		dmg = dmg * 0.5
+	end
 	
 	-- Trait
 	
@@ -797,6 +828,7 @@ end
 function Combat:Hit( troop, target, params )
 	if not params then return end	
 	if not troop:IsAlive() then return end
+	if target:IsFled() and not params.isPursue then return end
 	
 	local atkWeapon = nil
 	if params.isMissile then atkWeapon = troop:GetFireWeapon()
@@ -820,32 +852,31 @@ function Combat:Hit( troop, target, params )
 	--damage	
 	damage = target:SufferDamage( damage )
 	troop:DealDamage( damage )
-		
-	--score
-	if target:IsCombatUnit() then
-		local rate = damage / oldNumber
-		local score = 0
-		for k, data in ipairs( CombatParams.DAMAGE_SCORE ) do
-			if rate < data.rate then 
-				--print( MathUtility_FindEnumName( CombatSide, troop._combatSide ) .. " score+", data.score, rate )
-				score = data.score
-				self:LostMorale( target, math.floor( target.morale * data.rate + data.morale ) )			
-				break
-			end
-		end
-		if troop._combatSide == CombatSide.ATTACKER then
-			self.atkScore = self.atkScore + score
-		else
-			self.defScore = self.defScore + score
-		end
+
+	if params.isCounter then
+		print( NameIDToString( troop ) .. "use ["..atkWeapon.name.."] counter " .. NameIDToString( target ) .. " deal dmg=" .. damage .. " left=" .. target.number )
+	else
+		print( NameIDToString( troop ) .. "use ["..atkWeapon.name.."] " .. ( params.isPursue and "pursue " or "hit " ) .. NameIDToString( target ) .. " deal dmg=" .. damage .. " left=" .. target.number )
 	end
 	
-	if params.isCounter then
-		print( NameIDToString( troop ) .. "use ["..atkWeapon.name.."] counter " .. NameIDToString( target ) .. " deal dmg=" .. damage )
+	--score
+	local rate = damage / oldNumber
+	local score = 0
+	for k, data in ipairs( CombatParams.DAMAGE_SCORE ) do
+		if rate < data.rate then 
+			--print( MathUtility_FindEnumName( CombatSide, troop._combatSide ) .. " score+", data.score, rate )
+			score = data.score
+			self:LostMorale( target, math.floor( target.morale * data.rate + data.morale ) )			
+			break
+		end
+	end
+	if troop._combatSide == CombatSide.ATTACKER then
+		self.atkScore = self.atkScore + score
 	else
-		print( NameIDToString( troop ) .. "use ["..atkWeapon.name.."] hit " .. NameIDToString( target ) .. " deal dmg=" .. damage )
-	end		
-	if not params.isCounter and not params.isPursue and ( params.isMelee or params.isCharge ) then
+		self.defScore = self.defScore + score
+	end
+	
+	if target:IsInCombat() and not params.isCounter and not params.isPursue and ( params.isMelee or params.isCharge ) then
 		if troop._startLine ~= TroopStartLine.CHARGE or target:IsAttacked() < 1 then
 			self:Hit( target, troop, { isCounter = true, isMelee = true } )
 		end

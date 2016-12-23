@@ -27,11 +27,6 @@ function Corps:Load( data )
 	------------------------------
 	-- other
 	
-	self.order    = MathUtility_Copy( data.order )
-	
-	-- Describe how far from the destination
-	self.marchDistance = data.marchDistance or 0
-	
 	self.formation = data.formation or 0
 		
 	------------------------------
@@ -53,17 +48,7 @@ function Corps:SaveData()
 	Data_OutputValue( "encampment", self, "id" )
 	Data_OutputValue( "location", self, "id" )
 	Data_OutputValue( "formation", self, "id" )
-	
-	local idOrder = Order_GetIDData( self.order )
-	Data_OutputBegin( "order" )
-	Data_IncIndent( 1 )
-	Data_OutputValue( "type", idOrder )
-	Data_OutputValue( "status", idOrder )
-	Data_OutputTable( "args", idOrder )
-	Data_IncIndent( -1 )
-	Data_OutputEnd( "order" )
-	
-	
+
 	Data_OutputTable( "troops", self, "id" )
 	Data_OutputValue( "leader", self, "id", 0 )
 	
@@ -96,8 +81,6 @@ function Corps:ConvertID2Data()
 	self.leader     = g_charaDataMng:GetData( self.leader )	
 	self.encampment = g_cityDataMng:GetData( self.encampment )	
 	self.location   = g_cityDataMng:GetData( self.location )
-	
-	self.order     = Order_ConvertID2Data( self.order )
 	
 	self.formation = g_formationTableMng:GetData( self.formation )
 end
@@ -187,6 +170,14 @@ end
 
 ------------------------------------------
 -- Operation
+
+function Corps:MoveToLocation( location )
+	self.location = location
+	for k, troop in ipairs( self.troops ) do
+		local leader = troop:GetLeader()
+		if leader then leader:MoveToLocation( location ) end
+	end
+end
 
 function Corps:DispatchToCity( city )
 	self.encampment = city

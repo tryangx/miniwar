@@ -30,6 +30,9 @@
 -- Treasure( book / antique / beauty /  )
 -- Nature Diplomacy Change
 --
+-- ***combat will end after make peace
+--
+--
 -- Game Flow
 -- 1. Select MOD( Include configuration )
 -- 2. Select scenario( Include dynamic data based on the configuration of the MOD )
@@ -42,8 +45,8 @@ require "Global"
 
 GameMode =
 {
-	NORMAL_GAME = 1,
-	
+	NEW_GAME    = 1,	
+	LOAD_GAME   = 1,	
 	COMBAT_GAME = 2,
 }
 
@@ -129,17 +132,18 @@ function Game:NewGame()
 	g_groupDataMng:LoadFromData( g_scenario:GetTableData( "GROUP_DATA" ) )
 	g_charaDataMng:LoadFromData( g_scenario:GetTableData( "CHARA_DATA" ) )
 	g_groupRelationDataMng:LoadFromData( g_scenario:GetTableData( "GROUPRELATION_DATA" ) )
-	g_plotDataMng:LoadFromData( g_scenario:GetTableData( "PLOT_DATA" ) )
 	
-	--preprocess data
+	--plot map
+	g_plotMap:RandomMap( 10, 10 )
+	g_plotMap:AllocateToCity()
 
 	--Control Player
 	local group = g_groupDataMng:GetDataByIndex( 1 )
-	--self.player = g_charaDataMng:GetData( 101 )--g_charaDataMng:GetData( group:GetLeader() )
+	--self.player = g_charaDataMng:GetData( 100 )--g_charaDataMng:GetData( group:GetLeader() )
 	print( "Select ["..NameIDToString( self.player ) .. "] as player's character" )
 	
 	--Game Mode
-	self.gameMode = GameMode.NORMAL_GAME
+	self.gameMode = GameMode.NEW_GAME
 end
 
 function Game:LoadGame()
@@ -159,15 +163,15 @@ function Game:LoadGame()
 	g_charaDataMng:LoadFromData( self.loadDatas.charas_data )
 	g_groupDataMng:LoadFromData( self.loadDatas.groups_data )
 	g_combatDataMng:LoadFromData( self.loadDatas.combats_data )
-	g_plotDataMng:LoadFromData( self.loadDatas.plots_data )
-		
+	g_plotMap:GetDataManager():LoadFromData( self.loadDatas.plots_data )	
+	
 	self.turn = self.loadDatas.game_data.turn
 	local pid = self.loadDatas.game_data.playerid
 	self.player = g_charaDataMng:GetData( pid )
 	
 	print( "turn=", self.turn )
 	
-	self.gameMode = GameMode.NORMAL_GAME
+	self.gameMode = GameMode.LOAD_GAME
 end
 
 function Game:SaveGame()
@@ -194,7 +198,7 @@ function Game:SaveGame()
 	SaveManagerData( "corps_data",  g_corpsDataMng )
 	SaveManagerData( "relations_data", g_groupRelationDataMng )
 	SaveManagerData( "combats_data", g_combatDataMng )
-	SaveManagerData( "plots_data", g_plotDataMng )
+	SaveManagerData( "plots_data", g_plotMap:GetDataManager() )
 	
 	Data_OutputFlush()
 	
@@ -206,7 +210,7 @@ function Game:Init()
 	Debug_SetFileMode( false )
 
 	self.turn = 0
-	self.maxTurn = 100
+	self.maxTurn = 40
 	
 	local g_scenarioName = "Demo"
 	package.path = package.path .. ";asset/Scenario/" .. g_scenarioName .. "/?.lua"
@@ -240,7 +244,7 @@ function Game:Init()
 	-- initialize g_season
 	g_season:Init()
 	g_season:SetDate( g_calendar.month, g_calendar.day )
-	
+		
 	-- convert id to data
 	g_troopTableMng:Foreach( function ( data ) 		
 		data:ConvertID2Data()
@@ -257,17 +261,11 @@ function Game:Init()
 	self:MainMenu()
 end
 
-function Game:PreprocessGameData()
-	--map relative
-	g_plotDataMng:Foreach( function ( data ) 
-		data:ConvertID2Data()
-	end )
-
+function Game:PreprocessGameData()	
 	--entity data relative
 	self._groupList = {}
 	g_groupDataMng:Foreach( function ( data )
 		data:ConvertID2Data()
-		data:Init()
 		table.insert( self._groupList, data )
 	end )
 	-- Repair relation data leaks	
@@ -281,16 +279,19 @@ function Game:PreprocessGameData()
 	self._cityList      = {}
 	g_cityDataMng:Foreach( function ( data )
 		data:ConvertID2Data()
-		table.insert( self._cityList, { city=data, id=data.id } )
+		table.insert( self._cityList, data )
 	end )
 	g_cityDataMng:Foreach( function ( data )
 		data:InitAdjacentCity()
+		if self.gameMode == GameMode.NEW_GAME then
+			data:Harvest()
+		end
 	end )
 	
 	self._corpsList     = {}
 	g_corpsDataMng:Foreach( function ( data )
 		data:ConvertID2Data()
-		table.insert( self._corpsList, { corps=data, id=data.id } )
+		table.insert( self._corpsList, data )
 	end )
 	
 	g_activateCharaList  = {}
@@ -333,17 +334,22 @@ function Game:PreprocessGameData()
 			end
 		end
 		
-		table.insert( self._troopList, { troop=data, id=data.id } )
+		table.insert( self._troopList, data )
 	end )
 	
 	self._combatList = {}
 	g_combatDataMng:Foreach( function ( data )
 		data:ConvertID2Data()
-		table.insert( self._combatList, { combat=data, id=data.id } )
+		table.insert( self._combatList, data )
 	end )
 	
 	g_groupRelationDataMng:Foreach( function ( data ) 
 		data:ConvertID2Data()
+	end )
+	
+	g_groupDataMng:Foreach( function ( data )
+		--Caused by dynamic city data like percent agriculture
+		data:Init()
 	end )
 end
 
@@ -370,19 +376,27 @@ end
 
 function Game:Run()
 	while self.turn < self.maxTurn do
-		self:PopupSystemMenu()
+		--self:PopupSystemMenu()
 		
-		if self.gameMode == GameMode.NORMAL_GAME then
-			self:NextTurn1()
+		if self.gameMode == GameMode.NEW_GAME or self.gameMode == GameMode.LOAD_GAME then
+			self:NextTurn()
 		elseif self.gameMode == GameMode.COMBAT_GAME then
 			Warfare:RunOneDay()
 			--Warfare:RunOneHour()
 		end
-		
-		print( "" )
-		print( "####################################" )
-		print( "############# Turn=" .. self.turn .. " ##############" )
-		g_calendar:DumpMonthUnit()
+		if self.winner then break end
+	end
+	if self.turn >= self.maxTurn then
+		for k, group in ipairs( self._groupList ) do
+			group:Dump()
+		end
+		for k, city in ipairs( self._cityList ) do
+			city:Dump()
+		end
+		g_taskMng:DumpResult()
+	end
+	if self.winner then
+		InputUtility_Wait( "winner="..self.winner.name, "end" )
 	end
 end
 
@@ -395,36 +409,6 @@ end
 ----------------------------------------------
 
 function Game:NextTurn()
-	-- Notice winner
-	if self.winner then
-		Debug_Normal( "Winner is " .. NameIDToString( self.winner ) )
-		return
-	end
-	
-	-- Check Event
-	-- ...
-	
-	-- Combat Report
-	-- ...	
-	
-	-- Shuffle grouplist
-	MathUtility_Shuffle( self._groupList )	
-	
-	-- Issue order
-	for k, group in ipairs( self._groupList ) do
-		Game:IssueGroupOrder( group )
-	end
-	
-	-- Execute order
-	self:ExecuteOrder()
-		
-	-- Update
-	self:Update()
-	
-	self.turn = self.turn + 1
-end
-
-function Game:NextTurn1()
 	--[[
 		Game Turn Flow ( Ver 1.1 )
 		
@@ -467,14 +451,48 @@ function Game:NextTurn1()
 	
 	-- Action Flow
 	self:ActionFlow()
+
+	self.turn = self.turn + 1
+	print( "" )
+	print( "####################################" )
+	print( "############# Turn=" .. self.turn .. " ##############" )
+	g_calendar:DumpMonthUnit()
 	
 	-- Update Flow
-	self:Update()
-	
-	self.turn = self.turn + 1
+	self:Update( GlobalConst.ELPASED_TIME )
 end
 
-function Game:ActionFlow()
+function Game:DrawMap()
+	local map = {}
+	for k, city in ipairs( self._cityList ) do
+		local pos = city.position
+		if not map[pos.y] then
+			map[pos.y] = {} 
+		end
+		if map[pos.y][pos.x] then
+			print( "Duplicate", city.name, map[pos.y][pos.x].name )
+		end
+		map[pos.y][pos.x] = city
+	end
+	for y = 1, 10 do
+		local row = map[y]
+		local content = ""
+		for x = 1, 10 do			
+			local city = row and row[x]
+			if not city then
+				content = content .. "     "
+			else				
+				content = content .. "<".. Helper_Abbreviate( city.name, 3 ) ..">"
+			end
+		end
+		print( "Y=".. y, content )
+	end
+end
+
+function Game:ActionFlow()	
+	g_plotMap:Dump()
+	self:DrawMap()
+	
 	-- Personal Choice
 	for k, chara in ipairs( g_activateCharaList ) do
 		if nil and chara == self.player then
@@ -501,100 +519,72 @@ function Game:ActionFlow()
 		
 	-- Hold Group Meeting
 	--[[]]
-	MathUtility_Shuffle( self._groupList )	
+	MathUtility_Shuffle( self._groupList )
+	local independences = {}
 	for k, group  in ipairs( self._groupList ) do
 		if not group:IsFallen() then
 			if group:IsAchieveGoal() then self.winner = group end
-			--v.group:DumpDiplomacyMethod()
+			--group:DumpDiplomacyMethod()
 			g_meeting:HoldGroupMeeting( self, group )
 			--InputUtility_Pause( "Group meeting... " )
 			--break
+			if group:IsIndependence() then
+				table.insert( independences, group )
+			end
+		else
+			print( "######################gropu is fallend" .. group.name )
 		end
 	end
 	--]]
 	
-	if self.player then
-		InputUtility_Pause( "City Meeting....." )
+	if #independences == 1 then
+		self.winner = independences[1]
 	end
 	
+	--if true or self.player then InputUtility_Pause( "City Meeting....." ) 	end
+	
 	-- Hold City Meeting
-	for k, v in ipairs( self._cityList ) do
-		--print( v.city.name, v.city ~= v.city:GetGroup():GetCapital(), v.city:GetNumOfIdleChara() )
-		if v.city:GetGroup() and v.city ~= v.city:GetGroup():GetCapital() and v.city:GetNumOfIdleChara() > 0 then						
-			g_meeting:HoldCityMeeting( self, v.city )
+	for k, city in ipairs( self._cityList ) do
+		--print( city.name, city ~= city:GetGroup():GetCapital(), city:GetNumOfIdleChara() )
+		if city:GetGroup() and city ~= city:GetGroup():GetCapital() and city:GetNumOfIdleChara() > 0 then						
+			g_meeting:HoldCityMeeting( self, city )
 		end
 	end	
 
 	--[[
 	-- Hold Corps Meeting
-	for k, v in ipairs( self._corpsList ) do
-		v.corps:HoldMeeting()
+	for k, corps in ipairs( self._corpsList ) do
+		corps:HoldMeeting()
 	end
 	]]
 end
 
-function Game:ExecuteOrder()
-	for k, group in ipairs( self._groupList ) do		
-		Order_Execute( group )
-		group:Dump()
-	end
-	
-	for k, v in ipairs( self._cityList ) do
-		--v.city:Dump()
-		Order_Execute( v.city )		
-	end
-	
-	for k, v in ipairs( self._corpsList ) do
-		Order_Execute( v.corps )
-	end
-	
-	for k, chara in ipairs( self._charaList ) do
-		Order_Execute( chara )
-	end
-end
-
-function Game:Update()
+function Game:Update( elpasedTime )
 	print( "************** Update Flow ******************" )
-
-	g_warfare:Run()
 	
-	g_diplomacy:Update()
+	local passDay = elpasedTime
+	
+	g_warfare:Update( elpasedTime )	
+	g_diplomacy:Update( elpasedTime )	
+	g_taskMng:Update( elpasedTime )	
+	g_movingActorMng:Update( elpasedTime )
 
 	for k, group in ipairs( self._groupList ) do
-		group:Update()		
+		print( group.name .. " mi_pow=" .. group:GetPower() )
+		group:Update()
 	end
-	for k, v in ipairs( self._cityList ) do	
-		v.city:Update()
+	
+	--InputUtility_Pause( "" )
+	
+	for k, city in ipairs( self._cityList ) do	
+		city:Update()
 	end
-	for k, v in ipairs( self._corpsList ) do
-		v.corps:Update()
+	for k, corps in ipairs( self._corpsList ) do
+		corps:Update()
 	end	
 	for k, chara in ipairs( g_activateCharaList ) do
 		chara:Update()
-	end
-	
-	local passDay = 30
-	g_groupRelationDataMng:Foreach( function ( relation )		
-		if relation.type == GroupRelationType.ALLIANCE then
-			local trait = relation:GetTrait( GroupRelationTrait.ALLIANCE_TIME_REMAINS )
-			if trait then				
-				if trait.value > passDay then
-					trait.value = trait.value - passDay
-					return
-				end
-			end
-			relation:EndAlliance()
-		elseif relation.type == GroupRelationType.TRUCE then
-			local trait = relation:GetTrait( GroupRelationTrait.TRUCE_TIME_REMAINS )
-			if trait then				
-				if trait.value > passDay then
-					trait.value = trait.value - passDay
-					return
-				end
-			end
-			relation:EndTruce()
-		end
-	end )
+	end	
 	
 	--ProfileResult()
 end

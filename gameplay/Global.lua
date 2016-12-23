@@ -65,7 +65,9 @@ require "Plot"
 
 ---------------------------------------
 -- Logical
-require "Order"
+--require "Order"
+require "Task"
+require "TaskOperation"
 --require "Combat"
 require "QuickCombat"
 require "CombatEvent"
@@ -74,33 +76,37 @@ require "GroupRelation"
 require "Climate"
 require "Season"
 require "Calendar"
-
+require "PlotMap"
+require "Dialogue"
+require "Formula"
 require "Meeting"
 require "Diplomacy"
-
-require "Dialogue"
+require "MovingActor"
 
 ---------------------------------------
 -- AI
-require "GroupAI"
+--require "GroupAI"
 require "CharacterAI"
 
 ---------------------------------------
-
+-- Gameplay
 g_scenario = GameScenario()
 
 g_warfare  = Warfare()
 
-g_climate  = Climate()
-g_season   = Season()
-g_calendar = Calendar()
-
----------------------------
--- Gameplay
-
 g_meeting = Meeting()
 
 g_diplomacy = Diplomacy()
+
+g_taskMng   = TaskManager()
+
+g_movingActorMng = MovingActorManager()
+
+g_plotMap  = PlotMap()
+
+g_climate  = Climate()
+g_season   = Season()
+g_calendar = Calendar()
 
 ---------------------------
 -- Configure Table
@@ -131,7 +137,6 @@ g_troopDataMng = DataManager( "TROOP_DATA", Troop )
 g_corpsDataMng = DataManager( "CORPS_DATA", Corps )
 g_groupRelationDataMng = DataManager( "GROUPRELATION_DATA", GroupRelation )
 g_combatDataMng = DataManager( "COMBAT_DATA", Combat )
-g_plotDataMng = DataManager( "PLOT_DATA", Plot )
 
 ---------------------------
 -- Randomizer
@@ -145,9 +150,9 @@ g_asyncRandomizer = Randomizer()
 ---------------------------
 -- AI
 
-g_groupAI = g_groupAI()
+--g_groupAI = g_groupAI()
+--g_groupAI:SetRandomizer( g_globalRandomizer )
 g_charaAI = CharacterAI()
-g_groupAI:SetRandomizer( g_globalRandomizer )
 g_charaAI:SetRandomizer( g_globalRandomizer )
 
 ---------------------------

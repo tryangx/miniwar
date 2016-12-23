@@ -15,17 +15,12 @@ function CityTable:Load( data )
 	
 	self.population  = data.population or ""
 	
-	self.size        = data.size or 1
+	self.size        = CitySize[data.size] or CitySize.CITY
 	
 	self.status      = data.status or {}
 
-	self.maxAgriculture = data.maxAgriculture or 0
-	self.agriculture    = data.agriculture	or self.maxAgriculture
-	
-	self.maxEconomy  = data.maxEconomy or 0
-	self.economy     = data.economy or self.maxEconomy
-	
-	self.maxProduction = data.maxProduction or 0
+	self.agriculture    = data.agriculture	or self.maxAgriculture	
+	self.economy     = data.economy or self.maxEconomy	
 	self.production    = data.production or self.maxProduction
 	
 	-----------------------------------

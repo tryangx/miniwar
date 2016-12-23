@@ -31,7 +31,7 @@ local function NeedResearch()
 	local availableTechs = {}
 	g_techTableMng:Foreach( function ( tech )
 		if MathUtility_IndexOf( _group.techs, tech.id, "id" ) then return end
-		if tech.prerequisite then
+		if tech.prerequisites then
 			for k, id in pairs( tech.prerequisite ) do
 				if not MathUtility_IndexOf( _group.techs, id ) then return end
 			end

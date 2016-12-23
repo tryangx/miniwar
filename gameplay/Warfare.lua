@@ -1,7 +1,5 @@
 Warfare = class()
 
----------------------------------------
-
 function Warfare:__init()
 	self.plans = {}
 end
@@ -18,14 +16,14 @@ function Warfare:AddPlan( corps, city )
 		local defender = corps
 		self.plans[id] = nil
 		table.insert( self.plans, { from = from, to = to, attacker = attacker, defender = defender, siege = false } )
-		print( "Add siege plan" )
+		--InputUtility_Pause( "Add plan" )
 	else
-		print( "Add plan" )
+		--InputUtility_Pause( "Add siege plan" )		
 		table.insert( self.plans, { from = corps.location, to = city, corps = corps, siege = true } )
-	end
+	end	
 end
 
-function Warfare:Run()	
+function Warfare:Update( elapasedTime )
 	-- process all plans
 	for k, plan in pairs( self.plans ) do
 		if plan.siege == true then
@@ -49,6 +47,8 @@ function Warfare:AddFieldCombat( attacker, defender )
 	combat:SetType( CombatType.FIELD_COMBAT )
 	combat:SetBattlefield( 1 )
 	combat:SetClimate( 1 )
+	combat:SetGroup( CombatSide.ATTACKER, attacker:GetGroup() )
+	combat:SetGroup( CombatSide.DEFENDER, defender:GetGroup() )
 	combat:SetSide( CombatSide.ATTACKER, { purpose=CombatPurpose.CONVENTIONAL } )
 	combat:SetSide( CombatSide.DEFENDER, { purpose=CombatPurpose.CONVENTIONAL } )	
 	
@@ -62,7 +62,7 @@ function Warfare:AddFieldCombat( attacker, defender )
 end
 
 
-function Warfare:AddSiegeCombat( corps, city )
+function Warfare:AddSiegeCombat( corps, city )	
 	combat = g_combatDataMng:NewData()
 	
 	--use current date?
@@ -72,16 +72,30 @@ function Warfare:AddSiegeCombat( corps, city )
 	combat:SetLocation( city.id )
 	combat:SetBattlefield( 1 )
 	combat:SetClimate( 1 )
+	combat:SetGroup( CombatSide.ATTACKER, corps:GetGroup() )
+	combat:SetGroup( CombatSide.DEFENDER, city:GetGroup() )
 	combat:SetSide( CombatSide.ATTACKER, { purpose=CombatPurpose.CONVENTIONAL } )
 	combat:SetSide( CombatSide.DEFENDER, { purpose=CombatPurpose.CONVENTIONAL } )	
 	
 	-- troop sequence
-	combat:AddCorpsToSide( CombatSide.ATTACKER, corps )	
+	combat:AddCorpsToSide( CombatSide.ATTACKER, corps )
 	for k, defender in ipairs( city.corps ) do
-		if defender.location == city then
+		if defender:GetLocation() == city then
 			combat:AddCorpsToSide( CombatSide.DEFENDER, defender )
 		end
 	end
+	for k, defender in ipairs( city.troops ) do
+		if not defender:GetCorps() and defender:GetLocation() == city then
+			combat:AddTroopToSide( CombatSide.DEFENDER, defender )
+		end
+	end
+	
+	--add wall
+	combat:AddTroopToSide( CombatSide.DEFENDER, g_troopDataMng:GetData( 100 ) )	
+	--add gate
+	combat:AddTroopToSide( CombatSide.DEFENDER, g_troopDataMng:GetData( 200 ) )
+	--add tower
+	combat:AddTroopToSide( CombatSide.DEFENDER, g_troopDataMng:GetData( 210 ) )
 	
 	combat:Preprocess()
 	
@@ -106,6 +120,8 @@ function Warfare:Test( atks, defs )
 	combat:SetLocation( 10 )
 	combat:SetBattlefield( 3 )
 	combat:SetClimate( 1 )
+	combat:SetGroup( CombatSide.ATTACKER, atks:GetGroup() )
+	combat:SetGroup( CombatSide.DEFENDER, defs:GetGroup() )
 	combat:SetSide( CombatSide.ATTACKER, { purpose=CombatPurpose.CONVENTIONAL } )--DESPERATE } )
 	combat:SetSide( CombatSide.DEFENDER, { purpose=CombatPurpose.CONVENTIONAL } )	
 	
@@ -136,13 +152,6 @@ function Warfare:Test( atks, defs )
 end
 
 function Warfare:ProcessCombatResult( combat )
-	-- Dismiss the order status for every corps
-	--[[
-	combat:ForEachCorps( function ( corps )
-		CorpsFinishAttack( corps )
-	end )
-	]]
-	
 	-- Determine the ownership of the city if it's a siege combat
 	if combat.type == CombatType.SIEGE_COMBAT then		
 		local winner = combat:GetWinner()
@@ -151,7 +160,25 @@ function Warfare:ProcessCombatResult( combat )
 			if group then
 				group:CaptureCity( combat )
 			end
+		else
+			--go back home
+			combat:ForeachCorps( function ( corps )	
+				if corps:GetGroup() == combat:GetSideGroup( CombatSide.ATTACKER ) then
+					local task = g_taskMng:GetTaskByActor( corps )
+					if task then					
+						task:Fail()
+					end
+				end
+			end )
 		end
+	elseif combat.type == CombatType.FIELD_COMBAT then
+		--go back home
+		combat:ForeachCorps( function ( corps )			
+			local task = g_taskMng:GetTaskByActor( corps )
+			if task then				
+				task:Fail()				
+			end
+		end )
 	end
 end
 
@@ -161,7 +188,6 @@ end
 function Warfare:RunOneHour()	
 	g_combatDataMng:Foreach( function ( combat )
 		if not combat:IsEnd() then
-			--print( "update combat", combat.id )
 			combat:Run()
 		end
 	end )
@@ -169,18 +195,20 @@ end
 
 function Warfare:RunOneDay()
 	if g_combatDataMng:GetCount() > 0 then
-		InputUtility_Pause()
+		--InputUtility_Pause( "combat exist" )
 	end
+	local updateTime = 0
 	g_combatDataMng:Foreach( function ( combat )
-		InputUtility_Pause( "update combat", combat.id )
+		updateTime = updateTime + 1
 		if not combat:IsCombatEnd() then
 			combat:RunOneDay()
 		end
 	end )
+	--if updateTime > 0 then InputUtility_Wait( "update combat" .. combat.id, "n" ) end
 	g_combatDataMng:RemoveDataByCondition( function ( combat ) 
 		if combat:IsCombatEnd() then
 			self:ProcessCombatResult( combat )
-			--print( "!!!!!!!!!!!!!!!! Remove Combat" )
+			print( "!!!!!!!!!!!!!!!! Remove Combat", "end combat" )
 			return true
 		end
 		return false

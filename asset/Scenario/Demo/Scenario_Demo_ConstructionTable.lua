@@ -2,41 +2,29 @@ local ConstructionTableData =
 {
 	[1] =
 	{
-		id = 1,
-		
+		id = 1,		
 		name = "palace",
-		
-		desc = "First construction",
-		
-		points = 1000,
-		
-		prerequisites = {},
+		maintenance = 1000,
+		desc = "First construction",				
+		prerequisites = { points = 100 },
 	},
 	
 	[2] =
 	{
-		id = 2,
-		
-		name = "barrack",
-		
+		id = 2,		
+		name = "barrack",		
 		desc = "Military Construct",
-		
-		points = 1,
-
-		prerequisites = {},
+		maintenance = 100,
+		prerequisites = { points = 100 },
 	},
 	
 	[3] =
 	{
-		id = 3,
-		
-		name = "farm",
-		
+		id = 3,		
+		name = "farm",		
 		desc = "",
-		
-		points = 1,
-
-		prerequisites = {},
+		maintenance = 100,
+		prerequisites = { points = 100 },
 	},
 }
 

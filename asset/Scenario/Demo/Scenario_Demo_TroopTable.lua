@@ -48,7 +48,7 @@ local TroopTableData =
 		supplyConsume = 0,		
 		weapons   = { 200 },
 		armors    = { 101 },		
-		traits    = {},		
+		traits    = {},
 		prerequisites = { points=400, money=0, constrs = { 999 }, tech=1, resource=0 }
 	},
 	
@@ -93,7 +93,7 @@ local TroopTableData =
 		name = "Militia",		
 		category = "Footman",		
 		level     = 3,		
-		maxNumber = 200,		
+		maxNumber = 1000,		
 		maxMorale = 80,		
 		capacity  = 0,		
 		movement  = 20,		
@@ -101,7 +101,7 @@ local TroopTableData =
 		weapons   = { 500 },
 		armors    = {},		
 		traits    = {},		
-		prerequisites = { points=-1 },
+		prerequisites = { points=100 },
 	},
 	
 	[1000] = 

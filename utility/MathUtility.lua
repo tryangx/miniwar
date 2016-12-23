@@ -418,6 +418,14 @@ function MathUtility_CreateRandomIndexs( min, max, num )
 	return array
 end
 
+function MathUtility_CountLength( list )
+	local len = 0
+	for k, v in pairs( list ) do
+		len = len + 1
+	end
+	return len
+end
+
 --[[
 --Sqrt Positive Integer Below 10
 local _SqrtPIB10 = nil

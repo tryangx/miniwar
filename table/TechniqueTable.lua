@@ -6,8 +6,6 @@ function TechniqueTable:Load( data )
 	self.name = data.name or ""
 	
 	self.desc = data.name or ""
-	
-	self.points = data.points or 0
-	
-	self.prerequisite = MathUtility_Copy( data.prerequisite )
+		
+	self.prerequisites = MathUtility_Copy( data.prerequisites )
 end

@@ -59,24 +59,26 @@ function Character:Load( data )
 	
 	------------------------------------
 	
+	--Officer / Military Officer etc
 	self.job      = CharacterJob[data.job] or CharacterJob.OFFICER
 	
+	--normal / out / not appear / leave / dead
 	self.status   = CharacterStatus[data.status] or CharacterStatus.NORMAL
 	
-	--current location
+	--Current location( city )
 	self.location = data.location or 0	
+	
+	--Stay location( city )
+	self.home     = data.home or 0
 	
 	------------------------------------
 	
-	self.action   = data.action or CharacterAction.NONE	
+	self.action   = data.action or CharacterAction.NONE
 	
 	------------------------------------
 	-- Dynamic Data
-	self.order = MathUtility_Copy( data.order )
 		
 	self._group   = nil
-	
-	self._city    = nil
 	
 	self._troop   = nil
 		
@@ -109,14 +111,6 @@ function Character:SaveData()
 	Data_OutputValue( "action", self )
 	Data_OutputValue( "location", self, "id" )
 	
-	local idOrder = Order_GetIDData( self.order )
-	Data_OutputBegin( "order" )
-	Data_IncIndent( 1 )
-	Data_OutputValue( "type", idOrder )	
-	Data_OutputTable( "args", idOrder )
-	Data_IncIndent( -1 )
-	Data_OutputEnd( "order" )
-	
 	Data_IncIndent( -1 )
 	Data_OutputEnd()
 	
@@ -125,9 +119,9 @@ function Character:SaveData()
 end
 
 function Character:ConvertID2Data()
-	self.order = Order_ConvertID2Data( self.order )
-	
 	self.location = g_cityDataMng:GetData( self.location )
+	
+	self.home     = self.home == 0 and self.location or g_cityDataMng:GetData( self.home )
 	
 	local traits = {}
 	for k, id in pairs( self.traits ) do
@@ -143,15 +137,23 @@ end
 
 function Character:Dump( indent )
 	if not indent then indent = "" end
-	local content = indent .. "Chara [".. self.name .. "] Stay [".. self.location.name .. "] st=" .. self.stamina .. " job=" .. MathUtility_FindEnumName( CharacterJob, self.job )
+	local content = indent .. "Chara [".. self.name .. "] Stay [".. self.location.name .. "] st=" .. self.stamina .. " job=" .. MathUtility_FindEnumName( CharacterJob, self.job ) .. " Task=" .. ( g_taskMng:IsCharaExecutingTask( self ) and "True" or "False" )
 	print( content )
 end
 
 ----------------------------------
 -- Getter
 
+function Character:IsAlive()
+	return self.status ~= Characterstatus.DEAD
+end
+
 function Character:IsGroupLeader()
 	return self._group:GetLeader() == self
+end
+
+function Character:IsAtHome()
+	return self.location == self.home
 end
 
 function Character:IsStayCity( city )
@@ -192,8 +194,8 @@ function Character:GetGroup()
 	return self._group
 end
 
-function Character:GetCity()
-	return self._city
+function Character:GetHome()
+	return self.home
 end
 
 function Character:GetLocation()
@@ -216,8 +218,17 @@ function Character:ChoiceAction( action )
 	--print( NameIDToString( self ) .. " Choice " .. MathUtility_FindEnumName( CharacterAction, action ) )
 end
 
+function Character:Contribute( contribution )
+	self.contribution = MathUtility_Clamp( self.contribution + contribution, 0, CharacterParams.CONTRIBUTION.MAX_CONTRIBUTION )
+	Debug_Normal( "["..self.name.."] contribute " .. contribution .. " to " .. self.contribution )
+end
+
 ----------------------------------
 -- Operation
+
+function Character:MoveToLocation( location )
+	self.location = location
+end
 
 function Character:LeadTroop( troop )
 	self._troop = troop	
@@ -260,7 +271,7 @@ function Character:GetProposal()
 end
 
 function Character:CanSubmitProposal()
-	return self._hasSubmitProposal ~= true and self.stamina > CharacterParams.STAMINA["SUBMIT_PROPOSAL"]
+	return self._hasSubmitProposal ~= true and self.stamina > CharacterParams.STAMINA["SUBMIT_PROPOSAL"] and not g_taskMng:IsCharaExecutingTask( self )
 end
 
 function Character:CanAcceptProposal()
@@ -268,7 +279,7 @@ function Character:CanAcceptProposal()
 end
 
 function Character:CanLead()
-	return not self:IsLeadTroop() and self.location == self._city
+	return not self:IsLeadTroop() and self:IsAtHome()
 end
 
 function Character:GetPromoteList()
@@ -298,7 +309,7 @@ function Character:GetPromoteList()
 end
 
 function Character:IsFree()
-	return not self:IsLeadTroop() and not self:IsImportant() and self.location == self._city
+	return not self:IsLeadTroop() and not self:IsImportant() and self:IsAtHome() and not g_taskMng:IsCharaExecutingTask( self )
 end
 
 function Character:SubmitProposal( proposal )	

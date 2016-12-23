@@ -54,7 +54,10 @@ PlotTraitType =
 	CULTURE_OUTPUT    = 24,
 	FAITH_OUTPUT      = 25,
 	
-	MOVE_PENALTY      = 30,
+	POPULATION_LIMIT  = 30,
+	POPULATION_INIT   = 31,
+	
+	MOVE_PENALTY      = 50,
 }
 
 PlotTraits = 
@@ -130,10 +133,6 @@ function PlotTable:Load( data )
 	
 	--Add feature traits
 	self.traits = MathUtility_Merge( self.traits, PlotFeatureTratis[self.feature] )
-	
-	--MathUtility_Dump( self.traits )
-	
-	--InputUtility_Pause( self.name )
 end
 
 function PlotTable:GetTraitValue( plotTraitType )

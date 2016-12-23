@@ -13,8 +13,6 @@ function Group:Load( data )
 	
 	self.name      = data.name
 	
-	self.order     = MathUtility_Copy( data.order )
-	
 	--------------------------------------
 	-- Basic	
 	
@@ -153,16 +151,7 @@ function Group:SaveData()
 	Data_OutputValue( "researchAbility", self )
 	
 	Data_OutputValue( "government", self )
-	
-	local idOrder = Order_GetIDData( self.order )
-	Data_OutputBegin( "order" )
-	Data_IncIndent( 1 )
-	Data_OutputValue( "type", idOrder )
-	Data_OutputValue( "status", idOrder )
-	Data_OutputTable( "args", idOrder )
-	Data_IncIndent( -1 )
-	Data_OutputEnd( "order" )
-	
+
 	Data_OutputTable( "relations", self, "id" )
 	Data_OutputTable( "tags", self )
 	
@@ -291,8 +280,6 @@ function Group:ConvertID2Data()
 		table.insert( formations, g_formationTableMng:GetData( id ) )
 	end
 	self.formations = formations
-	
-	self.order = Order_ConvertID2Data( self.order )
 end
 
 function Group:Init()
@@ -321,9 +308,8 @@ end
 function Group:UpdateRecruitList()
 	self._canRecruitTroops = {}
 	g_troopTableMng:Foreach( function( troop )
-		local enable = true
 		if troop.prerequisites.tech then
-			if not MathUtility_IndexOf( self.techs, troop.prerequisites.tech ) then enable = false end			
+			if not MathUtility_IndexOf( self.techs, troop.prerequisites.tech, "id" ) then return end
 		end
 		table.insert( self._canRecruitTroops, troop )
 	end )
@@ -334,9 +320,9 @@ end
 function Group:UpdateBuildList()
 	--can build list
 	self._canBuildConstructions = {}
-	g_constrTableMng:Foreach( function ( constr )
-		for k, reqTech in ipairs( constr ) do
-			if not MathUtility_IndexOf( self.techs, reqTech.id, "id" ) then return end
+	g_constrTableMng:Foreach( function ( constr )		
+		if constr.prerequisites.tech then
+			if not MathUtility_IndexOf( self.techs, constr.prerequisites.tech, "id" ) then return end
 		end
 		table.insert( self._canBuildConstructions, constr )
 	end )
@@ -348,11 +334,9 @@ function Group:UpdateResearchList()
 	self._canResearchTechs = {}
 	g_techTableMng:Foreach( function ( tech )
 		if MathUtility_IndexOf( self.techs, tech.id, "id" ) then return end
-		if tech.prerequisite then
-			for k, id in pairs( tech.prerequisite ) do
-				if not MathUtility_IndexOf( self.techs, id ) then return end
-			end
-		end			
+		if tech.prerequisites.tech then
+			if not MathUtility_IndexOf( self.techs, tech.prerequisites.tech, "id" ) then return end
+		end
 		table.insert( self._canResearchTechs, tech )
 	end )
 end
@@ -392,10 +376,14 @@ function Group:GetDominationRate()
 		if relation.sid == self.id then
 			if relation.type == GroupRelationType.VASSAL then
 				local target = g_groupDataMng:GetData( relation.tid )
-				power = power + target:GetPower()
+				if target then
+					power = power + target:GetPower()
+				end
 			elseif relation.type == GroupRelationType.DEPENDENCE then
 				local target = g_groupDataMng:GetData( relation.tid )
-				power = power + target:GetPower()
+				if target then
+					power = power + target:GetPower()
+				end
 			end
 		end
 	end
@@ -449,11 +437,15 @@ function Group:GetGroupRelation( id )
 	
 	--find in target
 	local target = g_groupDataMng:GetData( id )
-	for k, relation in ipairs( target.relations ) do
-		if relation.sid == id or relation.tid == id then
-			table.insert( self.relations, relation )
-			return relation
+	if target then
+		for k, relation in ipairs( target.relations ) do
+			if relation.sid == id or relation.tid == id then
+				table.insert( self.relations, relation )
+				return relation
+			end
 		end
+	else
+		return nil
 	end
 	
 	Debug_Normal( "!!!Add new relation in [" .. self.name .. "," .. self.id .. "] with [" .. id .. "]" )
@@ -470,12 +462,14 @@ function Group:GetGroupRelation( id )
 end
 
 function Group:GetAdjacentGroups()
+	print( "Get adja group")
 	if self._adjacentGroups then return self._adjacentGroups end	
 	self._adjacentGroups = {}
 	for k, city in ipairs( self.cities ) do
 		for k2, adjCity in ipairs( city.adjacentCities ) do
-			if adjCity.group ~= group then
-				MathUtility_PushBack( self._adjacentGroups, adjCity.group )
+			if adjCity:GetGroup() and adjCity:GetGroup() ~= self then
+				print( "push adja", adjCity:GetGroup().name )
+				MathUtility_PushBack( self._adjacentGroups, adjCity:GetGroup() )
 			end
 		end
 	end
@@ -728,6 +722,7 @@ end
 
 function Group:CanResearch()
 	if self.researchTechId ~= 0 then return false end
+	if g_taskMng:IsTaskConflict( TaskType.TECH_RESEARCH, nil ) then return false end	
 	return #self._canResearchTechs > 0
 end
 
@@ -887,7 +882,7 @@ function Group:CaptureCity( combat )
 	else
 		for k, corps in ipairs( city.corps ) do
 			local city = cities[k % numberOfCity]
-			CorpsDispatch( corps, city )
+			CorpsDispatchToCity( corps, city )
 		end
 	end
 	
@@ -936,11 +931,15 @@ function Group:Fall()
 	--dismiss all relations
 	for k, relation in ipairs( self.relations ) do
 		local target = g_groupDataMng:GetData( relation.sid == self.id and relation.tid or relation.sid )
-		MathUtility_Remove( target.relations, relation.id, "id" )
+		if target then
+			MathUtility_Remove( target.relations, relation.id, "id" )
+		end
 	end
 	self.relations = {}
 	--remove group
 	g_groupDataMng:RemoveData( self.id )
+	
+	print( "group fall=" .. self.name, "next" )
 end
 
 function Group:CharaJoin( chara )
@@ -951,6 +950,11 @@ function Group:CharaLeave( chara )
 	if not MathUtility_Remove( self.charas, chara.id, "id" ) then
 		print( "Remove chara ["..chara.name.."] failed!" )
 	end
+end
+
+function Group:ReceiveTax( tax, city )
+	self.money = self.money + tax
+	print( "Receive tax=" .. tax .. " from=" .. city.name )
 end
 
 ----------------------------------------------
@@ -1026,6 +1030,7 @@ end
 function Group:Dump()
 	print( '>>>>>>>>>>>  Group >>>>>>>>>>>>>>>>>' )
 	print( '[Group] #' .. self.id .. ' Name=' .. self.name )
+	print( "Govement     =" .. MathUtility_FindEnumName( GroupGovernment, self.government ) )
 	print( "PoliticalPow =" .. self._politicalPower )
 	print( "EconomyPow   =" .. self._economyPower )
 	print( "MilitaryPow  =" .. self._militaryPower )
@@ -1055,24 +1060,19 @@ end
 -- Operation Method
 ---------------------------------------------
 
-function Group:Update()
-	-- Research
-	if self.researchPoints > self.researchAbility then
-		self.researchPoints = self.researchPoints - self.researchAbility
-	elseif self.researchTechId ~= 0 then
-		local tech = g_techTableMng:GetData( self.researchTechId )
-		table.insert( self.techs, tech )
-		self.researchTechId = 0
-		self.researchPoints = 0
-		
-		Order_Finish( self )
-		Debug_Normal( "["..self.name.."] finished research tech [".. tech.name .. "]" )
-	end	
+function Group:InventTech( tech )
+	table.insert( self.techs, tech )
 	
+	Debug_Normal( "["..self.name.."] finished research tech [".. tech.name .. "]" )
+end
+
+function Group:Update()
+	--[[
 	-- Income
 	for k, city in ipairs( self.cities ) do
 		self.money = self.money + city:GetIncome()
 	end
+	]]
 	
 	-- Update dynamic data, like military power evaluation
 	self:UpdateDynamicData()
@@ -1082,37 +1082,15 @@ end
 -- Tag
 
 function Group:GetTag( tagType )
-	for k, tag in ipairs( self.tags ) do
-		if tag.type == tagType then
-			return tag
-		end
-	end
-	return nil
+	Helper_GetTag( self.tags, tagType )
 end
 
 function Group:AppendTag( tagType, value, range )
-	for k, tag in ipairs( self.tags ) do
-		if tag.type == tagType then
-			if not range or tag.value <= range - value then
-				tag.value = tag.value + value
-			end
-			return
-		end
-	end
-	table.insert( self.tags, { type = tagType, value = value } )
+	Helper_AppendTag( self.tags, tagType, value, range )
 end
 
 function Group:RemoveTag( tagType, value )
-	for k, tag in ipairs( self.tags ) do
-		if tag.type == tagType then
-			if tag.value and tag.value > value then
-				tag.value = tag.value - value
-			else
-				table.remove( self.tags, k )
-			end
-			return
-		end
-	end
+	Helper_RemoveTag( self.tags, tagType, value )
 end
 
 --------------------------------------

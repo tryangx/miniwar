@@ -98,6 +98,11 @@ function Calendar:DumpMonthUnit()
 	print( self.year .. "/" .. self.month )
 end
 
+function Calendar:GetDateDesc( dateValue )
+	local year, month, day = self:ConvertFromDateValue( dateValue )
+	return month .. "/" .. day .. "/" .. year
+end
+
 -----------------------------
 -- Operation method
 
@@ -124,6 +129,10 @@ function Calendar:PassAHour()
 	if self.hour > 23 then
 		self:PassADay()
 	end
+end
+
+function Calendar:MakeDateValue( year, month, day )
+	return year * 10000 + month * 100 + day
 end
 
 function Calendar:ConvertFromDateValue( dateValue )

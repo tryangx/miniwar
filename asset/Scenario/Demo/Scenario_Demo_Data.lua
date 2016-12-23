@@ -3,7 +3,7 @@ local CharaData =
 	[1] = 
 	{
 		name = "SiMa Cuo",
-		location    = 10,		
+		location    = 10,
 		ca          = 60,
 		pa          = 80,
 		purpose     = 0,
@@ -368,7 +368,7 @@ local TroopData =
 		tableId   = 500,
 		exp       = 0,		
 		level     = 5,		
-		number    = 200,
+		number    = 1000,
 		morale    = 40,
 	},
 }
@@ -403,14 +403,12 @@ local CityData =
 	[10] = 
 	{
 		name = "Xian Yang",
+		position = { x = 1, y = 5 },
 		population = 60000,
 		size = "CITY",
-		agriculture    = 100,
-		maxAgriculture = 300,
-		economy        = 100,
-		maxEconomy     = 200,
-		production     = 100,
-		maxProduction  = 250,		
+		agriculture    = "50%",
+		economy        = "50%",
+		production     = "50%",		
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},
@@ -425,21 +423,19 @@ local CityData =
 	[11] = 
 	{
 		name = "Han gu guan",
+		position = { x = 2, y = 5 },
 		population = 3000,
 		size = "TOWN",
-		agriculture    = 20,
-		maxAgriculture = 200,		
-		economy        = 100,
-		maxEconomy     = 100,		
-		production     = 100,
-		maxProduction  = 100,		
+		agriculture    = "50%",
+		economy        = "50%",
+		production     = "50%",			
 		cultureCircle = 0,		
 		security = 100,
 		instruction = "ECONOMIC",
 		traits = {},
 		charas = { 103 },
 		corps  = { },
-		troops = { },				
+		troops = { },
 		constructions = {},		
 		resources = {},
 		plots = { { x = 2, y = 2 }, { x = 2, y = 2 } },
@@ -448,14 +444,13 @@ local CityData =
 	
 	[20] = 
 	{
-		name = "LIN ZI",		
+		name = "LIN ZI",
+		position = { x = 8, y = 3 },
 		population = 200000,		
-		agriculture    = 100,
-		maxAgriculture = 300,		
-		economy        = 100,
-		maxEconomy     = 200,		
-		production     = 100,
-		maxProduction  = 250,		
+		size = "LARGE_CITY",
+		agriculture    = "50%",
+		economy        = "50%",
+		production     = "50%",		
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},		
@@ -469,14 +464,13 @@ local CityData =
 		
 	[30] = 
 	{
-		name = "YING",		
+		name = "YING",
+		position = { x = 6, y = 10 },
 		population = 180000,		
-		agriculture    = 100,
-		maxAgriculture = 300,		
-		economy        = 100,
-		maxEconomy     = 200,		
-		production     = 100,
-		maxProduction  = 250,		
+		size = "LARGE_CITY",
+		agriculture    = "50%",
+		economy        = "50%",
+		production     = "50%",			
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},		
@@ -491,13 +485,12 @@ local CityData =
 	[40] = 
 	{
 		name = "DA LIANG",
+		position = { x = 4, y = 4 },
 		population = 250000,		
-		agriculture    = 100,
-		maxAgriculture = 300,		
-		economy        = 100,
-		maxEconomy     = 200,		
-		production     = 100,
-		maxProduction  = 250,		
+		size = "LARGE_CITY",
+		agriculture    = "50%",
+		economy        = "50%",
+		production     = "50%",			
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},		
@@ -512,13 +505,12 @@ local CityData =
 	[50] = 
 	{
 		name = "HAN DAN",
+		position = { x = 10, y = 4 },
 		population = 120000,
-		agriculture    = 100,
-		maxAgriculture = 300,		
-		economy        = 100,
-		maxEconomy     = 200,		
-		production     = 100,
-		maxProduction  = 250,		
+		size = "LARGE_CITY",
+		agriculture    = "50%",
+		economy        = "50%",
+		production     = "50%",			
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},		
@@ -533,13 +525,12 @@ local CityData =
 	[60] = 
 	{
 		name = "JI",
+		position = { x = 8, y = 0 },
 		population = 60000,		
-		agriculture    = 100,
-		maxAgriculture = 300,		
-		economy        = 100,
-		maxEconomy     = 200,		
-		production     = 100,
-		maxProduction  = 250,		
+		size = "CITY",
+		agriculture    = "50%",
+		economy        = "50%",
+		production     = "50%",			
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},		
@@ -554,13 +545,12 @@ local CityData =
 	[70] = 
 	{
 		name = "XIN ZHENG",
-		population = 100000,		
-		agriculture    = 100,
-		maxAgriculture = 300,		
-		economy        = 100,
-		maxEconomy     = 200,		
-		production     = 100,
-		maxProduction  = 250,		
+		position = { x = 6, y = 5 },
+		population = 100000,	
+		size = "LARGE_CITY",		
+		agriculture    = "50%",
+		economy        = "50%",
+		production     = "50%",			
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},		
@@ -575,13 +565,12 @@ local CityData =
 	[80] = 
 	{
 		name = "LING SHOU",
+		position = { x = 7, y = 3 },
 		population = 18000,		
-		agriculture    = 100,
-		maxAgriculture = 300,		
-		economy        = 100,
-		maxEconomy     = 200,		
-		production     = 100,
-		maxProduction  = 250,		
+		size = "CITY",
+		agriculture    = "50%",
+		economy        = "50%",
+		production     = "50%",			
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},		
@@ -596,13 +585,12 @@ local CityData =
 	[90] = 
 	{
 		name = "LUO YI",
+		position = { x = 4, y = 6 },
 		population = 25000,		
-		agriculture    = 100,
-		maxAgriculture = 300,		
-		economy        = 100,
-		maxEconomy     = 200,		
-		production     = 100,
-		maxProduction  = 250,		
+		size = "CITY",
+		agriculture    = "50%",
+		economy        = "50%",
+		production     = "50%",		
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},		
@@ -628,13 +616,14 @@ local GroupData =
 		capital = 10,
 		cities = { 10, 11 },		
 		charas = { 100, 101, 102, 103, 104, 105 },
-		troops = {},		
+		troops = {},
 		corps = { 1 },
 		relations = { 10, 11, 12, 13, 14, 15, 16, 17 },
 		tags = {
 			{ type = "MILITANT", value = 6 },
 		}		
 	},
+	--[[
 	[2] =
 	{
 		name = "QI",
@@ -665,6 +654,7 @@ local GroupData =
 		corps = {},		
 		relations = { 11, 20, 30, 31, 32, 33, 34, 35 },
 	},
+	--]]
 	[4] =
 	{
 		name = "Wei",
@@ -680,6 +670,7 @@ local GroupData =
 		corps = {},		
 		relations = { 12, 21, 30, 40, 41, 42, 43, 44 },
 	},
+	--[[
 	[5] =
 	{
 		name = "Zhao",

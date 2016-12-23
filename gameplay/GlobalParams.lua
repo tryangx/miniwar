@@ -1,3 +1,15 @@
+GlobalConst = 
+{
+	INVALID_MONEY = 100000000,
+	MAX_MONEY     = 99999999,
+	
+	ELPASED_TIME  = 30,
+	UNIT_TIME     = 30,
+	MOVE_TIME     = 5,
+	
+	DEFAULT_TROOP_NUMBER = 1000,
+}
+
 RandomParams = 
 {
 	MAX_PROBABILITY  = 10000,
@@ -146,63 +158,124 @@ CityCultureCircle =
 
 CitySize = 
 {
-	VILLAGE     = 1,
-	
-	TOWN        = 2,
-	
-	CITY        = 3,
-	
-	LARGE_CITY  = 4,
-	
+	VILLAGE     = 1,	
+	TOWN        = 2,	
+	CITY        = 3,	
+	LARGE_CITY  = 4,	
 	HUGE_CITY   = 5,
-	
 	METROPOLIS  = 6,
 }
 
-CityStatus = 
+CityTag = 
 {
-	--
 	NONE        = 0,
-
-	-- adjacent to other group
-	BORDER      = 1,
 	
-	-- adjacent to enemy
-	BATTLEFRONT = 2,
+	--Good: Nothing
+	--Bad : No repair, No tax, No harvest
+	SIEGE       = 1,
 	
-	-- is under siege-attack
-	SIEGE       = 3,
+	--Nomad / Barbarian invade
+	--Good: Soldier Quality
+    --Bad : War Fearness 
+	BORDER      = 10,
 	
-	-- economic is well
-	PROSPERITY  = 4,	
+	--Adjacent to enemy
+	--Good:
+	--Bad : War weariness
+	BATTLEFRONT = 11,		
 	
-	-- economic is bad
-	DECAY       = 5,	
+	--Economic is well
+	--Good: More tax
+    --Bad : Breed corruption
+	PROSPERITY  = 20,
+	
+	--Economic is bad
+	--Good: 
+	--Bad : Less Tax
+	DEPRESSED   = 21,
+	
+	--Supply not enough
+    --Bad : People died, troop power down
+	STARVATION  = 30,
+	
+	--Bad : People become refugee
+	DESTRUCTION = 31,
 }
 
 CityParams = 
 {
+	LEVY_TAX_TIME = { 1, 4, 7, 11, },
+
+	HARVEST_TIME  = { 7 },
+	
+	CITY_TAX_RESERVE_RATE = 0.3,
+	
+	SAFETY_TROOP_MAINTAIN_TIME      = 90,
+	
+	SAFETY_FOOD_CONSUME_TIME        = 180,
+	
 	-----------------------------
 	-- Produce
 	--Supply = ( Agriculture + MaxAgriculture ) * Modulus
 	AGRICULTURE_TO_SUPPLY_MODULUS   = 0.25,
 	
-	SAFETY_MILITARY_POWER_RATE_TO_ADJACENT_GROUP = 0.5,
+	
+	MILITARY = 
+	{
+		SAFETY_ADJACENT_SINGLE_MILITARY_POWER_RATE = 0.5,
+		SAFETY_ADJACENT_TOTAL_MILITARY_POWER_RATE  = 0.35,
+	},
+	
+	POPULATION = 
+	{
+		STARVATION_DECREASE_MODULUS = 0.001,
+		STARVATION_DEAD_MODULUS     = 0.05,
+	},
+	
+	MAX_TRAIT_VALUE = 
+	{
+		SIEGE       = 3,
+		BORDER      = 1,
+		BATTLEFRONT = 1,
+		PROSPERITY  = 3,
+		DEPRESSED   = 3,
+		STARVATION  = 10,
+		DESTRUCTION = 3,
+	},
+	
+	-----------------------------
+	
+	INVEST = 
+	{
+		STANDARD_MODULUS = 0.04,
+		MINIMUM_MODULUS  = 0.1,
+		MAXIMUM_MODULUS  = 0.2,
+	},	
+	
+	ECONOMY = 
+	{
+		INCOME_PER_MODULUS_UNIT       = 1,
+		INCOME_POPULATION_MODULUS     = 0.1,
+	},
+	
+	-----------------------------
 	
 	SUPPLY = 
 	{
-		STANDARD_SUPPLY_PER_MODULUS_UNIT       = 500,
-		STANDARD_SUPPLY_POPULATION_PROPORATION = 0.0,
+		SUPPLY_PER_MODULUS_UNIT   = 500,
+		SUPPLY_POPULATION_MODULUS = 0.0,
 	},
 	
 	-----------------------------
 	--Village
 	[1] = 
 	{
-		MAX_AGRICULTURE = 20,
+		STANDARD_AGRICULTURE = 20,
+		STANDARD_ECONOMY     = 10,
+		STANDARD_PRODUCTION  = 0,
+		INVEST_FUND     = 50,		
 		MIN_POPULATION  = 1000,
 		MAX_POPULATION  = 2000,
-		TROOP_NUMBER    = 0,		
 		SECURITY_MILITARY_MODULUS    = 0.01,
 		SAFETY_MILITARY_MODULUS      = 0.05,
 		BATTLEFRONT_MILITARY_MODULUS = 0.08,
@@ -211,10 +284,13 @@ CityParams =
 	--Town
 	[2] = 
 	{
+		STANDARD_AGRICULTURE = 50,
+		STANDARD_ECONOMY     = 20,
+		STANDARD_PRODUCTION  = 20,
+		INVEST_FUND     = 200,
 		MAX_AGRICULTURE = 100,
 		MIN_POPULATION  = 3000,
 		MAX_POPULATION  = 10000,
-		TROOP_NUMBER    = 500,
 		SECURITY_MILITARY_MODULUS    = 0.01,
 		SAFETY_MILITARY_MODULUS      = 0.05,
 		BATTLEFRONT_MILITARY_MODULUS = 0.08,
@@ -223,10 +299,13 @@ CityParams =
 	--CITY
 	[3] = 
 	{
+		STANDARD_AGRICULTURE = 100,
+		STANDARD_ECONOMY     = 50,
+		STANDARD_PRODUCTION  = 50,
+		INVEST_FUND     = 400,
 		MAX_AGRICULTURE = 300,
 		MIN_POPULATION  = 15000,
 		MAX_POPULATION  = 50000,
-		TROOP_NUMBER    = 1000,
 		SECURITY_MILITARY_MODULUS    = 0.01,
 		SAFETY_MILITARY_MODULUS      = 0.05,
 		BATTLEFRONT_MILITARY_MODULUS = 0.08,
@@ -235,10 +314,13 @@ CityParams =
 	--Large City
 	[4] = 
 	{
+		STANDARD_AGRICULTURE = 150,
+		STANDARD_ECONOMY     = 80,
+		STANDARD_PRODUCTION  = 80,
+		INVEST_FUND     = 600,
 		MAX_AGRICULTURE = 500,
 		MIN_POPULATION  = 80000,
 		MAX_POPULATION  = 200000,
-		TROOP_NUMBER    = 2000,
 		SECURITY_MILITARY_MODULUS    = 0.01,
 		SAFETY_MILITARY_MODULUS      = 0.05,
 		BATTLEFRONT_MILITARY_MODULUS = 0.08,
@@ -247,10 +329,13 @@ CityParams =
 	--Huge City
 	[5] = 
 	{
+		STANDARD_AGRICULTURE = 200,
+		STANDARD_ECONOMY     = 120,
+		STANDARD_PRODUCTION  = 100,
+		INVEST_FUND     = 1000,
 		MAX_AGRICULTURE = 700,
 		MIN_POPULATION  = 250000,
 		MAX_POPULATION  = 500000,
-		TROOP_NUMBER    = 2000,
 		SECURITY_MILITARY_MODULUS    = 0.01,
 		SAFETY_MILITARY_MODULUS      = 0.05,
 		BATTLEFRONT_MILITARY_MODULUS = 0.08,
@@ -259,10 +344,12 @@ CityParams =
 	--Metropolis
 	[6] = 
 	{
-		MAX_AGRICULTURE = 1000,
+		STANDARD_AGRICULTURE = 250,
+		STANDARD_ECONOMY     = 150,
+		STANDARD_PRODUCTION  = 120,
+		MAX_AGRICULTURE = 2000,
 		MIN_POPULATION  = 600000,
 		MAX_POPULATION  = 1000000,
-		TROOP_NUMBER    = 2000,
 		SECURITY_MILITARY_MODULUS    = 0.01,
 		SAFETY_MILITARY_MODULUS      = 0.05,
 		BATTLEFRONT_MILITARY_MODULUS = 0.08,
@@ -454,9 +541,9 @@ GroupGoal =
 
 GroupGoalDiplomacyEffect =
 {
-	SURVIVAL_GOAL   = { SURVIVAL_GOAL = 0.2, DOMINATION_GOAL = -0.3, LEADING_GOAL = -0.1 }, 
-	DOMINATION_GOAL = { SURVIVAL_GOAL = -0.1, DOMINATION_GOAL = -0.3, LEADING_GOAL = -0.1 }, 
-	LEADING_GOAL    = { SURVIVAL_GOAL = -0.1, DOMINATION_GOAL = -0.2,  LEADING_GOAL = -0.2 }, 
+	SURVIVAL_GOAL   = { SURVIVAL_GOAL =  0.02, DOMINATION_GOAL = -0.01, LEADING_GOAL = -0.01 }, 
+	DOMINATION_GOAL = { SURVIVAL_GOAL = -0.01, DOMINATION_GOAL = -0.03, LEADING_GOAL = -0.02 }, 
+	LEADING_GOAL    = { SURVIVAL_GOAL = -0.01, DOMINATION_GOAL = -0.02, LEADING_GOAL = -0.01 }, 
 }
 
 --------------------------------
@@ -620,19 +707,12 @@ GroupRelationParam =
 	--Trait
 	MAX_TRAIT_VALUE = 
 	{
-		--old enemy
-		[2] = 10,
-		--casus belli
-		[3] = 10,
-		--betrayer
-		[4] = 10,
-		--declinature
-		[5] = 5,
-		--in law
-		[6] = 3,
-		
-		--hostility
-		[10] = 10,
+		OLD_ENEMY       = 5,
+		CASUS_BELLI     = 5,
+		BETRAYER        = 5,
+		DECLINATURE     = 5,
+		IN_LAW          = 3,
+		HOSTILITY_LEVEL = 5,
 	},
 	
 	--Tag
@@ -981,9 +1061,9 @@ GroupRelationParam =
 	DIPLOMATIC_BONUS         = 500,
 
 	--Evaluation
-	MIN_EVALUATION           = 0,	
-	MAX_EVALUATION           = 1000,
-	STANDARD_EVALUATION      = 500,
+	MIN_EVALUATION           = -500,	
+	MAX_EVALUATION           = 500,
+	STANDARD_EVALUATION      = 0,
 	EVALUATION_RANGE         = 1000,
 	
 	--Deteriorate
@@ -1142,33 +1222,54 @@ CharacterJob =
 {
 	NONE              = 0,
 	
-	OFFICER           = 100,	
-	MILITARY_OFFICER  = 101,
-	
-	HIGH_RANK_JOB     = 200,	
-	CABINET_MINISTER  = 200,
-	DIPLOMATIC        = 201,
+	LOW_RANK_JOB      = 100,
+	OFFICER           = 101,	
+	MILITARY_OFFICER  = 102,
+	SPY               = 120,
+	TRADER            = 130,
+	BUILDER           = 140,
+	MISSIONARY        = 150,
+		
+	HIGH_RANK_JOB     = 200,
+	ASSISTANT_MINISTER= 201,
+	DIPLOMATIC        = 202,
 	GENERAL           = 210,
 	CAPTAIN           = 211,
-	
-	IMPORTANT_JOB     = 300,
-	PREMIER           = 300,
-	MAYOR             = 301,
+	AGENT             = 220,	
+	MERCHANT          = 230,
+	TECHNICIAN        = 240,
+	APOSTLE           = 250,
+		
+	IMPORTANT_JOB     = 300,	
+	PREMIER           = 301,
+	MAYOR             = 302,
+	CABINET_MINISTER  = 302,
 	MARSHAL           = 310,
 	ADMIRAL           = 311,
+	SPYMASTER         = 320,
+	ASSASSIN          = 321,
+	MONOPOLY          = 330,
+	SCIENTIST         = 340,
+	INQUISITOR        = 350,
 	
 	LEADER_JOB        = 400,
-	EMPEROR           = 400,	--Empire
-	KING              = 401,	--Kindom
-	LORD              = 402,	--Region
-	LEADER            = 403,	--Guerrilla
-	CHIEF             = 404,	--Family
-	PRESIDENT         = 405,    --Nation
+	EMPEROR           = 401,	--Empire
+	KING              = 402,	--Kindom
+	LORD              = 403,	--Region
+	LEADER            = 404,	--Guerrilla
+	CHIEF             = 405,	--Family
+	PRESIDENT         = 406,    --Nation
 }
 
 CharacterProposal =
 {
 	NONE             = 0,
+	
+	BACK_HOME        = 1,
+	BACK_ENCAMPMENT  = 2,
+	MOVETO           = 3,
+	
+	AFFAIRS_PROPOSAL = 10,
 	
 	-- Lord
 	INSTRUCT_AFFAIRS = 10,
@@ -1228,27 +1329,27 @@ CharacterProposal =
 	
 	------------------------------
 	
-	PROPOSAL_COMMAND    = 100,
+	PROPOSAL_COMMAND    = 200,
 	
 	-- AI Relative	
-	AI_COLLECT_PROPOSAL = 101,
-	AI_SUBMIT_PROPOSAL  = 102,
-	AI_SELECT_PROPOSAL  = 103,
+	AI_COLLECT_PROPOSAL = 201,
+	AI_SUBMIT_PROPOSAL  = 202,
+	AI_SELECT_PROPOSAL  = 203,
 	
 	-- Player Choice	
-	PLAYER_EXECUTE_PROPOSAL = 200,	
-	PLAYER_GIVEUP_PROPOSAL  = 201,
-	PLAYER_ENTRUST_PROPOSAL = 202,
+	PLAYER_EXECUTE_PROPOSAL = 300,	
+	PLAYER_GIVEUP_PROPOSAL  = 301,
+	PLAYER_ENTRUST_PROPOSAL = 302,
 	
-	NEXT_TOPIC              = 210,
-	END_MEETING             = 211,
+	NEXT_TOPIC              = 310,
+	END_MEETING             = 311,
 }
 
 CharacterParams =
 {
 	CONTRIBUTION = 
 	{
-		
+		MAX_CONTRIBUTION = 10000,
 	},
 	
 	SUBORDINATE_LIMIT = 
@@ -1271,9 +1372,9 @@ CharacterParams =
 	{
 		[0] = { CITY_AFFAIRS = 1 },		
 		--Officer
-		[100] = { CITY_AFFAIRS = 1, HR_AFFAIRS = 1 },
+		[101] = { CITY_AFFAIRS = 1, HR_AFFAIRS = 1 },
 		--Military Officer
-		[101] = { WAR_PREPAREDNESS_AFFAIRS = 1, },			
+		[102] = { WAR_PREPAREDNESS_AFFAIRS = 1, },			
 		--Cabinet minister
 		[200] = { TECH_RESEARCH = 1, CITY_AFFAIRS = 1, HR_AFFAIRS = 1 },
 		--Diplomatic
@@ -1284,21 +1385,21 @@ CharacterParams =
 		[211] = { WAR_PREPAREDNESS_AFFAIRS = 1, MILITARY_AFFAIRS = 1, },
 		
 		--Premier
-		[300] = { CITY_INSTRUCT = 1, TECH_RESEARCH = 1, CITY_AFFAIRS = 1, HR_AFFAIRS = 1, DIPLOMACY_AFFAIRS = 1, },
+		[301] = { CITY_INSTRUCT = 1, TECH_RESEARCH = 1, CITY_AFFAIRS = 1, HR_AFFAIRS = 1, DIPLOMACY_AFFAIRS = 1, },
 		--Mayor
-		[301] = { TECH_RESEARCH = 1, CITY_AFFAIRS = 1, HR_AFFAIRS = 1, WAR_PREPAREDNESS_AFFAIRS = 1, MILITARY_AFFAIRS = 1 },
+		[302] = { TECH_RESEARCH = 1, CITY_AFFAIRS = 1, HR_AFFAIRS = 1, WAR_PREPAREDNESS_AFFAIRS = 1, MILITARY_AFFAIRS = 1 },
 		--Marshal
 		[310] = { CORPS_INSTRUCT = 1, TECH_RESEARCH = 1, WAR_PREPAREDNESS_AFFAIRS = 1, MILITARY_AFFAIRS = 1, },
 		--Admiral
 		[311] = { CORPS_INSTRUCT = 1, TECH_RESEARCH = 1, WAR_PREPAREDNESS_AFFAIRS = 1, MILITARY_AFFAIRS = 1, },
 		
 		--Group Leader
-		[400] = { ALL = 1 },
 		[401] = { ALL = 1 },
 		[402] = { ALL = 1 },
 		[403] = { ALL = 1 },
 		[404] = { ALL = 1 },
 		[405] = { ALL = 1 },
+		[406] = { ALL = 1 },
 	},
 
 	JOB_PROMOTION =
@@ -1311,15 +1412,15 @@ CharacterParams =
 			},
 		},
 		--OFFICER
-		[100] = { 
+		[101] = { 
 			limit = 0,
 			promotions = {
-				{ job = "CABINET_MINISTER", contribution = 1000 },
+				{ job = "ASSISTANT_MINISTER", contribution = 1000 },
 				{ job = "DIPLOMATIC",       contribution = 1000, trait = {} },
 			},
 		},
 		--MILITARY_OFFICER
-		[101] = {
+		[102] = {
 			limit = 0,
 			promotions = {
 				{ job = "GENERAL", contribution = 1000 },
@@ -1327,16 +1428,17 @@ CharacterParams =
 			},
 		},
 		
-		--CABINET_MINISTER
-		[200] = {
+		--ASSISTANT_MINISTER
+		[201] = {
 			limit = 6,
 			promotions = {
 				{ job = "PREMIER", contribution = 5000 },
 				{ job = "MAYOR",   contribution = 3000 },
+				{ job = "CABINET_MINISTER",   contribution = 3000 },
 			},
 		},
 		--DIPLOMATIC
-		[201] = {
+		[202] = {
 			limit = 3,
 			promotions = {
 				{ job = "PREMIER", contribution = 5000 },
@@ -1359,11 +1461,15 @@ CharacterParams =
 		},
 		
 		--PREMIER
-		[300] = {
+		[301] = {
 			limit = 1,
 		},
 		--MAYOR
-		[301] = {
+		[302] = {
+			limit = 8,
+		},
+		--CABINET_MINISTER
+		[303] = {
 			limit = 6,
 		},
 		--MARSHAL
@@ -1415,7 +1521,7 @@ CharacterProposalTendency =
 			MAKE_PEACE     = 3500,
 			BREAK_CONTRACT = 3500,
 			SURRENDER      = 3500,
-		},		
+		},
 	},
 	
 	--OFFICER

@@ -457,109 +457,110 @@ end
 
 local PlotTableData =
 {
-	[100] = 
+	--Land
+	[1000] = 
 	{
 		type    = "LAND",
 		terrain = "PLAINS",
 		feature = "NONE",
 		tratis  = {},
-	},
-	[101] = 
-	{
-		type    = "HILLS",
-		terrain = "PLAINS",
-		feature = "NONE",
-		tratis  = {},
-	},
-	[102] = 
-	{
-		type    = "MOUNTAIN",
-		terrain = "PLAINS",
-		feature = "NONE",
-		tratis  = {},
-	},
-	
-	[200] = 
+	},	
+	[1100] = 
 	{
 		type    = "LAND",
 		terrain = "GRASSLAND",
 		feature = "NONE",
 		tratis  = {},
 	},	
-	[201] = 
+	[1200] = 
+	{
+		type    = "LAND",
+		terrain = "DESERT",
+		feature = "NONE",
+		tratis  = {},
+	},	
+	[1300] = 
+	{
+		type    = "LAND",
+		terrain = "TUNDRA",
+		feature = "NONE",
+		tratis  = {},
+	},	
+	[1400] = 
+	{
+		type    = "LAND",
+		terrain = "SNOW",
+		feature = "NONE",
+		tratis  = {},
+	},
+	
+	--Hills
+	[2000] = 
+	{
+		type    = "HILLS",
+		terrain = "PLAINS",
+		feature = "NONE",
+		tratis  = {},
+	},	
+	[2100] = 
 	{
 		type    = "HILLS",
 		terrain = "GRASSLAND",
 		feature = "NONE",
 		tratis  = {},
+	},	
+	[2200] = 
+	{
+		type    = "HILLS",
+		terrain = "DESERT",
+		feature = "NONE",
+		tratis  = {},
+	},	
+	[2300] = 
+	{
+		type    = "HILLS",
+		terrain = "TUNDRA",
+		feature = "NONE",
+		tratis  = {},
 	},
-	[202] = 
+	[2400] = 
+	{
+		type    = "HILLS",
+		terrain = "SNOW",
+		feature = "NONE",
+		tratis  = {},
+	},	
+	
+	--Mountains
+	[3000] = 
+	{
+		type    = "MOUNTAIN",
+		terrain = "PLAINS",
+		feature = "NONE",
+		tratis  = {},
+	},	
+	[3100] = 
 	{
 		type    = "MOUNTAIN",
 		terrain = "GRASSLAND",
 		feature = "NONE",
 		tratis  = {},
-	},
-	
-	[300] = 
-	{
-		type    = "LAND",
-		terrain = "DESERT",
-		feature = "NONE",
-		tratis  = {},
-	},
-	[301] = 
-	{
-		type    = "HILLS",
-		terrain = "DESERT",
-		feature = "NONE",
-		tratis  = {},
-	},
-	[302] = 
+	},	
+	[3200] = 
 	{
 		type    = "MOUNTAIN",
 		terrain = "DESERT",
 		feature = "NONE",
 		tratis  = {},
 	},
-	
-	[400] = 
-	{
-		type    = "LAND",
-		terrain = "TUNDRA",
-		feature = "NONE",
-		tratis  = {},
-	},
-	[401] = 
-	{
-		type    = "HILLS",
-		terrain = "TUNDRA",
-		feature = "NONE",
-		tratis  = {},
-	},
-	[402] = 
+	[3300] = 
 	{
 		type    = "MOUNTAIN",
 		terrain = "TUNDRA",
 		feature = "NONE",
 		tratis  = {},
-	},
-	
-	[500] = 
-	{
-		type    = "LAND",
-		terrain = "SNOW",
-		feature = "NONE",
-		tratis  = {},
-	},
-	[501] = 
-	{
-		type    = "HILLS",
-		terrain = "SNOW",
-		feature = "NONE",
-		tratis  = {},
-	},
-	[502] = 
+	},	
+	[3400] = 
 	{
 		type    = "MOUNTAIN",
 		terrain = "SNOW",
@@ -567,21 +568,22 @@ local PlotTableData =
 		tratis  = {},
 	},
 	
-	[600] = 
+	--Water
+	[4000] = 
 	{
 		type    = "WATER",
 		terrain = "LAKE",
 		feature = "NONE",
 		tratis  = {},
 	},
-	[700] = 
+	[4100] = 
 	{
 		type    = "WATER",
 		terrain = "COAST",
 		feature = "NONE",
 		tratis  = {},
 	},
-	[800] = 
+	[4200] = 
 	{
 		type    = "WATER",
 		terrain = "OCEAN",

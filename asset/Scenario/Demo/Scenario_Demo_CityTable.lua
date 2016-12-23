@@ -3,33 +3,18 @@ local CityTableData =
 	[10] = 
 	{
 		id   = 10,
-		name = "Red Capital",
-		
-		population = 10000,
-		
-		agriculture    = 100,
-		maxAgriculture = 300,
-		
-		economy        = 100,
-		maxEconomy     = 200,
-		
-		production     = 100,
-		maxProduction  = 250,
-		
-		cultureCircle = 0,
-		
-		security = 80,
-		
-		traits = {},
-		
-		charas = { 1 },
-		
-		troops = {},	
-				
-		constructions = {},
-		
-		resources = {},
-		
+		name = "Red Capital",		
+		population = 10000,		
+		agriculture    = 50,		
+		economy        = 50,		
+		production     = 50,		
+		cultureCircle = 0,		
+		security = 80,		
+		traits = {},		
+		charas = { 1 },		
+		troops = {},					
+		constructions = {},		
+		resources = {},		
 		adjacentCities = { 11 },
 	},
 	[11] = 

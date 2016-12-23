@@ -29,6 +29,8 @@ function Troop:Load( data )
 	
 	self.corps = data.corps or 0
 	
+	self.location   = data.location or 0
+	
 	self.encampment = data.encampment or 0
 	
 	---------------------------------------
@@ -87,6 +89,7 @@ function Troop:SaveData()
 	
 	Data_OutputValue( "leader", self, "id", 0 )	
 	Data_OutputValue( "corps", self, "id", 0 )	
+	Data_OutputValue( "location", self, "id", 0 )	
 	Data_OutputValue( "encampment", self, "id", 0 )	
 	
 	Data_OutputValue( "level", self )
@@ -116,6 +119,7 @@ function Troop:ConvertID2Data()
 
 	self.leader = g_charaDataMng:GetData( self.leader )
 	self.corps = g_corpsDataMng:GetData( self.corps )	
+	self.location   = g_cityDataMng:GetData( self.location )
 	self.encampment = g_cityDataMng:GetData( self.encampment )
 	
 	local traits = {}
@@ -158,6 +162,10 @@ end
 
 function Troop:GetCorps()
 	return self.corps
+end
+
+function Troop:GetLocation()
+	return self.location
 end
 
 function Troop:GetEncampment()
@@ -522,10 +530,12 @@ end
 
 function Troop:Flee()
 	self._combatFled = true
+	print( NameIDToString( self ) .. " flee", self._combatFled )
 end
 
 function Troop:Surrender()
 	self._combatSurrendered = true
+	print( NameIDToString( self ) .. " surrender" )
 end
 
 --------------------------------

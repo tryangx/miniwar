@@ -2,15 +2,9 @@ local TechTableData =
 {
 	[1] =
 	{
-		id = 1,
-		
-		name = "steel-making",
-		
-		desc = "Refine iron from metal",
-		
-		points = 1,
-	
-		prerequisite = {},
+		name = "steel-making",		
+		desc = "Refine iron from metal",	
+		prerequisites = { points = 100 },
 	},
 }
 

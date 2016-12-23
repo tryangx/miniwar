@@ -16,8 +16,6 @@ function City:Load( data )
 	
 	self.adjacentCities = MathUtility_Copy( data.adjacentCities )
 	
-	self.order = MathUtility_Copy( data.order )
-	
 	self.instruction = CityInstruction[data.instruction] or CityInstruction.NONE
 	
 	-----------------------------------
@@ -27,31 +25,33 @@ function City:Load( data )
 	-----------------------------------
 	-- Basic Attributes
 	
+	self.position    = MathUtility_Copy( data.position )
+	
 	self.population  = data.population or ""
 	
-	self.size        = CitySize[data.size] or CitySize.TOWN
+	self.money       = data.money or 0
 	
-	-- Buff & Debuff
-	self.status      = MathUtility_Copy( data.status )
+	self.food        = data.food or 0
+	
+	self.size        = CitySize[data.size] or CitySize.TOWN
+
+	self.tags        = MathUtility_Copy( data.tags )
 	
 	--Agriculture Surplus -> Growth
 	--Economy Surplus     -> Culture & Tech
-	--Production Surplus  -> 
+	--Production Surplus  -> 	
 	
 	--Determines supply
 	--Supply use to feed troops and people
 	--First, supply provide to the troops, not enough part will cause troop get a debuff ( debuff will increase during starvation, troop will disapear when it's reach the line )
 	--Second, left supply provides to people, it will cause buff or debuff which will lead population increase or decrease.
-	self.maxAgriculture = data.maxAgriculture or 0
-	self.agriculture    = data.agriculture	or self.maxAgriculture
+	self.agriculture    = data.agriculture or 0
 	
 	--Determine income every turn
-	self.maxEconomy  = data.maxEconomy or 0
-	self.economy     = data.economy or self.maxEconomy
+	self.economy        = data.economy or 0
 	
 	--Determine how many turn cost to build construction
-	self.maxProduction = data.maxProduction or 0
-	self.production    = data.production or self.maxProduction
+	self.production     = data.production or 0
 	
 	-----------------------------------
 	-- extension
@@ -92,17 +92,6 @@ function City:Load( data )
 	self.plots       = MathUtility_Copy( data.plots )
 	
 	-----------------------------------
-	-- In Progress
-	
-	--Current Build / Recruit
-	self.buildConstructionId    = data.buildConstructionId or 0
-	self.remainBuildPoints      = data.remainBuildPoints or 0
-	self.recruitTroopId         = data.recruitTroopId or 0
-	self.remainRecruitPoints    = data.remainRecruitPoints or 0	
-	self.remainInvest           = data.remainInvest or 0
-	self.remainLevyTax          = data.remainLevyTax or 0
-	
-	-----------------------------------
 	-- Dynamic Data
 	self._group         = nil
 	
@@ -112,8 +101,8 @@ function City:Load( data )
 	
 	self._moneyIncome   = 0
 	
-	self._economyPower  = 0
-	self._militaryPower = 0
+	self._economyPower  = -1
+	self._militaryPower = -1
 	self._traitPower    = 0
 	
 	self._canBuildConstructions = nil
@@ -126,15 +115,17 @@ function City:SaveData()
 	Data_OutputBegin( self.id )	
 	Data_IncIndent( 1 )
 	Data_OutputValue( "id", self )
-	Data_OutputValue( "name", self )	
+	Data_OutputValue( "name", self )
 	
+	Data_OutputTable( "position", self )
 	Data_OutputValue( "population", self )
+	
+	Data_OutputValue( "money", self )
+	Data_OutputValue( "food", self )
+	
 	Data_OutputValue( "size", self )	
-	Data_OutputValue( "maxAgriculture", self )
 	Data_OutputValue( "agriculture", self )
-	Data_OutputValue( "maxEconomy", self )
 	Data_OutputValue( "economy", self )
-	Data_OutputValue( "maxProduction", self )
 	Data_OutputValue( "production", self )
 	
 	Data_OutputValue( "cultrueCircle", self )
@@ -143,25 +134,9 @@ function City:SaveData()
 	
 	Data_OutputValue( "instruction", self )
 	
-	local idOrder = Order_GetIDData( self.order )
-	Data_OutputBegin( "order" )
-	Data_IncIndent( 1 )
-	Data_OutputValue( "type", idOrder )
-	Data_OutputValue( "status", idOrder )
-	Data_OutputTable( "args", idOrder )
-	Data_IncIndent( -1 )
-	Data_OutputEnd( "order" )
-	
-	Data_OutputValue( "remainInvest", self )
-	Data_OutputValue( "remainLevyTax", self )
-	Data_OutputValue( "buildConstructionId", self )
-	Data_OutputValue( "recruitTroopId", self )
-	Data_OutputValue( "remainBuildPoints", self )	
-	Data_OutputValue( "remainRecruitPoints", self )
-	
 	Data_OutputTable( "adjacentCities", self, "id" )
 
-	Data_OutputTable( "status", self )
+	Data_OutputTable( "tags", self )
 	Data_OutputTable( "traits", self )
 	
 	Data_OutputTable( "charas", self, "id" )
@@ -185,8 +160,8 @@ function City:ConvertID2Data()
 		if not chara then
 			Debug_Error( "Chara is invalid [".. id .. "]" )
 		else
-			if chara._city then Debug_Error( "Try to put character on [" .. self.name .. "] is already in [".. chara._city.name .. "]" ) end			
-			chara._city = self
+			--if chara.home then Debug_Error( "Try to put character on [" .. self.name .. "] is already in [".. chara._city.name .. "]" ) end			
+			--chara.home = self
 			table.insert( charas, chara )
 
 			if not self.leader or self.leader.contribution < chara.contribution then
@@ -210,6 +185,7 @@ function City:ConvertID2Data()
 		local troop = g_troopDataMng:GetData( id )
 		if troop.encampment == 0 then
 			print( "Add missing encampment data for troop" )
+			troop.location   = self.id
 			troop.encampment = self.id
 		end
 		table.insert( troops, troop )
@@ -244,21 +220,7 @@ function City:ConvertID2Data()
 	end
 	self.resources = resources
 	
-	self.maxAgriculture = 0
-	self.maxEconomy     = 0
-	self.maxProduction  = 0
-	local plots = {}
-	for k, pos in ipairs( self.plots ) do
-		local plot = g_plotDataMng:GetData( Plot:GenId( pos.x, pos.y ) )
-		table.insert( plots, plot )
-		--calculate real arg/eco/prod
-		if plot.table then
-			self.maxAgriculture = self.maxAgriculture + plot.table:GetTraitValue( PlotTraitType.AGRICULTURE )
-			self.maxEconomy     = self.maxEconomy + plot.table:GetTraitValue( PlotTraitType.ECONOMIC )
-			self.maxProduction  = self.maxProduction + plot.table:GetTraitValue( PlotTraitType.PRODUCTION )
-		end		
-	end
-	self.plots = plots
+	self:InitPlots( self.plots, true )
 	
 	--[[
 	local resources = {}
@@ -267,7 +229,42 @@ function City:ConvertID2Data()
 	end
 	self.resources = resources
 	]]
-	self.order = Order_ConvertID2Data( self.order )
+end
+
+function City:InitPlots( plotDatas, reset )
+	self.plots = plotDatas
+	
+	if reset then
+		self.maxAgriculture = CityParams[self.size].STANDARD_AGRICULTURE
+		self.maxEconomy     = CityParams[self.size].STANDARD_ECONOMY
+		self.maxProduction  = CityParams[self.size].STANDARD_PRODUCTION
+		local plots = {}
+		--print( self.name, plotDatas, self.plots )
+		for k, pos in pairs( self.plots ) do
+			local plot = g_plotMap:GetPlot( pos.x, pos.y )
+			table.insert( plots, plot )
+			--calculate real arg/eco/prod
+			if plot and plot.table then
+				self.maxAgriculture = self.maxAgriculture + plot.table:GetTraitValue( PlotTraitType.AGRICULTURE )
+				self.maxEconomy     = self.maxEconomy + plot.table:GetTraitValue( PlotTraitType.ECONOMIC )
+				self.maxProduction  = self.maxProduction + plot.table:GetTraitValue( PlotTraitType.PRODUCTION )
+			end		
+		end
+		if typeof( self.agriculture ) == "string" then
+			local str = string.gsub( self.agriculture, "%%", "" )
+			self.agriculture = math.ceil( self.maxAgriculture * tonumber( str ) * 0.01 )
+		end
+		if typeof( self.economy ) == "string" then 
+			local str = string.gsub( self.economy, "%%", "" )
+			self.economy = math.ceil( self.maxEconomy * tonumber( str ) * 0.01 )
+		end
+		if typeof( self.production ) == "string" then 
+			local str = string.gsub( self.production, "%%", "" )
+			self.production = math.ceil( self.maxProduction * tonumber( str ) * 0.01 )
+		end
+		self.plots = plots
+		print( self.name .. " plot="..#self.plots.." agr="..self.maxAgriculture.. " eco="..self.maxEconomy.. " pro="..self.maxProduction )
+	end
 end
 
 function City:InitAdjacentCity()
@@ -289,13 +286,21 @@ function City:IsCharaStayCity( chara )
 	return chara:GetLocation() == self
 end
 
+function City:IsInSiege()
+	return self:GetTag( CityTag.SIEGE )
+end
+
 -- Is city in conflict, like g_warfare, rebellion
 function City:IsInConflict()	
-	return MathUtility_IndexOf( self.status, CityStatus.SIEGE ) or MathUtility_IndexOf( self.status, CityStatus.BATTLEFRONT )
+	return self:GetTag( CityTag.SIEGE ) or self:GetTag( CityTag.BATTLEFRONT )
+end
+
+function City:IsBattleFront()
+	return self:GetTag( CityTag.BATTLEFRONT )
 end
 
 function City:IsBorder()
-	return MathUtility_IndexOf( self.status, CityStatus.BORDER ) ~= nil
+	return self:GetTag( CityTag.BORDER ) ~= nil
 end
 
 function City:HasChara( chara )
@@ -344,6 +349,10 @@ function City:GetLeader()
 	return self.leader
 end
 
+function City:GetPosition()
+	return self.position
+end
+
 function City:GetAdjacentGroupMilitaryPowerList()
 	local list = {}
 	local group = self:GetGroup()
@@ -351,7 +360,7 @@ function City:GetAdjacentGroupMilitaryPowerList()
 		local otherGroup = city:GetGroup()
 		if otherGroup and otherGroup ~= group then
 			if list[otherGroup.id] then
-				list[otherGroup.id] = list[otherGroup.id].power + city:GetMilitaryPower()
+				list[otherGroup.id] = list[otherGroup.id] + city:GetMilitaryPower()
 			else
 				list[otherGroup.id] = city:GetMilitaryPower()
 			end
@@ -510,7 +519,7 @@ function City:GetMaxTraitPower()
 end
 
 function City:GetMilitaryPower()	
-	if self._militaryPower > 0 then return self._militaryPower end
+	if self._militaryPower >= 0 then return self._militaryPower end
 	
 	local power = 0
 	for k, troop in ipairs( self.troops ) do
@@ -530,24 +539,21 @@ end
 
 function City:GetSafetyMilitaryPower()
 	local reqPower = self:GetFormulaPopuplation() * CityParams[self.size].SAFETY_MILITARY_MODULUS
-	local supply = self:GetSupply()	
-	return math.min( reqPower, supply )
+	return reqPower
 end
 
 function City:GetSecurityMilitaryPower()
-	local reqPower = self:GetFormulaPopuplation() * CityParams[self.size].SECURITY_MILITARY_MODULUS
-	local supply = self:GetSupply()	
-	return math.min( reqPower, supply )
+	local reqPower = self:GetFormulaPopuplation() * CityParams[self.size].SECURITY_MILITARY_MODULUS	
+	return reqPower
 end
 
 function City:GetBattlefrontMilitaryPower()
 	local reqPower = self:GetFormulaPopuplation() * CityParams[self.size].BATTLEFRONT_MILITARY_MODULUS
-	local supply = self:GetSupply()	
-	return math.min( reqPower, supply )
+	return reqPower
 end
 
 function City:GetSupplyModulus()
-	local standard = CityParams.SUPPLY.STANDARD_SUPPLY_PER_MODULUS_UNIT
+	local standard = CityParams.SUPPLY.SUPPLY_PER_MODULUS_UNIT
 	local modulus = 0
 	local modulusNum = 0
 	for k, resource in ipairs( self.resources ) do
@@ -568,25 +574,45 @@ function City:GetSupplyModulus()
 	else
 		modulus = modulus / modulusNum
 	end
-	--print( "supply=", standard, modulus )
+	--print( "supply=", standard, modulus, modulusNum )
 	return math.floor( standard * modulus )
 end
 
+function City:GetHarvestGrain()
+	return math.ceil( self.agriculture * self:GetSupplyModulus() + CityParams.SUPPLY.SUPPLY_POPULATION_MODULUS * self.population )
+end
+
 function City:GetSupply()
-	return self.agriculture * self:GetSupplyModulus() + CityParams.SUPPLY.STANDARD_SUPPLY_POPULATION_PROPORATION * self.population
+	return math.ceil( self.agriculture * self:GetSupplyModulus() + CityParams.SUPPLY.SUPPLY_POPULATION_MODULUS * self.population ) - self.population
 end
 
 function City:GetMaxSupply()
-	return self.maxAgriculture * self:GetSupplyModulus() + CityParams.SUPPLY.STANDARD_SUPPLY_POPULATION_PROPORATION * self.population
+	return math.ceil( self.maxAgriculture * self:GetSupplyModulus() + CityParams.SUPPLY.SUPPLY_POPULATION_MODULUS * self.population ) - self.population
 end
 
-function City:GetMaxNumberRecruitTroop()
-	return CityParams[self.size].TROOP_NUMBER
+function City:GetIncomeModulus()
+	local standard = CityParams.ECONOMY.INCOME_PER_MODULUS_UNIT
+	return standard
+end
+
+function City:GetMoney()
+	return self.money
 end
 
 -- Get turn income
 function City:GetIncome()
-	return self.economy * Parameter.CITY_INCOME_MULTIPLIER[self.size]
+	return math.ceil( self.economy * self:GetIncomeModulus() + CityParams.ECONOMY.INCOME_POPULATION_MODULUS * self.population )
+end
+
+function City:CalcMaintenanceCost()
+	local cost = 0
+	for k, troop in ipairs( self.troops ) do
+		cost = cost + troop.table.salary 
+	end
+	for k, constr in ipairs( self.constrs ) do
+		cost = cost + constr.maintenance
+	end
+	return cost
 end
 
 -- Get Build List
@@ -602,7 +628,7 @@ function City:GetBuildList()
 			match = self:CanBuildConstruction( constr )
 		end
 		if match then
-			MathUtility_Insert( self._canBuildConstructions, constr, "points" )
+			table.insert( self._canBuildConstructions, constr )
 		end
 	end
 	return self._canBuildConstructions
@@ -620,27 +646,39 @@ function City:GetRecruitList()
 	return self._canRecruitTroops
 end
 
+function City:GetTag( tagType )
+	return Helper_GetTag( self.tags, tagType )
+end
+
+function City:AppendTag( tagType, value, range )
+	Helper_AppendTag( self.tags, tagType, value, range )
+end
+
+function City:RemoveTag( tagType, value )
+	Helper_RemoveTag( self.tags, tagType, value )
+end
+
 ------------------------------------------
 
 function City:CanDispatch()
-	return not self:IsInConflict()
+	return not self:IsInSiege()
 end
 
 function City:CanRecruit()
-	return self.recruitTroopId == 0 and self:GetRecruitList() and #self._canRecruitTroops > 0 and not self:IsInConflict() 
+	return self:GetRecruitList() and #self._canRecruitTroops > 0 and not self:IsInSiege() 
 end
 
 function City:CanBuild()
-	return self.buildConstructionId == 0 and self:GetBuildList() and #self._canBuildConstructions > 0 and not self:IsInConflict() 
+	return self:GetBuildList() and #self._canBuildConstructions > 0 and not self:IsInSiege() 
 end
 
 -- Check city is not building any construction or recruit any troop
 function City:CanInvest()
-	return self.remainInvest <= 0 and self.remainLevyTax <= 0 and not self:IsInConflict()
+	return not self:IsInSiege() and self:GetGroup().money >= QueryInvestNeedMoney( self )
 end
 
 function City:CanLevyTax()
-	return self.remainInvest <= 0 and self.remainLevyTax <= 0 and not self:IsInConflict()
+	return not self:IsInSiege()
 end
 
 function City:CanRecruitTroop( troop )
@@ -672,7 +710,7 @@ function City:CanBuildConstruction( constr )
 	end
 	
 	if constr.prerequisites.money then
-		if self._group:GetMoney() < constr.prerequisites.money then
+		if self.city < constr.prerequisites.money and self._group:GetMoney() < constr.prerequisites.money then
 			return false
 		end
 	end
@@ -757,8 +795,17 @@ function City:DumpPlotsDetail( indent )
 	print( content )
 end
 
+function City:DumpTagDetail( indent )
+	if #self.tags == 0 then return end
+	local content = indent .. "    "
+	for k, tag in ipairs( self.tags ) do
+		content = content .. ( k > 1 and "," or "" ) .. MathUtility_FindEnumName( CityTag, tag.type )
+	end
+	print( content )
+end
+
 function City:DumpSimple( indent )
-	if not indent then indent = "" end	
+	if not indent then indent = "" end
 	print( indent .. '[City] #' .. self.id .. ' Name=' .. self.name )
 end
 
@@ -769,12 +816,9 @@ function City:Dump( indent )
 	self:DumpAdjacentDetail( indent )
 	print( indent .. "Population", self.population )	
 	print( indent .. 'Agri+Ecom+Prod ', self.agriculture .. "/" .. self.maxAgriculture .. " " .. self.economy .. "/" .. self.maxEconomy .. " " .. self.production .. "/" .. self.maxProduction )
-	print( indent .. 'Security / Popu', self.security .. ' / ' .. self.population )
-	print( indent .. 'Supply         ', self:GetSupply() .. ' / ' .. self:GetMaxSupply() )
-	local constr = g_constrTableMng:GetData( self.buildConstructionId )
-	print( indent .. 'Building       ', ( constr and constr.name .. '/+' .. self.remainBuildPoints or "--" ) )
-	local troop = g_troopTableMng:GetData( self.recruitTroopId )
-	print( indent .. 'Recruiting     ', ( troop and troop.name .. '/+' .. self.remainRecruitPoints or "--" ) )
+	print( indent .. 'Secu / Popu    ', self.security .. ' / ' .. self.population )
+	print( indent .. 'Supply/Harvest ', self:GetSupply() .. ' / ' .. self:GetHarvestGrain() )
+	print( indent .. 'Money / Food   ', self.money .. ' / ' .. self.food )
 	print( indent .. 'Leader         ', ( self.leader and self.leader.name or "" ) )
 	print( indent .. 'Charas         ', #self.charas )
 	self:DumpCharaDetail( indent )
@@ -786,6 +830,8 @@ function City:Dump( indent )
 	self:DumpResourceDetail( indent )
 	print( indent .. 'Plots          ', #self.plots )	
 	self:DumpPlotsDetail( indent )
+	print( indent .. 'Tags           ', #self.tags )
+	self:DumpTagDetail( indent )
 	print( "<<<<<<<<<<<<<<< City <<<<<<<<<<<<<" )
 end
 
@@ -833,14 +879,6 @@ function City:Instruct( instruction )
 	self.instruction = instruction
 end
 
-function City:Invest( money )
-	self.remainInvest = self.remainInvest + money
-end
-
-function City:LevyTax( remain )
-	self.remainLevyTax = remain
-end
-
 function City:EstablishCorps( corps )
 	table.insert( self.corps, corps )
 	
@@ -850,8 +888,67 @@ function City:EstablishCorps( corps )
 	end
 end
 
+function City:Invest()
+	Debug_Normal( NameIDToString( self ) .. " develop by investment" )
+	local agrDelta = CalcInvestBonusValue( self.agriculture, self.maxAgriculture )
+	local ecoDelta = CalcInvestBonusValue( self.economy, self.maxEconomy )
+	local proDelta = CalcInvestBonusValue( self.production, self.maxProduction )
+	--Debug_Normal( self.agriculture .. "/" .. self.maxAgriculture .. " +" .. agrDelta )
+	--Debug_Normal( self.economy .. "/" .. self.maxEconomy .. " +" .. ecoDelta )
+	--Debug_Normal( self.production .. "/" .. self.maxProduction .. " +" .. proDelta )
+	self.agriculture = MathUtility_Clamp( self.agriculture + agrDelta, 0, self.maxAgriculture )
+	self.economy = MathUtility_Clamp( self.economy + ecoDelta, 0, self.maxEconomy )
+	self.production = MathUtility_Clamp( self.production + proDelta, 0, self.maxProduction )	
+end
+
+function City:Harvest()
+	--Harvest
+	local harvest = self:GetSupply()
+	if harvest > 0 then
+		self.food = self.food + harvest
+		if not self:GetGroup() then
+			if self.food > self.population then
+				self.food = self.population
+			end
+		end
+		print( "Harves food", harvest, self.food, self.name )
+	end
+end
+
+function City:ConsumeFood()
+	--Consume
+	local foodConsume = self:GetMilitaryPower()	
+	self.food = self.food - foodConsume
+	print( "Consume food", foodConsume, self.food, self.name )
+	if self.food < 0 then
+		self:AppendTag( CityTag.STARVATION, 1, CityParams.MAX_TRAIT_VALUE["STARVATION"] )
+	else
+		self:RemoveTag( CityTag.STARVATION, CityParams.MAX_TRAIT_VALUE["STARVATION"] )
+	end
+end
+
+function City:LevyTax( income )
+	if self:GetGroup() then
+		local reserveMoney = math.floor( income * CityParams.CITY_TAX_RESERVE_RATE )
+		self.money = self.money + reserveMoney		
+		local turnOverMoney = income - reserveMoney
+		if turnOverMoney then
+			if self:GetGroup():GetCapital() == self then
+				self:GetGroup():ReceiveTax( turnOverMoney, self )
+			else
+				g_movingActorMng:AddMovingActor( MovingActorType.CASH_TRUCK, { number = turnOverMoney, group = self:GetGroup(), location = self } )
+			end
+		end
+	else
+		self.money = self.money + income
+	end
+end
+
+
 function City:RecruitTroop( troop )
 	table.insert( self.troops, troop )
+	troop.location   = self
+	troop.encampment = self
 	self._group:RecruitTroop( troop )
 	self._militaryPower = self._militaryPower + troop.number
 end
@@ -864,9 +961,14 @@ function City:CharaLeave( chara )
 	MathUtility_Remove( self.charas, chara.id, "id" )
 end
 
+function City:CharaLive( chara )
+	chara.location = self
+	chara.home     = self
+	table.insert( self.charas, chara )
+end
+
 function City:CharaEnter( chara )
 	chara.location = self
-	chara._city    = self
 	table.insert( self.charas, chara )
 end
 
@@ -884,120 +986,50 @@ function City:UpdateDynamicData()
 	--update build
 	self._canBuildConstructions = nil
 	self._canRecruitTroops = nil
+	
+	self._militaryPower = -1
 end
 
-function City:UpdateCityStatus()
-	--adjacent	
+function City:Update()	
+	--InputUtility_Pause( "update city=" .. self.name .. " " .. #self.tags )
+
+	--Starvation	
+	local tag = self:GetTag( CityTag.STARVATION )
+	if tag and tag.value > 1 then
+		local people = math.ceil( self.population * ( ( 1 + CityParams.POPULATION.STARVATION_DECREASE_MODULUS * tag.value ) ^ tag.value - 1 ) )		
+		self.population = self.population - people
+		
+		--starve to death
+		local dead = math.ceil( people * CityParams.POPULATION.STARVATION_DEAD_MODULUS )		
+				
+		--starve to become refugees
+		local refugee = people - dead
+		g_movingActorMng:AddMovingActor( MovingActorType.REFUGEE, { number = refugee, location = self } )
+		
+		print( NameIDToString( self ) .. " in starvation, "..dead.." people die, " .. refugee .. " become refugee, left " .. self.population )
+	end
+
+	if Helper_IsHarvestTime() then
+		self:Harvest()
+	end
+	self:ConsumeFood()
+	
+	--Levy Tax
+	if Helper_IsLevyTaxTime() then
+		local income = self:GetIncome()
+		self:LevyTax( income )
+	end
+	
+	--Adjacent	
 	for k, otherCity in ipairs( self.adjacentCities ) do		
 		if self._group and otherCity._group ~= self._group then
-			MathUtility_PushBack( self.status, CityStatus.BORDER )
+			self:AppendTag( CityTag.BORDER, 1, CityParams.MAX_TRAIT_VALUE["BORDER"] )
 			if otherCity._group and self._group:IsHostility( otherCity._group ) then
-				MathUtility_PushBack( self.status, CityStatus.BATTLEFRONT )
+				self:AppendTag( CityTag.BATTLEFRONT, 1, CityParams.MAX_TRAIT_VALUE["BATTLEFRONT"] )
 			end
 		end
 	end
 	
-	--[[
-	if self.invest > Parameter.CITY_PROSPERITY_INVEST[self.size] then
-		MathUtility_Remove( self.status, CityStatus.DECAY )
-		if not MathUtility_IndexOf( self.status, CityStatus.PROSPERITY ) then
-			if Random_SyncGetRange( 1, RandomParams.MAX_PROBABILITY, "Invest prosperity" ) < Parameter.CITY_PROSPERITY_PROB then				
-				MathUtility_PushBack( self.status, CityStatus.PROSPERITY )
-			end
-		end
-	elseif self.invest < Parameter.CITY_DECAY_INVEST[self.size] then	
-		MathUtility_Remove( self.status, CityStatus.PROSPERITY )
-		if not MathUtility_IndexOf( self.status, CityStatus.DECAY ) then
-			if Random_SyncGetRange( 1, RandomParams.MAX_PROBABILITY, "Invest decay" ) < Parameter.CITY_DECAY_PROB then				
-				MathUtility_PushBack( self.status, CityStatus.DECAY )
-			end
-		end
-	end	
-	]]
-end
-
-function City:Update()
-	--print( "update " .. self.name )
-	local production = self.production
-	-- build
-	if self.remainBuildPoints > production then
-		self.remainBuildPoints = self.remainBuildPoints - production
-		Debug_Normal( "["..self.name.."] is building construction" )
-	elseif self.buildConstructionId ~= 0 then
-		--build
-		local constr = g_constrTableMng:GetData( self.buildConstructionId )				
-		self:BuildConstruction( constr )
-		
-		self.buildConstructionId = 0
-		self.remainBuildPoints = 0
-		
-		Order_Finish( self )
-		Debug_Normal( "["..self.name.."] finished building construction [".. constr.name .. "]" )
-	end
-	
-	-- recruit
-	if self.remainRecruitPoints > production then
-		self.remainRecruitPoints = self.remainRecruitPoints - production
-		Debug_Normal( "["..self.name.."] is recruiting troop" )
-	elseif self.recruitTroopId ~= 0 then
-		--recruit
-		local troop = g_troopDataMng:GenerateData( self.recruitTroopId, g_troopTableMng )		
-		troop.tableId = self.recruitTroopId
-		troop.table   = g_troopTableMng:GetData( troop.tableId )
-		troop.number  = math.min( troop.maxNumber, self:GetMaxNumberRecruitTroop() )
-		self:RecruitTroop( troop )
-		
-		self.population = self.population - troop.number
-		
-		self.recruitTroopId      = 0
-		self.remainRecruitPoints = 0
-		
-		Order_Finish( self )
-		Debug_Normal( "["..self.name.."] finished recruit troop [".. troop.name .. "]" )
-	end
-		
-	--Invest
-	if self.remainInvest > 0 then
-		Debug_Log( "left invest", self.remainInvest )
-		--self.invest = self.invest + 1
-		local agrDelta = math.floor( self.maxAgriculture * 0.01 * Random_SyncGetRange( Parameter.CITY_INVEST_IMPROVE_PERCENT_MIN, Parameter.CITY_INVEST_IMPROVE_PERCENT_MAX, "Invest Improve" ) )
-		local ecoDelta = math.floor( self.maxEconomy * 0.01 * Random_SyncGetRange( Parameter.CITY_INVEST_IMPROVE_PERCENT_MIN, Parameter.CITY_INVEST_IMPROVE_PERCENT_MAX, "Invest Improve" ) )
-		local proDelta = math.floor( self.maxProduction * 0.01 * Random_SyncGetRange( Parameter.CITY_INVEST_IMPROVE_PERCENT_MIN, Parameter.CITY_INVEST_IMPROVE_PERCENT_MAX, "Invest Improve" ) )
-		local ret = Random_SyncGetRange( 1, 3 )
-		if ret == 1 then
-			self.agriculture = self.agriculture + agrDelta
-		elseif ret == 2 then
-			self.economy = self.economy + ecoDelta
-		elseif ret == 3 then			
-			self.production = self.production + proDelta
-		end		
-		if self.agriculture > self.maxAgriculture then self.agriculture = self.maxAgriculture end
-		if self.economy > self.maxEconomy then self.economy = self.maxEconomy end
-		if self.production > self.maxProduction then self.production = self.maxProduction end
-		Debug_Log( self.agriculture .. "/" .. self.maxAgriculture .. " +" .. agrDelta )
-		Debug_Log( self.economy .. "/" .. self.maxEconomy .. " +" .. ecoDelta )
-		Debug_Log( self.production .. "/" .. self.maxProduction .. " +" .. proDelta )
-		self.remainInvest = self.remainInvest - math.max( 100, self.remainInvest * 0.5 )
-	elseif self.remainInvest <= 0 then
-		--[[
-		if self.invest > Parameter.CITY_DECAY_INVEST[self.size] then
-			self.invest = self.invest - 1
-		end
-		]]
-	end
-	
-	--Collect tax
-	if self.remainLevyTax > 0 then
-		self.remainLevyTax = self.remainLevyTax - 1
-		if self.remainLevyTax == 0 then
-			local income = self:GetIncome()
-			self._group.money = self._group.money + income
-			
-			Debug_Normal( "Levy tax in city [" .. self.name .. "] with money [" .. income .. "]" )
-		end
-	end
-
+	--Temp data
 	self:UpdateDynamicData()
-	
-	self:UpdateCityStatus()
 end

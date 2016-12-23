@@ -1,4 +1,5 @@
 local debugProb = nil
+local debugType = true
 
 GroupRelation = class()
 
@@ -172,10 +173,16 @@ local function GetDiplomacyMethodValue( action, relationType )
 	return params[relationType] or 0 
 end
 
+local debugAction --= "DECLARE_WAR"
+
 local function Debug( ... )
 	if debugProb then
 		print( ... )
 	end
+end
+
+local function debugProb( action, name, ... )
+	if debugAction == action then print( name .. "=", ... ) end
 end
 
 function GroupRelation:GetDiplomacyMethodProbMod( action, group, target )
@@ -190,11 +197,13 @@ function GroupRelation:GetDiplomacyMethodProbMod( action, group, target )
 			local keyName = MathUtility_FindEnumKey( GroupRelationTrait, trait.type )
 			local delta = traitParams[keyName]
 			if delta then
-				Debug( "Trait modulus=", trait.value )
+				debugProb( action, "trait_modulus", keyName, trait.value, delta )
 				value = value + delta * trait.value
 			end
 		end
 	end
+	
+	debugProb( action, "value_trait", value )
 	
 	--Tag
 	function GetTagProb( data, params )
@@ -203,7 +212,7 @@ function GroupRelation:GetDiplomacyMethodProbMod( action, group, target )
 			local keyName = MathUtility_FindEnumKey( GroupTag, tag.type )
 			local delta = params[keyName]
 			if delta then
-				Debug( "Tag modulus=", tag.value )
+				debugProb( action, "tag_modulus", keyName, tag.value, delta )
 				ret = ret + delta * tag.value
 			end
 		end
@@ -213,15 +222,19 @@ function GroupRelation:GetDiplomacyMethodProbMod( action, group, target )
 	local targetTagParams = params["TARGET_TAG_MODULUS"]
 	if selfTagParams then value = value + GetTagProb( group, selfTagParams ) end
 	if targetTagParams then value = value + GetTagProb( group, targetTagParams ) end
+	
+	debugProb( action, "value_tag", value )
 
 	--Distance
 	if not group:IsAdjacentGroup( target.id ) then
 		local delta = params["DISTANCE"]
 		if delta and delta ~= 0 then
-			Debug( "distance modulus=", delta )
+			debugProb( action, "distance_modulus", value, delta )
 			value = value + delta
 		end
 	end
+	
+	debugProb( action, "value_dis", value )
 	
 	--Goals	
 	function GetGoalProb( data, params )
@@ -251,6 +264,7 @@ function GroupRelation:GetDiplomacyMethodProbMod( action, group, target )
 		Debug( "target goal mod=", GetGoalProb( group, selfParams ) )
 		value = value + GetGoalProb( target, targetParams )
 	end
+	debugProb( action, "value_goals", value )
 	
 	--Dependency
 	if params["SELF_IS_DEPENDENCY"] then
@@ -265,6 +279,7 @@ function GroupRelation:GetDiplomacyMethodProbMod( action, group, target )
 			value = value + params["SELF_IS_VASSAL"]
 		end
 	end
+	debugProb( action, "value_depen", value )
 	
 	local groupEnemyRelations, groupFriendFronts = nil, nil
 	local targetEnemyRelations, targetFriendFronts = nil, nil
@@ -284,6 +299,8 @@ function GroupRelation:GetDiplomacyMethodProbMod( action, group, target )
 		value = value + number * params["SAME_ENEMY"]
 	end
 	
+	debugProb( action, "value_belli", value )
+	
 	if ( params["TARGET_MULTIPLE_FRONTS"] and params["TARGET_MULTIPLE_FRONTS"] ~= 0 ) or ( params["FRIEND_BELLIGERENT"] and params["FRIEND_BELLIGERENT"] ~= 0 ) then
 		if not targetEnemyRelations or not targetFriendFronts then
 			targetEnemyRelations, targetFriendFronts = target:GetBelligerentStatus( group )
@@ -298,6 +315,8 @@ function GroupRelation:GetDiplomacyMethodProbMod( action, group, target )
 		end
 	end
 	
+	debugProb( action, "value_fronts", value )
+	
 	if params["SELF_MULTIPLE_FRONTS"] and params["SELF_MULTIPLE_FRONTS"] ~= 0 then
 		if not groupEnemyRelations or not groupFriendFronts then
 			groupEnemyRelations, groupFriendFronts = group:GetBelligerentStatus( nil )
@@ -308,17 +327,21 @@ function GroupRelation:GetDiplomacyMethodProbMod( action, group, target )
 		end
 	end	
 	
+	debugProb( action, "value_selfronts", value )
+	
 	return value
 end
 
 function GroupRelation:GetDipomacyMethodProb( action, group, target )
-	local value = GetDiplomacyMethodValue( action, self.type )	
+	local value = GetDiplomacyMethodValue( action, self.type )
+	debugProb( action, "value1", value )
 	value = value + self:GetDiplomacyMethodProbMod( action, group, target )
+	debugProb( action, "value2", value )
 	local prob1 = math.max( 0, value * GroupRelationParam.EVALUATION_RANGE ) + self.evaluation
 	local prob2 = math.floor( CalcPowerProb( group, target ) * GroupRelationParam.METHOD_MOD[action].POWER_MODULUS )
-	if debugProb then
-		--print( "prob=", prob1, prob2 )
-	end
+	debugProb( action, "prob1", prob1 )
+	debugProb( action, "prob2", prob2 )
+	if action == debugAction then InputUtility_Pause( action ) end
 	return prob1 + prob2
 end
 
@@ -357,8 +380,8 @@ function GroupRelation:EvalSurrenderProb( chara, group, target )
 end
 
 function GroupRelation:EvalDeclareWarProb( chara, group, target )
-	local action = "DECLARE_WAR"
-	local prob = self:GetDipomacyMethodProb( action, group, target )
+	local prob = self:GetDipomacyMethodProb( "DECLARE_WAR", group, target )
+	InputUtility_Pause( "declare war prob=", prob )
 	return prob
 end
 
@@ -438,6 +461,21 @@ function GroupRelation:IsMethodValid( method, group, target )
 	return target
 end
 
+function DebugImportantRelationChanged( content )
+	Debug_Normal( content )
+	if true then
+		--InputUtility_Pause( "next" )	
+	end
+end
+
+function DebugRelationChanged( content )
+	if true then
+		--InputUtility_Pause( content )
+	else
+		Debug_Normal( content )
+	end
+end
+
 function GroupRelation:Improve( delta )
 	self.evaluation = MathUtility_Clamp( self.evaluation + delta, GroupRelationParam.MIN_EVALUATION, GroupRelationParam.MAX_EVALUATION )
 	if self.evaluation >= GroupRelationParam.MAX_EVALUATION then	
@@ -450,27 +488,32 @@ function GroupRelation:Improve( delta )
 		else
 			return
 		end
-		self.value = GroupRelationParam.STANDARD_EVALUATION
+		self.value = GroupRelationParam.MIN_EVALUATION
 		self:RemoveTrait( GroupRelationTrait.HOSTILITY, 1 )
-		Debug_Normal( "[DIPLOMACY] " .. "Improve relation type=" .. MathUtility_FindEnumName( GroupRelationType, self.type ) )
+		print( "improve", delta )
+		DebugRelationChanged( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name .. " Improve relation type=" .. MathUtility_FindEnumName( GroupRelationType, self.type ) )
 	else
-		Debug_Normal( "[DIPLOMACY] " .. "Improve relation evaluation=" .. self.evaluation )
+		--Debug_Normal( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name  .. " Improve relation evaluation=" .. self.evaluation )
 	end
+	return true
 end
 
 function GroupRelation:Deteriorate( delta )
 	self.evaluation = MathUtility_Clamp( self.evaluation - delta, GroupRelationParam.MIN_EVALUATION, GroupRelationParam.MAX_EVALUATION )
 	if self.evaluation <= GroupRelationParam.MIN_EVALUATION then
-		if self.type == GroupRelationType.NEUTRAL then
-			self.type = GroupRelationType.HOSTILITY
-		elseif self.type == GroupRelationType.FRIEND then
+		if self.type == GroupRelationType.FRIEND then
 			self.type = GroupRelationType.NEUTRAL
+		elseif self.type == GroupRelationType.NEUTRAL then
+			self.type = GroupRelationType.HOSTILITY		
+		else
+			return
 		end
-		self.value = GroupRelationParam.STANDARD_EVALUATION
-		Debug_Normal( "[DIPLOMACY] " .. "Deteriorate relation type=" .. MathUtility_FindEnumName( GroupRelationType, self.type ) )
+		self.value = GroupRelationParam.MAX_EVALUATION		
+		DebugRelationChanged( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name  .. " Deteriorate relation type=" .. MathUtility_FindEnumName( GroupRelationType, self.type ) )		
 	else
-		Debug_Normal( "[DIPLOMACY] " .. "Deteriorate relation evaluation=" .. self.evaluation )
+		--Debug_Normal( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name  .. " Deteriorate relation evaluation=" .. self.evaluation )
 	end
+	return true
 end
 
 function GroupRelation:Threaten( group, chara )	
@@ -488,7 +531,8 @@ function GroupRelation:Threaten( group, chara )
 		self._targetGroup = g_groupDataMng:GetData( self.tid )
 		self.type = relationType
 		self.evaluation = math.floor( self.evaluation * 0.5 )
-		Debug_Normal( "[DIPLOMACY] " .. NameIDToString( group ) .. "("..group:GetPower()..")" .. " threaten " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) )
+		DebugRelationChanged( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name  .. NameIDToString( group ) .. "("..group:GetPower()..")" .. " threaten " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) )		
+		return true
 	else	
 		if self.type == GroupRelationType.HOSTILITY then		
 			self:AppendTrait( GroupRelationTrait.CASUS_BELLI, group.id, 3, GroupRelationParam.MAX_TRAIT_VALUE[GroupRelationTrait.CASUS_BELLI] )
@@ -498,8 +542,8 @@ function GroupRelation:Threaten( group, chara )
 			self:AppendTrait( GroupRelationTrait.CASUS_BELLI, group.id, 1, GroupRelationParam.MAX_TRAIT_VALUE[GroupRelationTrait.CASUS_BELLI] )
 		end
 		self:Deteriorate( GroupRelationParam.EVALUATION_RANGE * GroupRelationParam.THREATEN_DETERIORATE_RATIO )
-		Debug_Normal( "[DIPLOMACY] " .. NameIDToString( group ) .. "("..group:GetPower()..")" .. " failed to threaten " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) .. " prob=" .. prob )
-	end	
+		Debug_Normal( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name  .. " " .. NameIDToString( group ) .. "("..group:GetPower()..")" .. " failed to threaten " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) .. " prob=" .. prob )
+	end
 end
 
 function GroupRelation:Ally( group, chara )	
@@ -510,9 +554,10 @@ function GroupRelation:Ally( group, chara )
 		self.type = GroupRelationType.ALLIANCE		
 		self.evaluation = math.floor( self.evaluation * 0.5 )
 		self:AppendTrait( GroupRelationTrait.ALLIANCE_TIME_REMAINS, GroupRelationParam.DEFAULT_ALLIANCE_DAY )
-		Debug_Normal( "[DIPLOMACY] " .. NameIDToString( group ) .. "("..group:GetPower()..")" .. " ally relationship with " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) )
+		DebugRelationChanged( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name  .. " ".. NameIDToString( group ) .. "("..group:GetPower()..")" .. " ally relationship with " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) )		
+		return true
 	else
-		Debug_Normal( "[DIPLOMACY] " .. NameIDToString( group ) .. "("..group:GetPower()..")" .. " failed to ally with " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) .. " prob=" .. prob )
+		Debug_Normal( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name  .. " ".. NameIDToString( group ) .. "("..group:GetPower()..")" .. " failed to ally with " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) .. " prob=" .. prob )		
 	end
 end
 
@@ -523,10 +568,11 @@ function GroupRelation:MakePeace( group, chara )
 	if value <= prob then
 		self.type = GroupRelationType.TRUCE
 		self:AppendTrait( GroupRelationTrait.TRUCE_TIME_REMAINS, GroupRelationParam.DEFAULT_TRUCE_DAY )
-		Debug_Normal( "[DIPLOMACY] " .. NameIDToString( group ) .. "("..group:GetPower()..")" .. " make peace with " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) )
+		DebugRelationChanged( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name  .. " ".. NameIDToString( group ) .. "("..group:GetPower()..")" .. " make peace with " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) )
+		return true
 	else
 		self:AppendTrait( GroupRelationTrait.DECLINATURE, group.id, 1, GroupRelationParam.MAX_TRAIT_VALUE[GroupRelationTrait.DECLINATURE] )
-		Debug_Normal( "[DIPLOMACY] " .. NameIDToString( group ) .. "("..group:GetPower()..")" .. " failed to make peace with " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) .. " prob=" .. prob )
+		Debug_Normal( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name  .. " ".. NameIDToString( group ) .. "("..group:GetPower()..")" .. " failed to make peace with " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) .. " prob=" .. prob )		
 	end
 end
 
@@ -558,10 +604,11 @@ function GroupRelation:Surrender( group, char )
 			self.type = GroupRelationType.VASSAL
 			self.evaluation = math.floor( self.evaluation * 0.5 )
 		end
-		Debug_Normal( "[DIPLOMACY] " .. NameIDToString( group ) .. "("..group:GetPower()..")" .. " surrender to " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) .. " prob=" .. value .. "/" .. prob )
+		DebugRelationChanged( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name  .. " ".. NameIDToString( group ) .. "("..group:GetPower()..")" .. " surrender to " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) .. " prob=" .. value .. "/" .. prob )
+		return true
 	else
 		self:AppendTrait( GroupRelationTrait.DECLINATURE, group.id, 1, GroupRelationParam.MAX_TRAIT_VALUE[GroupRelationTrait.DECLINATURE] )
-		Debug_Normal( "[DIPLOMACY] " .. NameIDToString( group ) .. "("..group:GetPower()..")" .. " failed to surrender to " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) .. " prob=" .. prob )
+		Debug_Normal( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name  .. " ".. NameIDToString( group ) .. "("..group:GetPower()..")" .. " failed to surrender to " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) .. " prob=" .. prob )
 	end
 end
 
@@ -578,10 +625,11 @@ function GroupRelation:Friendly( group, chara )
 			end
 		end
 		self:Improve( improve )
-		Debug_Normal( "[DIPLOMACY] " .. NameIDToString( group ) .. "("..group:GetPower()..")" .. " improve relationship with " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) )
+		DebugRelationChanged( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name  .. " ".. NameIDToString( group ) .. "("..group:GetPower()..")" .. " improve relationship with " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) )
+		return true
 	else
 		self:AppendTrait( GroupRelationTrait.DECLINATURE, group.id, 1, GroupRelationParam.MAX_TRAIT_VALUE[GroupRelationTrait.DECLINATURE] )
-		Debug_Normal( "[DIPLOMACY] " .. NameIDToString( group ) .. "("..group:GetPower()..")" .. " failed to improve relationship with " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) .. " prob=" .. prob )
+		Debug_Normal( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name  .. " ".. NameIDToString( group ) .. "("..group:GetPower()..")" .. " failed to improve relationship with " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) .. " prob=" .. prob )
 	end
 end
 
@@ -601,12 +649,13 @@ function GroupRelation:BreakContract( group, chara )
 		self.type = GroupRelationType.FRIEND
 		value = 1
 	else
-		return
+		return false
 	end
 	self:AppendTrait( GroupRelationTrait.BETRAYER, group.id, value, GroupRelationParam.MAX_TRAIT_VALUE[GroupRelationTrait.BETRAYER] )
 	target:AppendTag( GroupTag.BETRAYER, value, GroupRelationParam.MAX_TAG_VALUE[GroupTag.BETRAYER] )
 	self.evaluation = GroupRelationParam.MIN_EVALUATION
-	Debug_Normal( "[DIPLOMACY] " .. NameIDToString( group ) .. "("..group:GetPower()..")" .. " break contract with " .. NameIDToString( target ) .. "("..target:GetPower()..")" )
+	DebugRelationChanged( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name  .. " ".. NameIDToString( group ) .. "("..group:GetPower()..")" .. " break contract with " .. NameIDToString( target ) .. "("..target:GetPower()..")" )
+	return true
 end
 
 function GroupRelation:DeclareWar( group, chara )
@@ -616,8 +665,8 @@ function GroupRelation:DeclareWar( group, chara )
 		self.type = GroupRelationType.NEUTRAL
 		self.evaluation = self.evaluation * 0.5
 		self:AppendTrait( GroupRelationTrait.HOSTILITY, 1 )
-		Debug_Normal( "[DIPLOMACY] " .. NameIDToString( group ) .. "("..group:GetPower()..")" .. " dismiss alliance with " .. NameIDToString( target ) .. "("..target:GetPower()..")" )
-		return
+		DebugImportantRelationChanged( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name  .. " ".. NameIDToString( group ) .. "("..group:GetPower()..")" .. " dismiss alliance with " .. NameIDToString( target ) .. "("..target:GetPower()..")" )
+		return true
 	end
 	local value = 0
 	if self.type == GroupRelationType.ENEMY then
@@ -629,7 +678,7 @@ function GroupRelation:DeclareWar( group, chara )
 	elseif self.type == GroupRelationType.FRIEND then		
 		value = 5
 	else
-		return
+		return false
 	end	
 	local trait = self:GetTrait( GroupRelationTrait.CASUS_BELLI )
 	if trait then
@@ -642,7 +691,7 @@ function GroupRelation:DeclareWar( group, chara )
 	self:AppendTrait( GroupRelationTrait.HOSTILITY, 1 )
 	self.type = GroupRelationType.BELLIGERENT
 	self.evaluation = GroupRelationParam.MIN_EVALUATION
-	Debug_Normal( "[DIPLOMACY] " .. NameIDToString( group ) .. "("..group:GetPower()..")" .. " declare war at " .. NameIDToString( target ) .. "("..target:GetPower()..")" )
+	DebugImportantRelationChanged( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name  .. " ".. NameIDToString( group ) .. "("..group:GetPower()..")" .. " declare war at " .. NameIDToString( target ) .. "("..target:GetPower()..")" )
 	
 	--check alliance
 	for k, relation in ipairs( target.relations ) do
@@ -653,57 +702,38 @@ function GroupRelation:DeclareWar( group, chara )
 		elseif relation:IsDependency() then
 			local relation2 = group:GetGroupRelation( relation.sid == target.id and relation.tid or relation.sid )
 			relation2:DeclareWar( group, nil )
-		end
-		
+		end		
 	end
+	
+	return true
 end
 
 function GroupRelation:ExecuteMethod( method, group, chara )
 	--print( "execute diplomacy method", MathUtility_FindEnumName( DiplomacyMethod, method ) )
 	if method == DiplomacyMethod.NONE then
-		self:Deteriorate( GroupRelationParam.LEAVE_DETERIORATE )
+		return self:Deteriorate( GroupRelationParam.LEAVE_DETERIORATE )
 	elseif method == DiplomacyMethod.FRIENDLY then	
-		self:Friendly( group, chara )
+		return self:Friendly( group, chara )
 	elseif method == DiplomacyMethod.THREATEN then
-		self:Threaten( group, chara )
+		return self:Threaten( group, chara )
 	elseif method == DiplomacyMethod.ALLY then
-		self:Ally( group, chara )
+		return self:Ally( group, chara )
 	elseif method == DiplomacyMethod.DECLARE_WAR then
-		self:DeclareWar( group, chara )
+		return self:DeclareWar( group, chara )
 	elseif method == DiplomacyMethod.MAKE_PEACE then
-		self:MakePeace( group, chara )
+		return self:MakePeace( group, chara )
 	elseif method == DiplomacyMethod.BREAK_CONTRACT then
-		self:BreakContract( group, chara )
+		return self:BreakContract( group, chara )
 	elseif method == DiplomacyMethod.SURRENDER then
-		self:Surrender( group, chara )
+		return self:Surrender( group, chara )
 	end
-end
-
-function GroupRelation:RemoveTrait( traitType, groupId, value )
-	for k, trait in ipairs( self.traits ) do
-		if trait.type == traitType and ( not groupId or trait.groupId == 0 or trait.id == groupId ) then
-			if value then
-				if trait.value and trait.value > value then
-					trait.value = trait.value - value
-				else
-					table.remove( self.traits, k )
-				end
-			end
-			return
-		end
-	end
+	return false
 end
 
 function GroupRelation:AppendTrait( traitType, groupId, value, range )
-	for k, trait in ipairs( self.traits ) do
-		if trait.type == traitType and ( not groupId or trait.groupId == 0 or trait.id == groupId ) then
-			if value then
-				if not range or trait.value <= range - value then
-					trait.value = trait.value + value
-				end
-			end
-			return
-		end
-	end
-	table.insert( self.traits, { type = traitType, id = groupId or 0, value = value or 0 } )
-end	
+	Helper_AppendTrait( self.traits, traitType, groupId, value, range )
+end
+
+function GroupRelation:RemoveTrait( traitType, groupId, value )
+	Helper_RemoveTrait( self.traits, traitType, groupId, value )
+end
