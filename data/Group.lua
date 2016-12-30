@@ -192,7 +192,7 @@ function Group:ConvertID2Data()
 	
 	local relations = {}
 	for k, id in ipairs( self.relations ) do
-		local relation = g_groupRelationDataMng:GetData( id )
+		local relation = g_diplomacy:GetRelation( id )
 		if not relation then
 			Debug_Assert( nil, "Invalid relation data=" .. id )
 		end
@@ -450,14 +450,9 @@ function Group:GetGroupRelation( id )
 	
 	Debug_Normal( "!!!Add new relation in [" .. self.name .. "," .. self.id .. "] with [" .. id .. "]" )
 	
-	local relation = g_groupRelationDataMng:NewData()
-	relation.sid = self.id
-	relation.tid = id
-	relation:ConvertID2Data()
-	table.insert( self.relations, relation )
-	
-	table.insert( target.relations, relation )
-	
+	local relation = g_diplomacy:CreateRelation( self.id, id )	
+	table.insert( self.relations, relation )	
+	table.insert( target.relations, relation )	
 	return relation
 end
 
@@ -468,7 +463,6 @@ function Group:GetAdjacentGroups()
 	for k, city in ipairs( self.cities ) do
 		for k2, adjCity in ipairs( city.adjacentCities ) do
 			if adjCity:GetGroup() and adjCity:GetGroup() ~= self then
-				print( "push adja", adjCity:GetGroup().name )
 				MathUtility_PushBack( self._adjacentGroups, adjCity:GetGroup() )
 			end
 		end
@@ -631,6 +625,11 @@ function Group:IsHostility( target )
 	return false
 end
 
+function Group:IsBelligerent( group )
+	local relation = self:GetGroupRelation( group.id )
+	return relation:IsBelligerent()
+end
+
 function Group:IsEnemy( target )
 	local relation = self:GetGroupRelation( target.id )
 	if relation then return relation:IsEnemy() end
@@ -738,11 +737,6 @@ end
 ----------------------------------------------
 -- Order Relative
 ----------------------------------------------
-
-function Group:IsBelligerent( group )
-	local relation = self:GetGroupRelation( group.id )
-	return relation:IsBelligerent()
-end
 
 --[[
 function Group:Attack( target )

@@ -33,37 +33,75 @@ end
 
 ---------------------------------------------
 
-function Helper_AppendTrait( traits, traitType, id, value, range )
-	for k, trait in ipairs( traits ) do
-		if trait.type == traitType and ( not id or trait.id == 0 or trait.id == id ) then
-			if value then
-				if not range or trait.value <= range - value then
-					trait.value = trait.value + value
-				end
-			end
-			return
+function Helper_CountIf( datas, condition )
+	local number = 0
+	for k, v in pairs( datas ) do
+		if condition( v ) then
+			number = number + 1
 		end
 	end
-	table.insert( traits, { type = traitType, id = id or 0, value = value or 0 } )
-
+	return number
 end
 
-function Helper_RemoveTrait( traits, traitType, id, value )
-	for k, trait in ipairs( traits ) do
-		if trait.type == traitType and ( not id or trait.id == 0 or trait.id == id ) then
+function Helper_ListIf( datas, condition )
+	local list = {}
+	for k, v in pairs( datas ) do
+		if condition( v ) then
+			table.insert( list, v )
+		end
+	end
+	return list
+end
+
+function Helper_ListEach( datas, condition )
+	local list = {}
+	for k, v in pairs( datas ) do
+		condition( v, list )
+	end
+	return list
+end
+
+---------------------------------------------
+--Relation & Tag
+function Helper_AppendRelation( relations, relationType, id, value, range )
+	for k, relation in ipairs( relations ) do
+		if relation.type == relationType and ( not id or relation.id == 0 or relation.id == id ) then
 			if value then
-				if trait.value and trait.value > value then
-					trait.value = trait.value - value
-				else
-					table.remove( traits, k )
+				if not range or relation.value <= range - value then
+					relation.value = relation.value + value
 				end
 			end
 			return
 		end
 	end
+	table.insert( relations, { type = relationType, id = id or 0, value = value or 0 } )
+end
+function Helper_RemoveRelation( relations, relationType, id, value )
+	for k, relation in ipairs( relations ) do
+		if relation.type == relationType and ( not id or relation.id == 0 or relation.id == id ) then
+			if value then
+				if relation.value and relation.value > value then
+					relation.value = relation.value - value
+				else
+					table.remove( relations, k )
+				end
+			end
+			return
+		end
+	end
+end
+function Helper_GetRelation( relations, relationType, id1, id2 )
+	if not relations then return nil end
+	for k, relation in ipairs( relations ) do
+		if relation.type == relationType and ( relation.id == 0 or relation.id == id1 or trait.id == id2 ) then
+			return tag
+		end
+	end
+	return nil
 end
 
 function Helper_GetTag( tags, tagType )
+	if not tags then return nil end
 	for k, tag in ipairs( tags ) do		
 		if tag.type == tagType then
 			return tag
@@ -71,7 +109,6 @@ function Helper_GetTag( tags, tagType )
 	end
 	return nil
 end
-
 function Helper_AppendTag( tags, tagType, value, range )
 	for k, tag in ipairs( tags ) do
 		if tag.type == tagType then
@@ -83,7 +120,6 @@ function Helper_AppendTag( tags, tagType, value, range )
 	end
 	table.insert( tags, { type = tagType, value = value } )
 end
-
 function Helper_RemoveTag( tags, tagType, value )
 	for k, tag in ipairs( tags ) do
 		if tag.type == tagType then

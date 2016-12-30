@@ -187,6 +187,17 @@ function Combat:FlushLog()
 	logUtility:Flush()
 end
 
+function Combat:Brief()
+	local atkNum, atkTroop, atkMorale, atkFatigue, atkStartNum, atkMaxNum = self:GetSideStatus( CombatSide.ATTACKER )
+	local defNum, defTroop, defMorale, defFatigue, defStartNum, defMaxNum = self:GetSideStatus( CombatSide.DEFENDER )
+	local content = "Combat ";
+	content = content .. " Occured["..( self.location and self.location.name or "" ).."] "
+	content = content .. ( self.atkGroup and self.atkGroup.name or "Unkown" ) .. "+" .. atkNum .. "/" .. atkMaxNum .. "("..atkTroop..")"
+	content = content .. " VS "
+	content = content .. ( self.defGroup and self.defGroup.name or "Unkown" ) .. "+" .. defNum .. "/" .. defMaxNum .. "("..defTroop..")" 
+	print( content )
+end
+
 function Combat:Dump()
 	--self:Log( NameIDToString( self:GetSideGroup( CombatSide.ATTACKER ) ) .. " vs " .. NameIDToString( self:GetSideGroup( CombatSide.DEFENDER ) ) .. ( self.type == CombatType.SIEGE_COMBAT and "[Siege]" or "" ) )
 	self:Log( "Day     : ".. self.day )
@@ -196,7 +207,7 @@ function Combat:Dump()
 	self:Log( "Location: ".. ( self.location and self.location.name or "" ) )
 	self:Log( "Line    : ".. "Melee=" .. #self.meleeLine .. "," .. "Charge=" .. #self.chargeLine .. "," .. "Front=" .. #self.frontLine .. "," .. "Back=" .. #self.backLine .. "," .. "Defence=" .. #self.defenceLine )
 	self:Log( "Round   : ".. MathUtility_FindEnumName( CombatRound, self.round ) )
-	self:Log( "Score   : " .. self.atkScore .. "/" .. self.defScore )
+	self:Log( "Score   : " .. self.atkScore .. "/" .. self.defScore )	
 	local atkNumber, defNumber = 0, 0
 	function dumpTroop( troops )
 		for k, troop in ipairs( troops ) do
@@ -313,6 +324,7 @@ function Combat:Preprocess()
 	if not self.battlefield then return end
 
 	--start time
+	print( self.battlefield, g_season:GetSeasonTable() )
 	self.time = ( self.battlefield.time + g_season:GetSeasonTable().dawnTime ) * 60
 	self.startTime = self.time
 	
@@ -435,7 +447,9 @@ function Combat:GetSideStatus( side, includeWounded )
 			if target:IsInCombat() then
 				count = count + 1
 				number = number + target.number
-				startNumber = startNumber + target._startNumber
+				if target._startNumber then
+					startNumber = startNumber + target._startNumber
+				end
 				maxNumber = maxNumber + target.maxNumber
 				morale = morale + target.morale
 				fatigue = fatigue + target.fatigue
@@ -509,7 +523,10 @@ function Combat:RunOneDay()
 		self:Run()
 	until self:IsDayEnd()
 	
-	print( "Combat=", self.id, " Result=", MathUtility_FindEnumName( CombatResult, self.result ) )
+	self:Dump()
+	self:DumpResult()
+	
+	InputUtility_Pause( "Combat=", self.id, " Result=", MathUtility_FindEnumName( CombatResult, self.result ) )
 end
 
 function Combat:Run()
@@ -596,10 +613,6 @@ function Combat:Run()
 	self:NextTurn()
 	
 	self.result = self:GetResult()
-	
-	if self:IsCombatEnd() then
-		self:End()
-	end
 end
 
 function Combat:NextTurn()
@@ -610,7 +623,7 @@ function Combat:NextTurn()
 	end
 	
 	local atkNum, atkTroop, atkMorale, atkFatigue, atkStartNum, atkMaxNum = self:GetSideStatus( CombatSide.ATTACKER )
-	local defNum, defTroop, defMorale, defFatigue, defStartNum, defMaxNum = self:GetSideStatus( CombatSide.DEFENDER )	
+	local defNum, defTroop, defMorale, defFatigue, defStartNum, defMaxNum = self:GetSideStatus( CombatSide.DEFENDER )
 	if atkNum <= 0 or defNum <= 0 then
 		self.atkScore = defNum == 0 and CombatParams.SCORE_GAP_WITH_BRILLIANTLY_VICTORY or 0
 		self.defScore = atkNum == 0 and CombatParams.SCORE_GAP_WITH_BRILLIANTLY_VICTORY or 0
@@ -734,8 +747,12 @@ end
 function Combat:CalcDamage( troop, target, weapon, armor, params )
 	local trainingRate = 100
 	if params.isMelee then
-		local range = Random_SyncGetRange( 1, math.abs( troop.training - target.training ), "Random Damage BonusRate" ) 
-		range = troop.training > target.training and range or -range
+		local traingTag1 = troop:GetTag( TroopTag.TRAINING )
+		local traingTag2 = target:GetTag( TroopTag.TRAINING )
+		local t1 = traingTag1 and traingTag1.value or 0
+		local t2 = traingTag1 and traingTag1.value or 0
+		local range = Random_SyncGetRange( 1, math.abs( t1 - t2 ), "Random Damage BonusRate" ) 
+		range = t1 > t2 and range or -range
 		trainingRate = MathUtility_Clamp( 100 + range, CombatParams.TRAINING_BONUS_TO_DAMAGE_MIN_FACTOR, CombatParams.TRAINING_BONUS_TO_DAMAGE_MAX_FACTOR )
 	end
 
@@ -809,8 +826,7 @@ function Combat:Flee( target )
 				local rate = target.number * 100 / totalNum
 				local delta = troop.level - target.level - rate
 				if delta > 0 then
-					target.morale = target.morale - delta
-					if target.morale <= 0 then target.morale = 1 end
+					target:LoseMorale( delta, nil, 1 )
 				end
 			end
 		end
@@ -818,11 +834,8 @@ function Combat:Flee( target )
 end
 
 function Combat:LostMorale( target, morale )
-	target.morale = target.morale - morale
-	if target.morale <= 0 then
-		target.morale = 0
-		self:Flee( target )
-	end
+	target:LoseMorale( morale )
+	if target.morale <= 0 then self:Flee( target ) end
 end
 
 function Combat:Hit( troop, target, params )
@@ -1027,10 +1040,4 @@ function Combat:CityDefence()
 			end
 		end
 	end
-end
-
-function Combat:End()
-	--print( "combat end" )
-	self:Dump()
-	self:DumpResult()
 end

@@ -168,6 +168,7 @@ g_menu = MenuUtility()
 
 ---------------------------
 -- Running Data
+g_numOfIndependenceGroup = 0
 g_activateCharaList  = {}
 g_outCharacterList   = {}
 g_otherCharacterList = {}

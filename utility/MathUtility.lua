@@ -143,15 +143,19 @@ function MathUtility_EnumAssign( table )
 	end
 end
 
-function MathUtility_Merge( left, right )
+function MathUtility_Merge( left, right, condition )
 	if not right then return left end
 	
 	local destination = {}
 	for k, v in pairs( left ) do
-		table.insert( destination, v )
+		if not condition or condition( v ) then
+			table.insert( destination, v )
+		end
 	end
 	for k, v in pairs( right ) do
-		table.insert( destination, v )
+		if not condition or condition( v ) then
+			table.insert( destination, v )
+		end
 	end
 	return destination
 end
@@ -458,3 +462,58 @@ function MathUtility_SqrtPIB1( number )
 	return _SqrtPIB1[index].sqrt
 end
 ]]
+
+--[[
+	@usage 
+		local enum = 
+		{
+			power = 1,
+			speed = 2,	
+		}
+
+		list_a = {
+			[1] = 100,
+			[2] = 50,
+		}
+
+		local list = list_a
+		local list_b = MathUtility_ConvertKeyToString( enum, list )
+		list = list_a
+		MathUtility_Dump( list ) 
+		--{
+		--  1 = 100,
+		--  2 = 50,
+		--}
+		list = list_b
+		MathUtility_Dump( list )		
+		--{	
+		--  speed = 50,
+		--  power = 100,
+		--}
+		
+		local list_c = MathUtility_ConvertKeyToID( enum, list_b )
+		list = list_c
+		MathUtility_Dump( list )
+		--{
+		--  1 = 100,
+		--  2 = 50,
+		--}
+]]
+function MathUtility_ConvertKeyToString( keyEnum, list )
+	local newList = {}
+	if not list then return newList end
+	for k, v in pairs( list ) do	
+		newList[MathUtility_FindEnumKey( keyEnum, k )] = v
+	end
+	return newList
+end
+
+-- Reverse from MathUtility_ConvertKeyToString()
+function MathUtility_ConvertKeyToID( keyEnum, list )
+	local newList = {}	
+	if not list then return newList end
+	for k, v in pairs( list ) do
+		newList[keyEnum[k]] = v
+	end
+	return newList
+end

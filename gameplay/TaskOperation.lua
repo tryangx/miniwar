@@ -335,18 +335,36 @@ end
 --
 ---------------------------------------------
 
-function CorpsReinforce( corps, troops )
+function CorpsRegroup( corps, troops )
 	local content = ""
 	for k, troop in ipairs( troops ) do
 		corps:AddTroop( troop )
 		content = content .. troop.name .. " "
 	end
 	
-	Debug_Normal( "Reinforce ["..corps.name.."] with ["..content .."]" )
+	Debug_Normal( "Regroup ["..corps.name.."] with ["..content .."]" )
+end
+function CorpsReinforce( corps )
+	local city = corps:GetLocation()
+	if not city then
+		print( a.b )
+		return
+	end	
+	local number, totalNumber = corps:GetNumberStatus()
+	local needPeople = totalNumber - number
+	if city.population < needPeople then 
+		print( "Reinforce ["..corps.name.."] failed, not enough ["..needPeople .."/"..city.population.."]" )
+		return
+	end	
+	local minPopulation = city:GetMinPopulation()
+	local reinforcement = needPeople + minPopulation >= city.population and city.population - minPopulation or needPeople
+	city.population = city.population - reinforcement
+	corps:Reinforce( reinforcement )	
+	print( "Reinforce ["..corps.name.."] with soldier ["..reinforcement.."] from " .. totalNumber .. " to " .. totalNumber + reinforcement )
 end
 
 function CorpsAttack( corps, city )
-	g_warfare:AddPlan( corps, city )	
+	g_warfare:AddPlan( corps, city )
 	corps:MoveToLocation( city )
 	
 	Debug_Normal( "["..corps.name.."] attack ["..city.name.."]" )

@@ -1207,7 +1207,7 @@ function Combat:DumpMap()
 			end
 			local xGrid = math.floor( troop._combatPosX / CombatPosition.TROOP_RADIUS )
 			if map[yGrid][xGrid] then
-				self:Log( "Collision in ["..xGrid * CombatPosition.TROOP_RADIUS.."]["..yGrid.."] with "..troop:GetNameDesc() .. troop:GetPositionDesc()..",".. map[yGrid][xGrid]:GetNameDesc() .. map[yGrid][xGrid]:GetPositionDesc())
+				self:Log( "Collision in ["..xGrid * CombatPosition.TROOP_RADIUS.."]["..yGrid.."] with "..troop:GetNameDesc() .. troop:GetCoordinateDesc()..",".. map[yGrid][xGrid]:GetNameDesc() .. map[yGrid][xGrid]:GetCoordinateDesc())
 			else
 				map[yGrid][xGrid] = troop
 				--print( "add", xGrid, yGrid, troop )
@@ -1737,8 +1737,12 @@ function Combat:CalcDamage( troop, target, weapon, armor, isMelee, isMissile, is
 	-- training bonus ( melee combat )
 	local trainingRate = 1
 	if isMelee then
-		local trainingRate = self:RandomRange( 1, math.abs( troop.training - target.training ), "Random Damage BonusRate" )	
-		if troop.training > target.training then
+		local traingTag1 = troop:GetTag( TroopTag.TRAINING )
+		local traingTag2 = target:GetTag( TroopTag.TRAINING )
+		local t1 = traingTag1 and traingTag1.value or 0
+		local t2 = traingTag1 and traingTag1.value or 0
+		local trainingRate = self:RandomRange( 1, math.abs( t1 - t2 ), "Random Damage BonusRate" )	
+		if t1 > t2 then
 			trainingRate = MathUtility_Clamp( 100 + trainingRate, 10, 250 )
 		else
 			trainingRate = MathUtility_Clamp( 100 - trainingRate, 10, 250 ) * 0.01

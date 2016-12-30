@@ -60,6 +60,28 @@ print( c2.a.b )
 MathUtility_Dump( c2 )
 ]]
 
+--[[
+local enum = 
+{
+	power = 1,
+	speed = 2,	
+}
+
+list_a = {
+	[1] = 100,
+	[2] = 50,
+}
+
+local list = list_a
+MathUtility_Dump( list )
+local list_b = MathUtility_ConvertKeyToString( enum, list )
+list = list_b
+MathUtility_Dump( list )
+local list_c = MathUtility_ConvertKeyToID( enum, list_b )
+list = list_c
+MathUtility_Dump( list )
+]]
+
 --[[]]
 
 game = Game()

@@ -1,3 +1,8 @@
+CorpsTag = 
+{
+	TEAMWORK    = 1,	
+}
+
 Corps = class()
 
 function Corps:__init()
@@ -12,28 +17,21 @@ end
 
 function Corps:Load( data )
 	self.id = data.id or 0	
-	self.name = data.name or ""	
-	
+	self.name = data.name or ""		
+	------------------------------			
+	self.encampment = data.encampment or 0		
+	self.location   = data.location or 0	
+	self.leader     = data.leader or 0	
 	------------------------------	
-	
-	self.encampment = data.encampment or 0	
-	self.location = data.location or 0	
-	self.leader = data.leader or 0
-	
+	self.troops = MathUtility_Copy( data.troops )	
 	------------------------------
-	
-	self.troops = MathUtility_Copy( data.troops )
-	
+	self.tags    = MathUtility_Copy( data.tags )
 	------------------------------
-	-- other
-	
-	self.formation = data.formation or 0
-		
+	-- may be abandaned
+	self.formation = data.formation or 0		
 	------------------------------
-	-- Dynamic Data
-	
+	-- Dynamic Data	
 	self._power    = 0
-		
 	-- stealthy evaluation, 
 	self._size     = 0
 end
@@ -47,10 +45,13 @@ function Corps:SaveData()
 	Data_OutputValue( "name", self )
 	Data_OutputValue( "encampment", self, "id" )
 	Data_OutputValue( "location", self, "id" )
-	Data_OutputValue( "formation", self, "id" )
-
-	Data_OutputTable( "troops", self, "id" )
 	Data_OutputValue( "leader", self, "id", 0 )
+	
+	Data_OutputTable( "troops", self, "id" )
+	
+	Data_OutputTable( "tags", self )
+	
+	Data_OutputValue( "formation", self, "id" )
 	
 	Data_IncIndent( -1 )
 	Data_OutputEnd()
@@ -87,7 +88,7 @@ end
 
 function Corps:Dump( indent )
 	if not indent then indent = "" end
-	local content = indent .. "Corps [".. self.name .."] Stay [".. self.location.name .. "] "
+	local content = indent .. "Corps=".. self.name .." Stay=".. self.location.name .. " LD=" .. ( self.leader and self.leader.name or "" ) .. "# "
 	for k2, troop in ipairs( self.troops ) do
 		content = content .. troop.name .. "+"..troop.number..","
 	end
@@ -110,9 +111,21 @@ function Corps:RemoveTroop( troop )
 	MathUtility_Remove( self.troops, troop )
 end
 
+function Corps:GetTag( tagType )
+	return Helper_GetTag( self.tags, tagType )
+end
+
+function Corps:AppendTag( tagType, value, range )
+	Helper_AppendTag( self.tags, tagType, value, range )
+end
+
+function Corps:RemoveTag( tagType, value )
+	Helper_RemoveTag( self.tags, tagType, value )
+end
+
 ------------------------------------------
 
-function Corps:Update()	
+function Corps:Update()
 end
 
 ------------------------------------------
@@ -152,6 +165,15 @@ function Corps:GetPower()
 	return self._power
 end
 
+function Corps:GetNumberStatus()
+	local number, totalNumber = 0, 0
+	for k, troop in ipairs( self.troops ) do
+		totalNumber = totalNumber + troop.maxNumber
+		number = number + troop.number
+	end
+	return number, totalNumber
+end
+
 function Corps:GetMedianFatigue()
 	local midFatigue = MathUtility_FindMedian( self.troops, "fatigue" )
 	print( "midFatigue=", midFatigue )
@@ -168,11 +190,36 @@ function Corps:IsStayCity( city )
 	return self.location == city
 end
 
+function Corps:IsPreparedToAttack()
+	local rate = 0.6
+	for k, troop in ipairs( self.troops ) do
+		if troop.number < troop.maxNumber * rate then 
+			--InputUtility_Pause( "number not enough", troop.number, troop.maxNumber )
+			return false
+		end
+		if troop.morale < troop.maxMorale * rate then
+			return false
+		end
+	end
+	return true
+end
+
+function Corps:IsUnderstaffed()
+	local rate = 0.8
+	for k, troop in ipairs( self.troops ) do
+		if troop.number < troop.maxNumber * 0.8 then
+			return true
+		end
+	end
+	return false
+end
+
 ------------------------------------------
 -- Operation
 
 function Corps:MoveToLocation( location )
-	self.location = location
+	--print( "move to location", location.name )
+	self.location = location	
 	for k, troop in ipairs( self.troops ) do
 		local leader = troop:GetLeader()
 		if leader then leader:MoveToLocation( location ) end
@@ -188,5 +235,28 @@ end
 function Corps:Lead( chara )
 	self.leader = chara
 	
-	Debug_Normal( "Corps [".. self.name.. "] lead by [".. chara.name .. "]" )
+	InputUtility_Pause( "Corps [".. self.name.. "] lead by [".. chara.name .. "]" )
+end
+
+function Corps:Reinforce( reinforcement )
+	local number, totalNumber = self:GetNumberStatus()
+	local leftSoldier = reinforcement
+	for k, troop in ipairs( self.troops ) do
+		local needSoldier = troop.maxNumber - troop.number
+		if needSoldier <= leftSoldier then
+			troop.number = troop.maxNumber
+			leftSoldier = leftSoldier - needSoldier
+		else
+			troop.number = troop.number + leftSoldier
+			break
+		end
+	end
+	local teamWorkTag = Helper_GetTag( self.tags, CorpsTag.TEAMWORK )
+	if teamWorkTag then
+		local loseTeamwork = math.ceil( teamWork.value * reinforcement / ( reinforcement + totalNumber ) )
+		print( "reduce teamwork", loseTeamwork, teamWork.value )
+		Helper_RemoveTag( self.tags, CorpsTag.TEAMWORK, loseTeamwork )
+	end
+	
+	InputUtility_Pause( "" )
 end

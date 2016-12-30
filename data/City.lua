@@ -25,17 +25,17 @@ function City:Load( data )
 	-----------------------------------
 	-- Basic Attributes
 	
-	self.position    = MathUtility_Copy( data.position )
-	
-	self.population  = data.population or ""
-	
+	self.coordinate    = MathUtility_Copy( data.coordinate )
+
+	self.size        = CitySize[data.size] or CitySize.TOWN
+
+	self.tags        = MathUtility_Copy( data.tags )
+
 	self.money       = data.money or 0
 	
 	self.food        = data.food or 0
 	
-	self.size        = CitySize[data.size] or CitySize.TOWN
-
-	self.tags        = MathUtility_Copy( data.tags )
+	self.population  = data.population or ""
 	
 	--Agriculture Surplus -> Growth
 	--Economy Surplus     -> Culture & Tech
@@ -117,7 +117,7 @@ function City:SaveData()
 	Data_OutputValue( "id", self )
 	Data_OutputValue( "name", self )
 	
-	Data_OutputTable( "position", self )
+	Data_OutputTable( "coordinate", self )
 	Data_OutputValue( "population", self )
 	
 	Data_OutputValue( "money", self )
@@ -152,8 +152,13 @@ function City:SaveData()
 end
 
 function City:ConvertID2Data()
+	local constrs = {}
+	for k, id in ipairs( self.constrs ) do
+		table.insert( constrs, g_constrTableMng:GetData( id ) )
+	end
+	self.constrs = constrs
+		
 	self.leader = g_charaDataMng:GetData( self.leader )
-
 	local charas = {}
 	for k, id in ipairs( self.charas ) do
 		local chara = g_charaDataMng:GetData( id )		
@@ -191,13 +196,7 @@ function City:ConvertID2Data()
 		table.insert( troops, troop )
 	end
 	self.troops = troops
-	
-	local constrs = {}
-	for k, id in ipairs( self.constrs ) do
-		table.insert( constrs, g_constrTableMng:GetData( id ) )
-	end
-	self.constrs = constrs
-	
+		
 	local corps = {}
 	for k, id in ipairs( self.corps ) do	
 		table.insert( corps, g_corpsDataMng:GetData( id ) )
@@ -231,39 +230,42 @@ function City:ConvertID2Data()
 	]]
 end
 
+function City:UpdatePlots()
+	self.maxAgriculture = CityParams[self.size].STANDARD_AGRICULTURE
+	self.maxEconomy     = CityParams[self.size].STANDARD_ECONOMY
+	self.maxProduction  = CityParams[self.size].STANDARD_PRODUCTION
+	local plots = {}
+	for k, pos in pairs( self.plots ) do
+		local plot = g_plotMap:GetPlot( pos.x, pos.y )
+		table.insert( plots, plot )
+		--calculate real arg/eco/prod
+		if plot and plot.table then
+			self.maxAgriculture = self.maxAgriculture + plot.table:GetTraitValue( PlotTraitType.AGRICULTURE )
+			self.maxEconomy     = self.maxEconomy + plot.table:GetTraitValue( PlotTraitType.ECONOMIC )
+			self.maxProduction  = self.maxProduction + plot.table:GetTraitValue( PlotTraitType.PRODUCTION )
+		end
+	end
+	if typeof( self.agriculture ) == "string" then
+		local str = string.gsub( self.agriculture, "%%", "" )
+		self.agriculture = math.ceil( self.maxAgriculture * tonumber( str ) * 0.01 )
+	end
+	if typeof( self.economy ) == "string" then 
+		local str = string.gsub( self.economy, "%%", "" )
+		self.economy = math.ceil( self.maxEconomy * tonumber( str ) * 0.01 )
+	end
+	if typeof( self.production ) == "string" then 
+		local str = string.gsub( self.production, "%%", "" )
+		self.production = math.ceil( self.maxProduction * tonumber( str ) * 0.01 )
+	end
+	self.plots = plots
+	print( self.name .. " plot="..#self.plots.." agr="..self.maxAgriculture.. " eco="..self.maxEconomy.. " pro="..self.maxProduction )
+end
+
 function City:InitPlots( plotDatas, reset )
 	self.plots = plotDatas
 	
 	if reset then
-		self.maxAgriculture = CityParams[self.size].STANDARD_AGRICULTURE
-		self.maxEconomy     = CityParams[self.size].STANDARD_ECONOMY
-		self.maxProduction  = CityParams[self.size].STANDARD_PRODUCTION
-		local plots = {}
-		--print( self.name, plotDatas, self.plots )
-		for k, pos in pairs( self.plots ) do
-			local plot = g_plotMap:GetPlot( pos.x, pos.y )
-			table.insert( plots, plot )
-			--calculate real arg/eco/prod
-			if plot and plot.table then
-				self.maxAgriculture = self.maxAgriculture + plot.table:GetTraitValue( PlotTraitType.AGRICULTURE )
-				self.maxEconomy     = self.maxEconomy + plot.table:GetTraitValue( PlotTraitType.ECONOMIC )
-				self.maxProduction  = self.maxProduction + plot.table:GetTraitValue( PlotTraitType.PRODUCTION )
-			end		
-		end
-		if typeof( self.agriculture ) == "string" then
-			local str = string.gsub( self.agriculture, "%%", "" )
-			self.agriculture = math.ceil( self.maxAgriculture * tonumber( str ) * 0.01 )
-		end
-		if typeof( self.economy ) == "string" then 
-			local str = string.gsub( self.economy, "%%", "" )
-			self.economy = math.ceil( self.maxEconomy * tonumber( str ) * 0.01 )
-		end
-		if typeof( self.production ) == "string" then 
-			local str = string.gsub( self.production, "%%", "" )
-			self.production = math.ceil( self.maxProduction * tonumber( str ) * 0.01 )
-		end
-		self.plots = plots
-		print( self.name .. " plot="..#self.plots.." agr="..self.maxAgriculture.. " eco="..self.maxEconomy.. " pro="..self.maxProduction )
+		self:UpdatePlots()
 	end
 end
 
@@ -349,162 +351,116 @@ function City:GetLeader()
 	return self.leader
 end
 
-function City:GetPosition()
-	return self.position
+function City:GetCoordinate()
+	return self.coordinate
 end
 
 function City:GetAdjacentGroupMilitaryPowerList()
-	local list = {}
-	local group = self:GetGroup()
-	for k, city in ipairs( self.adjacentCities ) do 
+	return Helper_ListEach( self.adjacentCities, function( city, list )
 		local otherGroup = city:GetGroup()
-		if otherGroup and otherGroup ~= group then
+		if otherGroup and otherGroup ~= self:GetGroup() then
 			if list[otherGroup.id] then
 				list[otherGroup.id] = list[otherGroup.id] + city:GetMilitaryPower()
 			else
 				list[otherGroup.id] = city:GetMilitaryPower()
 			end
 		end
-	end
-	return list
+	end )
 end
 
 function City:GetAdjacentHostileCityList()
-	local list = {}
-	local group = self:GetGroup()
-	for k, city in ipairs( self.adjacentCities ) do 
+	return Helper_ListIf( self.adjacentCities, function( city )
 		local otherGroup = city:GetGroup()
-		if otherGroup ~= group then			
-			if group:IsHostility( otherGroup ) then
-				table.insert( list, city )
-			end
-		end
-	end
-	return list
+		return otherGroup ~= self:GetGroup() and self:GetGroup():IsHostility( otherGroup )
+	end )
 end
 
-function City:GetAdjacentBelligerentCityList()
-	local list = {}
-	local group = self:GetGroup()
-	for k, city in ipairs( self.adjacentCities ) do
+function City:GetAdjacentBelligerentCityList()	
+	return Helper_ListIf( self.adjacentCities, function( city )
 		local otherGroup = city:GetGroup()
-		if otherGroup and otherGroup ~= group then
-			if group:IsBelligerent( otherGroup ) then
-				table.insert( list, city )
-			end
-		end
-	end
-	return list
+		return otherGroup and otherGroup ~= self:GetGroup() and self:GetGroup():IsBelligerent( otherGroup )
+	end )
 end
 
 -- character who can attend meeting
 function City:GetNumOfIdleChara()
-	local count = 0
-	for k, chara in ipairs( self.charas ) do
-		if chara:IsStayCity( self ) then
-			count = count + 1
-		end
-	end
-	return count 
+	return Helper_CountIf( self.charas, function( chara )
+		return chara:IsStayCity( self )
+	end )
 end
 
 function City:GetNumOfFreeChara()
-	local count = 0
-	for k, chara in ipairs( self.charas ) do
-		--print( "chara=", chara.name, chara:IsLeadTroop(), chara:IsStayCity( self ), chara:IsImportant() )
-		if chara:IsFree() then
-			count = count + 1
-		end
-	end
-	return count
+	return Helper_CountIf( self.charas, function( chara )
+		return chara:IsFree()
+	end )
 end
 
-function City:GetFreeCharaList()
-	local list = {}
-	for k, chara in ipairs( self.charas ) do
-		if not chara:IsLeadTroop() and chara:IsStayCity( self ) and not chara:IsImportant() then
-			table.insert( list, chara )
-		end
-	end
-	return list
+function City:GetFreeMilitaryOfficerList()
+	return Helper_ListIf( self.charas, function( chara )
+		return not chara:IsLeadTroop() and chara:IsStayCity( self ) and not chara:IsImportant() and chara:IsMilitaryOfficer()
+	end )
 end
 
 function City:GetIdleCorpsList()
-	local list = {}
-	for k, corps in ipairs( self.corps ) do
-		if corps:IsStayCity( self ) then
-			table.insert( list, corps )
-		end
-	end
-	return list
+	return Helper_ListIf( self.corps, function( corps )
+		return corps:IsStayCity( self )
+	end )
+end
+
+function City:GetPreparedToAttackCorpsList()
+	return Helper_ListIf( self.corps, function( corps )
+		return corps:IsStayCity( self ) and corps:IsPreparedToAttack() and not g_taskMng:GetTaskByActor( corps )
+	end )
 end
 
 -- Idle corps means Staying in city
 function City:GetNumOfIdleCorps()
-	local count = 0
-	for k, corps in ipairs( self.corps ) do
-		if not corps:IsStayCity( self ) then
-			count = count + 1
-		end
-	end
-	return count
+	return Helper_CountIf( self.corps, function( corps )
+		return not corps:IsStayCity( self )
+	end )
 end
 
 function City:GetNumOfVacancyCorps()
-	local count = 0
-	for k, corps in ipairs( self.corps ) do
-		if corps:IsStayCity( self ) and corps:GetVacancyNumber() > 0 then
-			count = count + 1
-		end
-	end
-	return count
+	return Helper_ListIf( self.corps, function ( corps )
+		return corps:IsStayCity( self ) and corps:GetVacancyNumber() > 0
+	end )
 end
 function City:GetVacancyCorpsList()
-	local list = {}
-	for k, corps in ipairs( self.corps ) do
-		if corps:IsStayCity( self ) and corps:GetVacancyNumber() > 0 then
-			table.insert( list, corps )
-		end
-	end
-	return list
+	return Helper_ListIf( self.corps, function ( corps )
+		return corps:IsStayCity( self ) and corps:GetVacancyNumber() > 0
+	end )
+end
+function City:GetNumOfUnderstaffedCorps()
+	return Helper_CountIf( self.corps, function ( corps )
+		return corps:IsStayCity( self ) and corps:IsUnderstaffed()
+	end )
+end
+function City:GetUnderstaffedCorpsList()
+	return Helper_ListIf( self.corps, function ( corps )
+		return corps:IsStayCity( self ) and corps:IsUnderstaffed()
+	end )
 end
 
 function City:GetNumOfNonLeaderTroop()
-	local count = 0
-	for k, troop in ipairs( self.troops ) do
-		if ( not troop:GetCorps() or troop:GetCorps():IsStayCity( self ) ) and not troop:GetLeader() then
-			count = count + 1
-		end
-	end
-	return count
+	return Helper_CountIf( self.troops, function ( troop )	
+		return ( not troop:GetCorps() or troop:GetCorps():IsStayCity( self ) ) and not troop:GetLeader()
+	end )
 end
 function City:GetNonLeaderTroopList()
-	local list = {}
-	for k, troop in ipairs( self.troops ) do
-		if ( not troop:GetCorps() or troop:GetCorps():IsStayCity( self ) ) and not troop:GetLeader() then
-			table.insert( list, troop )
-		end
-	end
-	return list
+	return Helper_ListIf( self.troops, function( troop )
+		return ( not troop:GetCorps() or troop:GetCorps():IsStayCity( self ) ) and not troop:GetLeader()
+	end )
 end
 
 function City:GetNumOfNonCorpsTroop()
-	local count = 0
-	for k, troop in ipairs( self.troops ) do
-		if not troop:GetCorps() then
-			count = count + 1
-		end
-	end
-	return count
+	return Helper_CountIf( self.troops, function( troop )
+		return not troop:GetCorps()
+	end )
 end
 function City:GetNonCorpsTroopList()
-	local list = {}
-	for k, troop in ipairs( self.troops ) do
-		if not troop:GetCorps() then
-			table.insert( list, troop )
-		end
-	end
-	return list
+	return Helper_ListIf( self.troops, function( troop )
+		return not troop:GetCorps()
+	end )
 end
 
 function City:GetMaxTraitPower()
@@ -726,9 +682,13 @@ function City:CanEstablishCorps()
 	return self:GetNumOfNonCorpsTroop() >= CorpsParams.NUMBER_OF_TROOP_TO_ESTALIBSH
 end
 
-function City:CanReinforceCorps()
-	--print( "reinforce", self.name, #self.corps, #self.troops, self:GetNumOfVacancyCorps(), self:GetNumOfNonCorpsTroop() )
+function City:CanRegroupCorps()
+	--print( "regroup", self.name, #self.corps, #self.troops, self:GetNumOfVacancyCorps(), self:GetNumOfNonCorpsTroop() )
 	return self:GetNumOfVacancyCorps() > 0 and self:GetNumOfNonCorpsTroop() > 0
+end
+
+function City:CanReinforceCorps()
+	return self:GetUnderstaffedCorpsList() > 0
 end
 
 function City:CanDispatchCorps()
@@ -758,6 +718,15 @@ function City:DumpTroopDetail( indent )
 	end
 	print( content )
 end
+
+function City:DumpCorpsDetail( indent )
+	if #self.troops == 0 then return end
+	local content = indent .. "    "
+	for k, corps in ipairs( self.corps ) do
+		corps:Dump( indent )
+	end
+end
+
 
 function City:DumpConstructionDetail( indent )
 	if #self.constrs == 0 then return end
@@ -824,6 +793,7 @@ function City:Dump( indent )
 	self:DumpCharaDetail( indent )
 	print( indent .. 'Troops+Corps   ', #self.troops .. '+' .. #self.corps )
 	self:DumpTroopDetail( indent )
+	self:DumpCorpsDetail( indent )
 	print( indent .. 'Construction   ', #self.constrs )
 	self:DumpConstructionDetail( indent )
 	print( indent .. 'Resources      ', #self.resources )	

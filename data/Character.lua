@@ -137,7 +137,7 @@ end
 
 function Character:Dump( indent )
 	if not indent then indent = "" end
-	local content = indent .. "Chara [".. self.name .. "] Stay [".. self.location.name .. "] st=" .. self.stamina .. " job=" .. MathUtility_FindEnumName( CharacterJob, self.job ) .. " Task=" .. ( g_taskMng:IsCharaExecutingTask( self ) and "True" or "False" )
+	local content = indent .. "Chara [".. self.name .. "] Stay [".. self.location.name .. "] st=" .. self.stamina .. " job=" .. MathUtility_FindEnumName( CharacterJob, self.job ) .. " Task=" .. ( g_taskMng:GetTaskByActor( self ) and "True" or "False" )
 	print( content )
 end
 
@@ -271,7 +271,7 @@ function Character:GetProposal()
 end
 
 function Character:CanSubmitProposal()
-	return self._hasSubmitProposal ~= true and self.stamina > CharacterParams.STAMINA["SUBMIT_PROPOSAL"] and not g_taskMng:IsCharaExecutingTask( self )
+	return self._hasSubmitProposal ~= true and self.stamina > CharacterParams.STAMINA["SUBMIT_PROPOSAL"] and not g_taskMng:GetTaskByActor( self )
 end
 
 function Character:CanAcceptProposal()
@@ -309,7 +309,7 @@ function Character:GetPromoteList()
 end
 
 function Character:IsFree()
-	return not self:IsLeadTroop() and not self:IsImportant() and self:IsAtHome() and not g_taskMng:IsCharaExecutingTask( self )
+	return not self:IsLeadTroop() and not self:IsImportant() and self:IsAtHome() and not g_taskMng:GetTaskByActor( self )
 end
 
 function Character:SubmitProposal( proposal )	

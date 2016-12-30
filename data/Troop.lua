@@ -7,70 +7,44 @@ function Troop:Generate( data )
 end
 
 function Troop:Load( data )
-	self.id = data.id or 0
-	
-	self.name = data.name or ""
-	
-	self.tableId  = data.tableId or 0
-	
+	self.id = data.id or 0	
+	self.name = data.name or ""	
+	self.tableId  = data.tableId or 0	
 	---------------------------------------
 	-- Growth
 	self.level     = data.level or 0	
-	self.exp       = data.exp or 0
-	
+	self.exp       = data.exp or 0	
 	-- Potential Ability
 	-- Determined by birthplace, it limits maximum level of troop
-	self.pa        = data.pa or 0
-			
+	self.pa        = data.pa or 0			
 	---------------------------------------
-	-- Belong Data
-	
-	self.leader = data.leader or 0
-	
-	self.corps = data.corps or 0
-	
-	self.location   = data.location or 0
-	
-	self.encampment = data.encampment or 0
-	
+	-- Belong Data	
+	self.leader     = data.leader or 0	
+	self.corps      = data.corps or 0	
+	self.location   = data.location or 0	
+	self.encampment = data.encampment or 0	
 	---------------------------------------
-	-- Attributes
-	
+	-- Attributes	
 	self.wounded   = data.wounded or 0	
 	self.number    = data.number or 0
 	self.maxNumber = data.maxNumber or 0	
 	self.maxMorale = data.maxMorale or 0
-	self.morale    = data.morale or 0
-	
+	self.morale    = data.morale or 0			
+	---------------------------------------
+	-- Data
 	self.movement  = data.movement or 0	
-	
-	---------------------------------------
-	-- data
-	
-	self.training = data.training or 0	
-
+	self.tags     = MathUtility_Copy( data.tags )	
 	self.fatigue  = data.fatigue or 0
-
-	self.tactic   = data.tactic or CombatTactic.DEFAULT
-		
-	self.buffs    = MathUtility_Copy( data.buffs )
-	
+	self.tactic   = data.tactic or CombatTactic.DEFAULT		
+	self.buffs    = MathUtility_Copy( data.buffs )	
 	self.traits   = MathUtility_Copy( data.traits )
-	
-	self.disguise = data.disguise or 0
-	
+	self.disguise = data.disguise or 0	
 	---------------------------------------
-	self._location = nil
-	
 	-- Combat Temporary Data	
-	self._combatSide   = CombatSide.NETRUAL
-	
-	self._combatAction = CombatAction.NONE
-	
+	self._combatSide   = CombatSide.NETRUAL	
+	self._combatAction = CombatAction.NONE	
 	self._combatTarget = nil
-
 	self._combatCD     = 0
-
 	-- now only 1d, extension to 2d
 	self._combatPosX   = 0
 	self._combatPosY   = 0
@@ -103,10 +77,10 @@ function Troop:SaveData()
 	Data_OutputValue( "maxMorale", self )
 	Data_OutputValue( "movement", self )
 	
-	Data_OutputValue( "training", self )
+	Data_OutputTable( "tags", self )
 	Data_OutputValue( "fatigue", self )	
 	Data_OutputValue( "tactic", self )
-	Data_OutputTable( "traits", self, "id" )
+	Data_OutputTable( "traits", self, "id" )	
 	Data_OutputTable( "buffs", self )
 	
 	Data_IncIndent( -1 )
@@ -139,8 +113,8 @@ end
 
 function Troop:Dump( indent )
 	if not indent then indent = "" end
-	local content = indent .. "Troop [".. self.name .."]"
-	content = content .. " Num=" .. self.number
+	local content = indent .. "Troop=".. self.name .. " Mor=" .. self.morale .. "/" .. self.maxMorale
+	content = content .. " Num=" .. self.number .. "/" .. self.maxNumber
 	if self:GetCorps() then
 		content = content .. " Corps=[" .. self:GetCorps().name .. "]"
 	end		
@@ -347,7 +321,7 @@ function Troop:GetNameDesc()
 	return "[" .. self.name .. "(" .. self.id .. ")] "
 end
 
-function Troop:GetPositionDesc()
+function Troop:GetCoordinateDesc()
 	return "(" .. self._combatPosX .. "," .. self._combatPosY .. ") "
 end
 
@@ -501,6 +475,16 @@ function Troop:UseArmor( armor )
 	self._combatDefended    = self._combatDefended and self._combatDefended + 1 or 1
 end
 
+function Troop:RecoverMorale( value, desc, max )
+	self.morale = MathUtility_Clamp( self.morale + value, 0, limit or self.maxMorale )
+	--if desc then print( self.name .. " recover morale " .. value .. " for=" .. desc ) end
+end
+
+function Troop:LoseMorale( value, desc, min )
+	self.morale = MathUtility_Clamp( self.morale - value, limit or 0, self.maxMorale )
+	--if desc then print( self.name .. " lose morale " .. value .. " for=" .. desc ) end
+end
+
 function Troop:DealDamage( damage )
 	self._combatAttackTimes = self._combatAttackTimes + 1
 	self._combatDealDamage  = self._combatDealDamage + damage
@@ -582,4 +566,19 @@ function Troop:QueryTrait( effect, params )
 	end
 	if not self.leader then return nil end
 	return self.leader:QueryTrait( effect, params )
+end
+
+function Troop:GetTag( tagType )
+	Helper_GetTag( self.tags, tagType )
+end
+
+---------------------------
+
+function Troop:Update()
+	if self:IsCombatUnit() and self.morale < self.maxMorale then
+		local recoverRate = 0.6
+		if not self:GetCorps() then recoverRate = 0.3 end
+		local recover = recoverRate * self.maxMorale
+		self:RecoverMorale( recover, "update" )
+	end
 end

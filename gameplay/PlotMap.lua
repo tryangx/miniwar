@@ -92,10 +92,10 @@ function PlotMap:RandomMap( width, height )
 end
 
 function PlotMap:AllocateToCity()
-	InputUtility_Pause( "allocate plots to city" )
+	print( "allocate plots to city" )
 	g_cityDataMng:Foreach( function ( city )
 		local plots = {}
-		local pos = city:GetPosition()
+		local pos = city:GetCoordinate()
 		function AddPlot( list, x, y )
 			local plot = self:GetPlot( x, y )
 			if plot and  not plot:GetData() then

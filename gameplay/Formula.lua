@@ -29,8 +29,8 @@ function CalcSpendTimeOnRoad( currentCity, targetCity )
 		print( "invalid city, cann't calculate time spend on the road" .. currentCity, targetCity )
 		return 0
 	end
-	local pos1 = currentCity:GetPosition()
-	local pos2 = targetCity:GetPosition()
+	local pos1 = currentCity:GetCoordinate()
+	local pos2 = targetCity:GetCoordinate()
 	local distance = math.abs( pos1.x - pos2.x ) + math.abs( pos1.y - pos2.y )
 	return distance * GlobalConst.MOVE_TIME
 end
@@ -40,8 +40,8 @@ function CalcCorpsSpendTimeOnRoad( currentCity, targetCity )
 		print( "invalid city, cann't calculate time spend on the road" )
 		return 0
 	end
-	local pos1 = currentCity:GetPosition()
-	local pos2 = targetCity:GetPosition()
+	local pos1 = currentCity:GetCoordinate()
+	local pos2 = targetCity:GetCoordinate()
 	local distance = math.abs( pos1.x - pos2.x ) + math.abs( pos1.y - pos2.y )
 	return distance * 3 * GlobalConst.MOVE_TIME
 end

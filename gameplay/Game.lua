@@ -239,10 +239,10 @@ function Game:Init()
 	
 	-- initialize g_calendar
 	g_calendar:Init( Standard_Calendar_TableData() )	
-	g_calendar:SetDate( 4, 1, 2016, 1 )
+	g_calendar:SetDate( 1, 1, 580, 1, 1 )
 	
 	-- initialize g_season
-	g_season:Init()
+	g_season:Init( g_calendar, g_seasonTableMng )
 	g_season:SetDate( g_calendar.month, g_calendar.day )
 		
 	-- convert id to data
@@ -370,7 +370,6 @@ function Game:TestCombat()
 	
 	self.gameMode = GameMode.COMBAT_GAME
 
-	--Warfare:RunOneDay()
 	self:Run()
 end
 
@@ -382,7 +381,6 @@ function Game:Run()
 			self:NextTurn()
 		elseif self.gameMode == GameMode.COMBAT_GAME then
 			Warfare:RunOneDay()
-			--Warfare:RunOneHour()
 		end
 		if self.winner then break end
 	end
@@ -456,7 +454,7 @@ function Game:NextTurn()
 	print( "" )
 	print( "####################################" )
 	print( "############# Turn=" .. self.turn .. " ##############" )
-	g_calendar:DumpMonthUnit()
+	g_calendar:DumpDate( false )
 	
 	-- Update Flow
 	self:Update( GlobalConst.ELPASED_TIME )
@@ -465,7 +463,7 @@ end
 function Game:DrawMap()
 	local map = {}
 	for k, city in ipairs( self._cityList ) do
-		local pos = city.position
+		local pos = city.coordinate
 		if not map[pos.y] then
 			map[pos.y] = {} 
 		end
@@ -532,7 +530,7 @@ function Game:ActionFlow()
 				table.insert( independences, group )
 			end
 		else
-			print( "######################gropu is fallend" .. group.name )
+			print( "######################gropu is fallen=" .. group.name )
 		end
 	end
 	--]]
@@ -569,24 +567,29 @@ function Game:Update( elpasedTime )
 	g_taskMng:Update( elpasedTime )	
 	g_movingActorMng:Update( elpasedTime )
 
+	g_numOfIndependenceGroup = 0
 	for k, group in ipairs( self._groupList ) do
 		print( group.name .. " mi_pow=" .. group:GetPower() )
 		group:Update()
+		if group:IsIndependence() then
+			g_numOfIndependenceGroup = g_numOfIndependenceGroup + 1
+		end
 	end
-	
-	--InputUtility_Pause( "" )
-	
 	for k, city in ipairs( self._cityList ) do	
 		city:Update()
 	end
 	for k, corps in ipairs( self._corpsList ) do
 		corps:Update()
-	end	
+	end
 	for k, chara in ipairs( g_activateCharaList ) do
 		chara:Update()
 	end	
+	for k, troop in ipairs( self._troopList ) do
+		troop:Update()
+	end
 	
 	--ProfileResult()
+	--InputUtility_Pause( "" )
 end
 
 function Game:IssueGroupOrder( group )	

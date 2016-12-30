@@ -403,7 +403,7 @@ local CityData =
 	[10] = 
 	{
 		name = "Xian Yang",
-		position = { x = 1, y = 5 },
+		coordinate = { x = 1, y = 5 },
 		population = 60000,
 		size = "CITY",
 		agriculture    = "50%",
@@ -423,7 +423,7 @@ local CityData =
 	[11] = 
 	{
 		name = "Han gu guan",
-		position = { x = 2, y = 5 },
+		coordinate = { x = 2, y = 5 },
 		population = 3000,
 		size = "TOWN",
 		agriculture    = "50%",
@@ -445,7 +445,7 @@ local CityData =
 	[20] = 
 	{
 		name = "LIN ZI",
-		position = { x = 8, y = 3 },
+		coordinate = { x = 8, y = 3 },
 		population = 200000,		
 		size = "LARGE_CITY",
 		agriculture    = "50%",
@@ -465,7 +465,7 @@ local CityData =
 	[30] = 
 	{
 		name = "YING",
-		position = { x = 6, y = 10 },
+		coordinate = { x = 6, y = 10 },
 		population = 180000,		
 		size = "LARGE_CITY",
 		agriculture    = "50%",
@@ -485,7 +485,7 @@ local CityData =
 	[40] = 
 	{
 		name = "DA LIANG",
-		position = { x = 4, y = 4 },
+		coordinate = { x = 4, y = 4 },
 		population = 250000,		
 		size = "LARGE_CITY",
 		agriculture    = "50%",
@@ -505,7 +505,7 @@ local CityData =
 	[50] = 
 	{
 		name = "HAN DAN",
-		position = { x = 10, y = 4 },
+		coordinate = { x = 10, y = 4 },
 		population = 120000,
 		size = "LARGE_CITY",
 		agriculture    = "50%",
@@ -525,7 +525,7 @@ local CityData =
 	[60] = 
 	{
 		name = "JI",
-		position = { x = 8, y = 0 },
+		coordinate = { x = 8, y = 0 },
 		population = 60000,		
 		size = "CITY",
 		agriculture    = "50%",
@@ -545,7 +545,7 @@ local CityData =
 	[70] = 
 	{
 		name = "XIN ZHENG",
-		position = { x = 6, y = 5 },
+		coordinate = { x = 6, y = 5 },
 		population = 100000,	
 		size = "LARGE_CITY",		
 		agriculture    = "50%",
@@ -565,7 +565,7 @@ local CityData =
 	[80] = 
 	{
 		name = "LING SHOU",
-		position = { x = 7, y = 3 },
+		coordinate = { x = 7, y = 3 },
 		population = 18000,		
 		size = "CITY",
 		agriculture    = "50%",
@@ -585,7 +585,7 @@ local CityData =
 	[90] = 
 	{
 		name = "LUO YI",
-		position = { x = 4, y = 6 },
+		coordinate = { x = 4, y = 6 },
 		population = 25000,		
 		size = "CITY",
 		agriculture    = "50%",
@@ -764,7 +764,7 @@ local GroupRelationData =
 	[12] = 
 	{
 		--QIN VS WEI
-		sid=1, tid=4, evaluation=0, type="BELLIGERENT", traits = 
+		sid=1, tid=4, evaluation=0, type="NEUTRAL", traits = 
 		{
 			{ type = "OLD_ENEMY", id = 0, value = 5 },
 		}
@@ -879,7 +879,7 @@ local GroupRelationData =
 	},
 	[43] = 
 	{
-		--CHU VS 
+		--CHU VS ZS
 		sid=4, tid=8, evaluation=0, type="NEUTRAL", traits = {}			
 	},
 	[44] = 
@@ -948,6 +948,7 @@ local PlotData =
 		x = 1,
 		y = 1,
 		tableId = 100,
+		assets = { },
 	},
 	{
 		x = 2,

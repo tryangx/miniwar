@@ -8,40 +8,64 @@
 
 Season = class()
 
-function Season:Init()
-	self.g_seasons = {}
-	g_seasonTableMng:Foreach( function ( g_season )
-		self.g_seasons[g_season.type] = g_season
+function Season:Init( calendar, tableMng )
+	self.defaultSeason = 
+	{
+		name          = "spring",
+		type          = "SPRING",
+		dawnTime      = 6,
+		duskTime      = 18,
+		startMon      = 1,
+		startDay      = 1,
+		endMon        = 12,
+		endDay        = 30,
+	}
+
+	self.seasons = {}
+	tableMng:Foreach( function ( season )
+		self.seasons[season.type] = season
 	end )
 	
-	self.g_seasonType  = SeasonType.SPRING
-	self.g_seasonTable = nil
+	self.seasonTable = self.defaultSeason
+	self.seasonType  = self.defaultSeason.type
+	
+	self.calendar = calendar
 end
 
-function Season:SetDate( month, day )
-	for k, g_season in pairs( self.g_seasons ) do		
-		if month >= g_season.startMon and day >= g_season.startDay and month <= g_season.endMon and month <= g_season.endDay then			
-			self.g_seasonTable = g_season
-			self.g_seasonType  = g_season.type
-			Debug_Log( "Set Season:" .. g_season.name )
-			break
+function Season:SetDate( month, day, monthInYear, dayInMonth )
+	local curDateVal = self.calendar:ConvertDateValue( 1, month, day )
+	for k, season in pairs( self.seasons ) do
+		local dateVal1 = self.calendar:ConvertDateValue( 1, season.startMon, season.startDay )
+		local dateVal2 = self.calendar:ConvertDateValue( 1, season.endMon, season.endDay )
+		--print( season.name, dateVal1, curDateVal, dateVal2 )
+		local inSeason = true
+		if season.startMon <= season.endMon then
+			inSeason = curDateVal >= dateVal1 and curDateVal <= dateVal2
+		else
+			inSeason = not ( curDateVal < dateVal1 and curDateVal > dateVal2 )
+		end		
+		if inSeason then
+			self.seasonTable = season
+			self.seasonType  = season.type
+			print( "Set Season:" .. season.name .. " for date=" .. month .. "M" .. day .. "D" )
+			return
 		end
 	end
+	print( "No match season for date=" .. month .. "M" .. day .. "D" )
 end
 
---[[
-function Season:SetSeason( g_seasonType )
-	self.g_season = self.g_seasons[g_seasonType]
+function Season:SetSeason( seasonType )
+	local nextSeason = self.seasons[seasonType]
+	if nextSeason then self.season = nextSeason end
 end
-]]
 
--- Get current g_season configure data
+-- Get current season configure data
 function Season:GetSeasonTable()	
-	return self.g_seasonTable
+	return self.seasonTable
 end
 
--- Time flow, enter new g_season
+-- Time flow, enter new season
 function Season:NextSeason()
-	if not self.g_season then return end
-	if g_season then self:SetSeason( self.g_season.nextType ) end
+	if not self.season then return end
+	if season then self:SetSeason( self.season.nextType ) end
 end

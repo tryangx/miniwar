@@ -57,8 +57,6 @@ function Warfare:AddFieldCombat( attacker, defender )
 	combat:AddCorpsToSide( CombatSide.DEFENDER, defender )
 		
 	combat:Preprocess()
-	
-	combat:RunOneDay()
 end
 
 
@@ -98,8 +96,6 @@ function Warfare:AddSiegeCombat( corps, city )
 	combat:AddTroopToSide( CombatSide.DEFENDER, g_troopDataMng:GetData( 210 ) )
 	
 	combat:Preprocess()
-	
-	combat:RunOneDay()
 end
 
 --Add skirmish
@@ -193,25 +189,31 @@ function Warfare:RunOneHour()
 	end )
 end
 
-function Warfare:RunOneDay()
+function Warfare:Dump()
 	if g_combatDataMng:GetCount() > 0 then
-		--InputUtility_Pause( "combat exist" )
+		g_combatDataMng:Foreach( function ( combat )
+			if not combat:IsCombatEnd() then
+				combat:Brief()
+			end
+		end )
+		InputUtility_Pause( "combat exist", g_combatDataMng:GetCount() )
 	end
-	local updateTime = 0
+	--print( "Combat Left " .. #g_combatDataMng.datas .. "/" .. g_combatDataMng.count )
+end
+
+function Warfare:RunOneDay()
+	self:Dump()
 	g_combatDataMng:Foreach( function ( combat )
-		updateTime = updateTime + 1
 		if not combat:IsCombatEnd() then
 			combat:RunOneDay()
 		end
 	end )
-	--if updateTime > 0 then InputUtility_Wait( "update combat" .. combat.id, "n" ) end
 	g_combatDataMng:RemoveDataByCondition( function ( combat ) 
 		if combat:IsCombatEnd() then
 			self:ProcessCombatResult( combat )
-			print( "!!!!!!!!!!!!!!!! Remove Combat", "end combat" )
+			InputUtility_Pause( "!!!!!!!!!!!!!!!! Remove Combat", "end combat" )
 			return true
 		end
 		return false
 	end )
-	--print( "Combat Left " .. #g_combatDataMng.datas .. "/" .. g_combatDataMng.count )
 end

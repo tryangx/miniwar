@@ -127,12 +127,19 @@ TroopStartLine =
 	MELEE   = 4,
 }
 
+TroopTag = 
+{
+	TRAINING = 1,
+}
+
 -----------------------------------------
 -- Corps
 CorpsParams =
 {
 	NUMBER_OF_TROOP_TO_ESTALIBSH = 2,
 	NUMBER_OF_TROOP_MAXIMUM      = 6,
+	
+	REINFORCE_TIME_MODULUS       = 5,
 }
 
 ----------------------------------------
@@ -214,11 +221,7 @@ CityParams =
 	
 	SAFETY_FOOD_CONSUME_TIME        = 180,
 	
-	-----------------------------
-	-- Produce
-	--Supply = ( Agriculture + MaxAgriculture ) * Modulus
-	AGRICULTURE_TO_SUPPLY_MODULUS   = 0.25,
-	
+	-----------------------------	
 	
 	MILITARY = 
 	{
@@ -662,7 +665,7 @@ DiplomacyTendency =
 	},
 }
 
-GroupRelationTrait = 
+GroupRelationDetail = 
 {
 	------------------------
 	-- Flag Category
@@ -704,8 +707,8 @@ GroupRelationParam =
 	
 	DEFAULT_ALLIANCE_DAY = 30*24,
 	
-	--Trait
-	MAX_TRAIT_VALUE = 
+	--Detail
+	MAX_DETAIL_VALUE = 
 	{
 		OLD_ENEMY       = 5,
 		CASUS_BELLI     = 5,
@@ -729,7 +732,7 @@ GroupRelationParam =
 		ALLY = 
 		{
 			POWER_MODULUS = 6500,
-			TRAIT_MODULUS =
+			DETAIL_MODULUS =
 			{
 				LAST_TARGET     = 0,
 				OLD_ENEMY       = -0.5,
@@ -757,7 +760,7 @@ GroupRelationParam =
 		MAKE_PEACE = 
 		{
 			POWER_MODULUS = 5000,
-			TRAIT_MODULUS =
+			DETAIL_MODULUS =
 			{
 				LAST_TARGET     = 0,
 				OLD_ENEMY       = -0.25,
@@ -791,7 +794,7 @@ GroupRelationParam =
 			[5] = 3,  --FRIEND			
 			[6] = -3, --HOSTILITY			
 			[7] = -4, --ENEMY
-			TRAIT_MODULUS =
+			DETAIL_MODULUS =
 			{
 				LAST_TARGET     = 0,
 				OLD_ENEMY       = -0.35,
@@ -838,7 +841,7 @@ GroupRelationParam =
 			[6] = -1, --HOSTILITY			
 			[7] = -2, --ENEMY	
 			[9] = -3, --BELLIGERENT
-			TRAIT_MODULUS =
+			DETAIL_MODULUS =
 			{
 				LAST_TARGET     = 0,
 				OLD_ENEMY       = -0.35,
@@ -883,7 +886,7 @@ GroupRelationParam =
 			[7] = 1, 	--ENEMY
 			[8] = 0, 	--TRUCE
 			[9] = 2,    --BELLIGERENT
-			TRAIT_MODULUS =
+			DETAIL_MODULUS =
 			{
 				LAST_TARGET     = 0,
 				OLD_ENEMY       = -0.35,
@@ -928,7 +931,7 @@ GroupRelationParam =
 			[5] = -4, 	--FRIEND			
 			[6] = 2, 	--HOSTILITY			
 			[7] = 4, 	--ENEMY		
-			TRAIT_MODULUS =
+			DETAIL_MODULUS =
 			{
 				LAST_TARGET     = 0,
 				OLD_ENEMY       = 0.5,
@@ -974,7 +977,7 @@ GroupRelationParam =
 			[3] = -2, --DEPENDENCE
 			[4] = -6, --ALLIANCE
 			[8] = -5, --TRUCE
-			TRAIT_MODULUS =
+			DETAIL_MODULUS =
 			{
 				LAST_TARGET     = 0,
 				OLD_ENEMY       = 0.25,
@@ -1017,7 +1020,7 @@ GroupRelationParam =
 			POWER_MODULUS = 8000,
 			[2] = 4, --VASSAL
 			[3] = 2, --DEPENDENCE
-			TRAIT_MODULUS =
+			DETAIL_MODULUS =
 			{
 				LAST_TARGET     = 0,
 				OLD_ENEMY       = 0.35,
@@ -1306,6 +1309,7 @@ CharacterProposal =
 	ESTABLISH_CORPS  = 53,
 	DISPATCH_CORPS   = 54,
 	REINFORCE_CORPS  = 55,
+	REGROUP_CORPS    = 56,
 	WAR_PREPAREDNESS_AFFAIRS_END = 59,
 	
 	-- Military

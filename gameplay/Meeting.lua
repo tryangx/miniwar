@@ -66,7 +66,7 @@ MeetingSubFlow =
 	
 	ACTIVATE = 1,
 	
-	SUB_START_DIPLOMACY  = 10,
+	SUB_DIPLOMACY_AFFAIRS  = 10,
 	
 	SUB_TECH_RESEARCH    = 11,
 	
@@ -87,6 +87,7 @@ MeetingSubFlow =
 	SUB_ESTABLISH_CORPS  = 53,	
 	SUB_REINFORCE_CORPS  = 54,
 	SUB_DISPATCH_CORPS   = 55,
+	SUB_REGROUP_CORPS    = 56,
 	
 	SUB_ATTACK_CITY      = 60,
 	SUB_EXPEDITION       = 61,
@@ -163,11 +164,13 @@ function Meeting:CreateProposalContent( proposal )
 		local troop = proposal.troop
 		proposal.content = "Recruit [".. troop.name .. "]" .. " in ["..proposal.city.name.."]" .. " By [" .. proposal.chara.name .. "]"
 	elseif proposal.type == CharacterProposal.REINFORCE_CORPS then
+		proposal.content = "Reinforce Corps [".. proposal.corps.name .. "]" .. " By [" .. proposal.chara.name .. "]"
+	elseif proposal.type == CharacterProposal.REGROUP_CORPS then
 		local troopName = ""
 		for k, troop in ipairs( proposal.troops ) do
 			troopName = troopName .. troop.name .. " "
 		end
-		proposal.content = "Reinforce Corps [".. proposal.corps.name .. "]" .. " with [".. troopName .."]" .. " By [" .. proposal.chara.name .. "]"
+		proposal.content = "Regroup Corps [".. proposal.corps.name .. "]" .. " with [".. troopName .."]" .. " By [" .. proposal.chara.name .. "]"
 	elseif proposal.type == CharacterProposal.DISPATCH_CORPS then
 		proposal.content = "Dispatch Corps [".. proposal.corps.name .. "]" .. " to ["..proposal.city.name.."]" .. " By [" .. proposal.chara.name .. "]"
 		
@@ -412,44 +415,28 @@ function Meeting:ConfirmProposalFlow( proposal )
 		self:ConfirmProposalFlow( proposal )
 		return	
 	
-	elseif self.flow == MeetingFlow.TECH_FLOW then		
+	else
+		if self.subFlow == MeetingSubFlow.ACTIVATE then
+			self.subFlow = MeetingSubFlow["SUB_" .. MathUtility_FindEnumKey( CharacterProposal, proposal.type )]
+			print( "subflow=" .. MathUtility_FindEnumName( MeetingSubFlow, self.subFlow ), self.subFlow, proposal.type, MathUtility_FindEnumKey( CharacterProposal, proposal.type )  )
+			InputUtility_Pause()
+		else
+			g_taskMng:IssueTaskByProposal( proposal )
+		end
+	--[[
+	elseif self.flow == MeetingFlow.TECH_FLOW then
 		if self.subFlow == MeetingSubFlow.ACTIVATE then
 			self.subFlow = MeetingSubFlow.SUB_TECH_RESEARCH
 		else
-			--[[
-			if proposal.type == CharacterProposal.TECH_RESEARCH then
-				GroupResearch( self._group, proposal.tech )
-			end
-			]]
 			g_taskMng:IssueTaskByProposal( proposal )
 		end
 	elseif self.flow == MeetingFlow.DIPLOMACY_FLOW then
 		if self.subFlow == MeetingSubFlow.ACTIVATE then
 			if proposal.type == CharacterProposal.DIPLOMACY_AFFAIRS then
 				self._target = proposal.targetGroup
-				self.subFlow = MeetingSubFlow.SUB_START_DIPLOMACY
+				self.subFlow = MeetingSubFlow.SUB_DIPLOMACY_AFFAIRS
 			end
 		elseif proposal.group then
-			--[[
-			local relation = self._group:GetGroupRelation( proposal.group.id )
-			if relation then
-				if proposal.type == CharacterProposal.FRIENDLY_DIPLOMACY then				
-					relation:ExecuteMethod( DiplomacyMethod.FRIENDLY, self._group, proposal.chara )
-				elseif proposal.type == CharacterProposal.THREATEN_DIPLOMACY then
-					relation:ExecuteMethod( DiplomacyMethod.THREATEN, self._group, proposal.chara )
-				elseif proposal.type == CharacterProposal.ALLY_DIPLOMACY then
-					relation:ExecuteMethod( DiplomacyMethod.ALLY, self._group, proposal.chara )
-				elseif proposal.type == CharacterProposal.MAKE_PEACE_DIPLOMACY then
-					relation:ExecuteMethod( DiplomacyMethod.MAKE_PEACE, self._group, proposal.chara )
-				elseif proposal.type == CharacterProposal.DECLARE_WAR_DIPLOMACY then
-					relation:ExecuteMethod( DiplomacyMethod.DECLARE_WAR, self._group, proposal.chara )
-				elseif proposal.type == CharacterProposal.BREAK_CONTRACT_DIPLOMACY then
-					relation:ExecuteMethod( DiplomacyMethod.BREAK_CONTRACT, self._group, proposal.chara )
-				elseif proposal.type == CharacterProposal.SURRENDER_DIPLOMACY then
-					relation:ExecuteMethod( DiplomacyMethod.SURRENDER, self._group, proposal.chara )
-				end
-			end
-			]]
 			g_taskMng:IssueTaskByProposal( proposal )
 		end
 	elseif self.flow == MeetingFlow.INSTRUCT_FLOW then
@@ -457,12 +444,7 @@ function Meeting:ConfirmProposalFlow( proposal )
 			if proposal.type == CharacterProposal.CITY_INSTRUCT then
 				self.subFlow = MeetingSubFlow.SUB_CITY_INSTRUCT
 			end
-		else			
-			--[[
-			if proposal.type == CharacterProposal.CITY_INSTRUCT then
-				CityInstruct( proposal.city )
-			end
-			]]
+		else
 			g_taskMng:IssueTaskByProposal( proposal )
 		end
 	elseif self.flow == MeetingFlow.CITY_AFFAIRS_FLOW then
@@ -475,15 +457,6 @@ function Meeting:ConfirmProposalFlow( proposal )
 				self.subFlow = MeetingSubFlow.SUB_CITY_LEVY_TAX			
 			end
 		else
-			--[[
-			if proposal.type == CharacterProposal.CITY_BUILD then
-				CityBuildConstruction( proposal.city, proposal.constr )
-			elseif proposal.type == CharacterProposal.CITY_INVEST then
-				CityInvest( proposal.city )
-			elseif proposal.type == CharacterProposal.CITY_LEVY_TAX then
-				CityLevyTax( proposal.city )			
-			end
-			]]
 			g_taskMng:IssueTaskByProposal( proposal )
 		end
 		
@@ -502,19 +475,6 @@ function Meeting:ConfirmProposalFlow( proposal )
 				self.subFlow = MeetingSubFlow.SUB_PROMOTE_CHARA
 			end
 		else
-			--[[
-			if proposal.type == CharacterProposal.HR_DISPATCH then
-				CharaDispatch( proposal.targetChara, proposal.targetCity )
-			elseif proposal.type == CharacterProposal.HR_CALL then
-				CharaCall( proposal.targetChara, proposal.targetCity )
-			elseif proposal.type == CharacterProposal.HR_HIRE then			
-				CharaHire( proposal.targetChara, proposal.targetCity )
-			elseif proposal.type == CharacterProposal.HR_EXILE then
-				CharaExile( proposal.targetChara, proposal.targetCity )
-			elseif proposal.type == CharacterProposal.HR_PROMOTE then
-				CharaPromote( proposal.targetChara, proposal.targetCity )
-			end
-			]]
 			g_taskMng:IssueTaskByProposal( proposal )
 		end
 		
@@ -529,27 +489,12 @@ function Meeting:ConfirmProposalFlow( proposal )
 				self.subFlow = MeetingSubFlow.SUB_RECRUIT_TROOP
 			elseif proposal.type == CharacterProposal.REINFORCE_CORPS then
 				self.subFlow = MeetingSubFlow.SUB_REINFORCE_CORPS
+			elseif proposal.type == CharacterProposal.REGROUP_CORPS then
+				self.subFlow = MeetingSubFlow.SUB_REGROUP_CORPS
 			elseif proposal.type == CharacterProposal.DISPATCH_CORPS then
 				self.subFlow = MeetingSubFlow.SUB_DISPATCH_CORPS
 			end
 		else
-			--[[
-			if proposal.type == CharacterProposal.ESTABLISH_CORPS then
-				if proposal.troopList then
-					CharaEstablishCorpsByTroop( proposal.city, proposal.troopList )
-				else
-					CharaEstablishCorps( proposal.city )
-				end				
-			elseif proposal.type == CharacterProposal.LEAD_TROOP then
-				CharaLead( proposal.targetChara, proposal.targetTroop )
-			elseif proposal.type == CharacterProposal.RECRUIT_TROOP then
-				CityRecruitTroop( proposal.city, proposal.troop )
-			elseif proposal.type == CharacterProposal.REINFORCE_CORPS then
-				CorpsReinforce( proposal.corps, proposal.troops )
-			elseif proposal.type == CharacterProposal.DISPATCH_CORPS then
-				CorpsDispatch( proposal.corps, prob.city )
-			end
-			]]
 			g_taskMng:IssueTaskByProposal( proposal )
 		end
 	elseif self.flow == MeetingFlow.MILITARY_FLOW then
@@ -560,15 +505,9 @@ function Meeting:ConfirmProposalFlow( proposal )
 				self.subFlow = MeetingSubFlow.SUB_EXPEDITION
 			end			
 		else
-			--[[
-			if proposal.type == CharacterProposal.ATTACK_CITY then
-				CorpsAttack( proposal.targetCorps, proposal.targetCity )
-			elseif proposal.type == CharacterProposal.ATTACK_CITY then
-				CorpsExpedition( proposal.targetCorps, proposal.targetCity )
-			end
-			]]
 			g_taskMng:IssueTaskByProposal( proposal )
 		end
+		]]
 	end
 
 	if self.subFlow ~= MeetingSubFlow.NONE then	
@@ -598,6 +537,15 @@ function Meeting:SubmitProposalFlow( chara )
 		local menus = {}
 		local index = 1
 		local nextStatus = MeetingStatus.CONFIRM_PROPOSAL
+		
+		function AddSubMenuItem( name, proposal )
+			table.insert( menus, { c = index, content = name, fn = function()
+				self.subFlow = MeetingSubFlow.ACTIVATE
+				self._proposal = { type = proposal, chara = chara }
+				self:UpdateStatus( nextStatus )
+			end } )
+			index = index + 1
+		end
 		
 		function AddMenuItem( name, flow, fn )
 			table.insert( menus, { c = index, content = name, fn = function ()
@@ -635,22 +583,8 @@ function Meeting:SubmitProposalFlow( chara )
 			
 		elseif self.flow == MeetingFlow.TECH_FLOW then
 			if self._group:CanResearch() then
-				table.insert( menus, { c = index, content = "Research", fn = function()
-					self.subFlow = MeetingSubFlow.ACTIVATE
-					self._proposal = { type = CharacterProposal.SUB_TECH_RESEARCH, targetGroup = self,_group, chara = chara }
-					self:UpdateStatus( nextStatus )
-				end } )
-				index = index + 1
-			end
-			--[[
-			for k, tech in ipairs( chara:GetGroup()._canResearchTechs ) do
-				table.insert( menus, { c = k, content = "Research [" .. tech.name .. "]", fn = function ()
-					self._proposal = { type = CharacterProposal.TECH_RESEARCH, tech = tech, chara = chara }
-					self:UpdateStatus( nextStatus )
-				end } )			
-				index = k + 1
-			end
-			]]
+				AddSubMenuItem( "Research", CharacterProposal.TECH_RESEARCH )
+			end	
 			
 		elseif self.flow == MeetingFlow.DIPLOMACY_FLOW then
 			local groups = {}
@@ -662,12 +596,7 @@ function Meeting:SubmitProposalFlow( chara )
 			if #groups then
 				for k, data in ipairs( groups ) do
 					local relation = self._group:GetGroupRelation( data.group.id )
-					table.insert( menus, { c = index, content = data.group.name .. ",Pow=" .. data.power .. ",Type=" .. MathUtility_FindEnumName( GroupRelationType, relation.type ) .. "("..relation.evaluation..")", fn = function()
-						self.subFlow = MeetingSubFlow.ACTIVATE
-						self._proposal = { type = CharacterProposal.DIPLOMACY_AFFAIRS, targetGroup = data.group, chara = chara }
-						self:UpdateStatus( nextStatus )
-					end } )
-					index = index + 1
+					AddSubMenuItem( data.group.name .. ",Pow=" .. data.power .. ",Type=" .. MathUtility_FindEnumName( GroupRelationType, relation.type ) .. "("..relation.evaluation..")", CharacterProposal.DIPLOMACY_AFFAIRS )
 				end
 			else
 				print( "No relations with other group" )
@@ -675,135 +604,50 @@ function Meeting:SubmitProposalFlow( chara )
 			
 		elseif self.flow == MeetingFlow.INSTRUCT_FLOW then
 			if #self._group.cities > 0 then
-				table.insert( menus, { c = index, content = "Instruct City", fn = function()
-					self.subFlow = MeetingSubFlow.ACTIVATE
-					self._proposal = { type = CharacterProposal.CITY_INSTRUCT, chara = chara }
-					self:UpdateStatus( nextStatus )
-				end } )
-				index = index + 1
-				--[[
-				table.insert( menus, { c = index, content = "Instruct Corps", fn = function()
-					self.subFlow = MeetingSubFlow.ACTIVATE
-					self._proposal = { type = CharacterProposal.CITY_INSTRUCT, chara = chara }
-					self:UpdateStatus( nextStatus )
-				end } )
-				index = index + 1
-				]]
+				AddSubMenuItem( "Instruct City", CharacterProposal.CITY_INSTRUCT )
 			end
 			
 		elseif self.flow == MeetingFlow.CITY_AFFAIRS_FLOW then
 			if self._city:CanBuild() then			
-				table.insert( menus, { c = index, content = "Build Construction", fn = function()
-					self.subFlow = MeetingSubFlow.ACTIVATE
-					self._proposal = { type = CharacterProposal.CITY_BUILD, chara = chara }
-					self:UpdateStatus( nextStatus )
-				end } )
-				index = index + 1
+				AddSubMenuItem( "Build Construction", CharacterProposal.CITY_BUILD )
 			end
 			if self._city:CanInvest() then
-				table.insert( menus, { c = index, content = "Invest City", fn = function()
-					self.subFlow = MeetingSubFlow.ACTIVATE
-					self._proposal = { type = CharacterProposal.CITY_INVEST, chara = chara }
-					self:UpdateStatus( nextStatus )
-				end } )
+				AddSubMenuItem( "Invest City", CharacterProposal.CITY_INVEST )
 			end
-			index = index + 1
-			table.insert( menus, { c = index, content = "Collect Tax", fn = function()
-				self.subFlow = MeetingSubFlow.ACTIVATE
-				self._proposal = { type = CharacterProposal.CITY_LEVY_TAX, chara = chara }
-				self:UpdateStatus( nextStatus )
-			end } )
-			index = index + 1
+			AddSubMenuItem( "Collect Tax", CharacterProposal.CITY_LEVY_TAX )
 			
 		elseif self.flow == MeetingFlow.HUMAN_RESOURCE_FLOW then
-			table.insert( menus, { c = index, content = "Dispatch Character", fn = function()
-				self.subFlow = MeetingSubFlow.ACTIVATE
-				self._proposal = { type = CharacterProposal.HR_DISPATCH, chara = chara }
-				self:UpdateStatus( nextStatus )
-			end } )		
-			index = index + 1
-			table.insert( menus, { c = index, content = "Call Character", fn = function()
-				self.subFlow = MeetingSubFlow.ACTIVATE
-				self._proposal = { type = CharacterProposal.HR_CALL, chara = chara }
-				self:UpdateStatus( nextStatus )
-			end } )
-			index = index + 1
-			table.insert( menus, { c = index, content = "Hire Character", fn = function()
-				self.subFlow = MeetingSubFlow.ACTIVATE
-				self._proposal = { type = CharacterProposal.HR_HIRE, chara = chara }
-				self:UpdateStatus( nextStatus )
-			end } )
-			index = index + 1
-			table.insert( menus, { c = index, content = "Exile Character", fn = function()
-				self.subFlow = MeetingSubFlow.ACTIVATE
-				self._proposal = { type = CharacterProposal.HR_EXILE, chara = chara }
-				self:UpdateStatus( nextStatus )
-			end } )
-			index = index + 1
-			table.insert( menus, { c = index, content = "Promote Character", fn = function()
-				self.subFlow = MeetingSubFlow.ACTIVATE
-				self._proposal = { type = CharacterProposal.HR_PROMOTE, chara = chara }
-				self:UpdateStatus( nextStatus )
-			end } )
-			index = index + 1
+			AddSubMenuItem( "Dispatch Character", CharacterProposal.HR_DISPATCH )
+			AddSubMenuItem( "Call Character", CharacterProposal.HR_CALL )
+			AddSubMenuItem( "Hire Character", CharacterProposal.HR_HIRE )
+			AddSubMenuItem( "Exile Character", CharacterProposal.HR_EXILE )
+			AddSubMenuItem( "Promote Character", CharacterProposal.HR_PROMOTE )
 			
 		elseif self.flow == MeetingFlow.WAR_PREPAREDNESS_FLOW then		
 			if self._city:CanRecruit() then
-				table.insert( menus, { c = index, content = "Recruit Troop", fn = function()
-					self.subFlow = MeetingSubFlow.ACTIVATE
-					self._proposal = { type = CharacterProposal.RECRUIT_TROOP, chara = chara }
-					self:UpdateStatus( nextStatus )
-				end } )
-				index = index + 1
-			end			
-			table.insert( menus, { c = index, content = "Lead Troop", fn = function()
-				self.subFlow = MeetingSubFlow.ACTIVATE
-				self._proposal = { type = CharacterProposal.LEAD_TROOP, chara = chara }
-				self:UpdateStatus( nextStatus )
-			end } )
-			index = index + 1
+				AddSubMenuItem( "Recruit Troop", CharacterProposal.RECRUIT_TROOP )
+			end	
+			AddSubMenuItem( "Lead Troop", CharacterProposal.LEAD_TROOP )
 			local nonCorpsTroops = self._city:GetNumOfNonCorpsTroop()
 			if self._city:CanEstablishCorps() then
-				table.insert( menus, { c = index, content = "Create Crops (" .. nonCorpsTroops .. " non-corps )", fn = function()
-					self.subFlow = MeetingSubFlow.ACTIVATE
-					self._proposal = { type = CharacterProposal.ESTABLISH_CORPS, chara = chara }
-					self:UpdateStatus( nextStatus )
-				end } )
-				index = index + 1
+				AddSubMenuItem( "Create Crops (" .. nonCorpsTroops .. " non-corps )", CharacterProposal.ESTABLISH_CORPS )
 			end
 			if self._city:CanReinforceCorps() then
-				table.insert( menus, { c = index, content = "Reinforce Crops", fn = function()
-					self.subFlow = MeetingSubFlow.ACTIVATE
-					self._proposal = { type = CharacterProposal.REINFORCE_CORPS, chara = chara }
-					self:UpdateStatus( nextStatus )
-				end } )
-				index = index + 1
+				AddSubMenuItem( "Reinforce Crops", CharacterProposal.REINFORCE_CORPS )
+			end
+			if self._city:CanRegroupCorps() then
+				AddSubMenuItem( "Regroup Crops", CharacterProposal.REGROUP_CORPS )
 			end
 			if self._city:CanDispatchCorps() then
-				table.insert( menus, { c = index, content = "Dispatch Crops", fn = function()
-					self.subFlow = MeetingSubFlow.ACTIVATE
-					self._proposal = { type = CharacterProposal.DISPATCH_CORPS, chara = chara }
-					self:UpdateStatus( nextStatus )
-				end } )
-				index = index + 1
+				AddSubMenuItem( "Dispatch Crops", CharacterProposal.DISPATCH_CORPS )
 			end
 			
 		elseif self.flow == MeetingFlow.MILITARY_FLOW then
 			if #self._city:GetAdjacentBelligerentCityList() > 0 then
-				table.insert( menus, { c = index, content = "Attack City", fn = function()
-					self.subFlow = MeetingSubFlow.ACTIVATE
-					self._proposal = { type = CharacterProposal.ATTACK_CITY, chara = chara }
-					self:UpdateStatus( nextStatus )
-				end } )
-				index = index + 1
+				AddSubMenuItem( "Attack City", CharacterProposal.ATTACK_CITY )
 			end
 			if #self._group:GetReachableBelligerentCityList() > 0 then
-				table.insert( menus, { c = index, content = "Expedition", fn = function()
-					self.subFlow = MeetingSubFlow.ACTIVATE
-					self._proposal = { type = CharacterProposal.EXPEDITION, chara = chara }
-					self:UpdateStatus( nextStatus )
-				end } )
-				index = index + 1
+				AddSubMenuItem( "Expedition", CharacterProposal.EXPEDITION )
 			end
 			if #menus == 0 then
 				print( "No enemy city in range" )
@@ -971,7 +815,7 @@ function Meeting:ProcessSubMenu()
 		return sel
 	end
 	
-	function SelectCityCorps( city )
+	function SelectCityVacancyCorps( city )
 		local sel = nil
 		local menus = {}
 		for k, corps in ipairs( city:GetVacancyCorpsList() ) do
@@ -981,6 +825,18 @@ function Meeting:ProcessSubMenu()
 		end
 		g_menu:PopupMenu( menus, "Choose Corps" )
 		return sel
+	end
+	
+	function SelectCityUnderstaffedCorps( city )
+		local sel = nil
+		local menus = {}
+		for k, corps in ipairs( city:GetVacancyCorpsList() ) do
+			table.insert( menus, { c = k, content = corps.name, data = corps, fn = function()
+				sel = corps
+			end } )
+		end
+		g_menu:PopupMenu( menus, "Choose Corps" )
+		return sel	
 	end
 	
 	function SelectCityNonCorpsTroops( city )
@@ -995,7 +851,7 @@ function Meeting:ProcessSubMenu()
 				end
 			end } )
 		end
-		g_menu:PopupMultiSelMenu( menus, "Choose troops to reinforce corps", 1 )
+		g_menu:PopupMultiSelMenu( menus, "Choose troops to regroup corps", 1 )
 		return sels
 	end
 	
@@ -1308,11 +1164,16 @@ function Meeting:ProcessSubMenu()
 		if SelectTroop then
 			_chara:SubmitProposal( { type = CharacterProposal.RECRUIT_TROOP, city = self._city, troop = SelectTroop, chara = _chara } )
 		end
-	elseif self.subFlow == MeetingSubFlow.SUB_REINFORCE_CORPS then
-		local SelectCorps = SelectCityCorps( self._city )
+	elseif self.subFlow == MeetingSubFlow.SUB_REGROUP_CORPS then
+		local SelectCorps = SelectCityVacancyCorps( self._city )
 		local SelectTroops = SelectCityNonCorpsTroops( self._city )		
-		if SelectCorps and #SelectTroops > 0 then			
-			_chara:SubmitProposal( { type = CharacterProposal.REINFORCE_CORPS, corps = SelectCorps, troops = SelectTroops, chara = _chara } )
+		if SelectCorps and #SelectTroops > 0 then
+			_chara:SubmitProposal( { type = CharacterProposal.REGROUP_CORPS, corps = SelectCorps, troops = SelectTroops, chara = _chara } )
+		end
+	elseif self.subFlow == MeetingSubFlow.SUB_REINFORCE_CORPS then
+		local SelectCorps = SelectCityUnderstaffedCorps( self._city )
+		if SelectCorps and #SelectTroops > 0 then
+			_chara:SubmitProposal( { type = CharacterProposal.REINFORCE_CORPS, corps = SelectCorps, chara = _chara } )
 		end
 	elseif self.subFlow == MeetingSubFlow.SUB_DISPATCH_CORPS then
 		--Select corps
@@ -1350,7 +1211,7 @@ function Meeting:ProcessSubMenu()
 		end
 	
 	--Diplomacy SubMenu
-	elseif self.subFlow == MeetingSubFlow.SUB_START_DIPLOMACY then
+	elseif self.subFlow == MeetingSubFlow.SUB_DIPLOMACY_AFFAIRS then
 		print( "dip sub")
 		local relation = self._group:GetGroupRelation( self._target.id )
 		local SelectMethod = SelectDiplomacyMethod( relation, self._group, self._target )		
@@ -1554,7 +1415,7 @@ function Meeting:HoldGroupMeeting( game, group )
 	if group:GetCapital() and group:GetCapital():GetGroup() == group then
 		--print( "check group", group.name, group:GetCapital().name, #group:GetCapital().charas )
 		group:GetCapital():ForeachChara( function ( chara )	
-			if chara:IsStayCity( group:GetCapital() ) and not chara:IsGroupLeader() and not g_taskMng:IsCharaExecutingTask( chara ) then
+			if chara:IsStayCity( group:GetCapital() ) and not chara:IsGroupLeader() and not g_taskMng:GetTaskByActor( chara ) then
 				-- In further, we should consider about no presence by ill or other reason
 				table.insert( charaList, chara )
 			end
