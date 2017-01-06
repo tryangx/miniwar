@@ -190,8 +190,8 @@ end
 function Combat:Brief()
 	local atkNum, atkTroop, atkMorale, atkFatigue, atkStartNum, atkMaxNum = self:GetSideStatus( CombatSide.ATTACKER )
 	local defNum, defTroop, defMorale, defFatigue, defStartNum, defMaxNum = self:GetSideStatus( CombatSide.DEFENDER )
-	local content = "Combat ";
-	content = content .. " Occured["..( self.location and self.location.name or "" ).."] "
+	local content = "Combat";
+	content = content .. " Occured ["..( self.location and self.location.name or "" ).."] "
 	content = content .. ( self.atkGroup and self.atkGroup.name or "Unkown" ) .. "+" .. atkNum .. "/" .. atkMaxNum .. "("..atkTroop..")"
 	content = content .. " VS "
 	content = content .. ( self.defGroup and self.defGroup.name or "Unkown" ) .. "+" .. defNum .. "/" .. defMaxNum .. "("..defTroop..")" 
@@ -324,7 +324,6 @@ function Combat:Preprocess()
 	if not self.battlefield then return end
 
 	--start time
-	print( self.battlefield, g_season:GetSeasonTable() )
 	self.time = ( self.battlefield.time + g_season:GetSeasonTable().dawnTime ) * 60
 	self.startTime = self.time
 	
@@ -747,8 +746,8 @@ end
 function Combat:CalcDamage( troop, target, weapon, armor, params )
 	local trainingRate = 100
 	if params.isMelee then
-		local traingTag1 = troop:GetTag( TroopTag.TRAINING )
-		local traingTag2 = target:GetTag( TroopTag.TRAINING )
+		local traingTag1 = troop:GetAsset( TroopTag.TRAINING )
+		local traingTag2 = target:GetAsset( TroopTag.TRAINING )
 		local t1 = traingTag1 and traingTag1.value or 0
 		local t2 = traingTag1 and traingTag1.value or 0
 		local range = Random_SyncGetRange( 1, math.abs( t1 - t2 ), "Random Damage BonusRate" ) 
@@ -898,7 +897,7 @@ end
 
 -- 1. Shoot Round   -- Actor[ All archer ]  Target [ Charge Line / Front Line / Back Line ]
 function Combat:Shoot()
-	local lineTroops = MathUtility_Shuffle( self.troops, g_globalRandomizer )
+	local lineTroops = MathUtility_Shuffle( self.troops, g_syncRandomizer )
 	for k, troop in ipairs( lineTroops ) do
 		if troop:IsInCombat() and troop:IsSiegeWeapon() and troop:CanFire() then
 			local target = self:FindTarget( troop )
@@ -911,7 +910,7 @@ end
 
 function Combat:Batter()
 	if not self:HasStatus( CombatStatus.GATE_BROKEN ) then
-		local lineTroops = MathUtility_Shuffle( self.frontLine, g_globalRandomizer )
+		local lineTroops = MathUtility_Shuffle( self.frontLine, g_syncRandomizer )
 		for k, troop in ipairs( lineTroops ) do			
 			if troop:IsInCombat() and troop:IsSiegeWeapon() and troop:CanSiegeAttack() then
 				local target = self:FindDefenceTarget( troop, { isGate = true } )
@@ -926,7 +925,7 @@ function Combat:Batter()
 		end
 	end
 	if not self:HasStatus( CombatStatus.WALL_BROKEN ) or not self:HasStatus( CombatStatus.TOWER_BROKEN ) then
-		local lineTroops = MathUtility_Shuffle( self.backLine, g_globalRandomizer )
+		local lineTroops = MathUtility_Shuffle( self.backLine, g_syncRandomizer )
 		for k, troop in ipairs( lineTroops ) do
 			if troop:IsInCombat() and troop:CanSiegeAttack() then
 				local target = nil
@@ -961,7 +960,7 @@ end
 
 -- 2. Charge Round  -- Actor[ All Cavalry ] Target [ Charge Line / Front Line / Back ]
 function Combat:Charge()
-	local lineTroops = MathUtility_Shuffle( self.chargeLine, g_globalRandomizer )
+	local lineTroops = MathUtility_Shuffle( self.chargeLine, g_syncRandomizer )
 	for k, troop in ipairs( lineTroops ) do
 		if troop:IsInCombat() and troop:CanCharge() then
 			local target = self:FindTarget( troop )
@@ -1007,7 +1006,7 @@ end
 
 -- 4. Fight Round   -- Actor[ All footman / All cavalry / All archer ] Target [ Charge Line / Front Line / Back Line ]
 function Combat:Fight()
-	local lineTroops = MathUtility_Shuffle( self.meleeLine, g_globalRandomizer )
+	local lineTroops = MathUtility_Shuffle( self.meleeLine, g_syncRandomizer )
 	for k, troop in ipairs( lineTroops ) do
 		if troop:IsInCombat() then
 			local target = self:FindTarget( troop )
@@ -1020,7 +1019,7 @@ end
 
 -- 5. Pursue Round
 function Combat:Pursue()
-	local lineTroops = MathUtility_Shuffle( self.meleeLine, g_globalRandomizer )
+	local lineTroops = MathUtility_Shuffle( self.meleeLine, g_syncRandomizer )
 	for k, troop in ipairs( lineTroops ) do				
 		if troop.table.category == TroopCategory.CAVALRY and troop:IsInCombat() and not troop:IsFled() then			
 			local target = self:FindFledTarget( troop )			

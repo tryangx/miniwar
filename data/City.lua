@@ -27,6 +27,8 @@ function City:Load( data )
 	
 	self.coordinate    = MathUtility_Copy( data.coordinate )
 
+	self.level       = data.level or 1
+	
 	self.size        = CitySize[data.size] or CitySize.TOWN
 
 	self.tags        = MathUtility_Copy( data.tags )
@@ -34,35 +36,14 @@ function City:Load( data )
 	self.money       = data.money or 0
 	
 	self.food        = data.food or 0
-	
-	self.population  = data.population or ""
-	
-	--Agriculture Surplus -> Growth
-	--Economy Surplus     -> Culture & Tech
-	--Production Surplus  -> 	
-	
-	--Determines supply
-	--Supply use to feed troops and people
-	--First, supply provide to the troops, not enough part will cause troop get a debuff ( debuff will increase during starvation, troop will disapear when it's reach the line )
-	--Second, left supply provides to people, it will cause buff or debuff which will lead population increase or decrease.
-	self.agriculture    = data.agriculture or 0
-	
-	--Determine income every turn
-	self.economy        = data.economy or 0
-	
-	--Determine how many turn cost to build construction
-	self.production     = data.production or 0
-	
+
 	-----------------------------------
 	-- extension
 	
 	--Culture circle
 	--More deep effects
 	self.cultrueCircle = data.cultureCircle or 0
-	
-	--Determine ???
-	self.security    = data.security or 0
-	
+		
 	--political point
 	self.politicalPoint = data.politicalPoint or 0
 	
@@ -84,9 +65,6 @@ function City:Load( data )
 		
 	--Corps
 	self.corps       = MathUtility_Copy( data.corps )
-	
-	--Resource around
-	self.resources   = MathUtility_Copy( data.resources )
 
 	--Control Plots
 	self.plots       = MathUtility_Copy( data.plots )
@@ -118,18 +96,14 @@ function City:SaveData()
 	Data_OutputValue( "name", self )
 	
 	Data_OutputTable( "coordinate", self )
-	Data_OutputValue( "population", self )
-	
+		
+	Data_OutputValue( "size", self )
 	Data_OutputValue( "money", self )
 	Data_OutputValue( "food", self )
 	
-	Data_OutputValue( "size", self )	
-	Data_OutputValue( "agriculture", self )
-	Data_OutputValue( "economy", self )
-	Data_OutputValue( "production", self )
-	
+	Data_OutputValue( "level", self )
+		
 	Data_OutputValue( "cultrueCircle", self )
-	Data_OutputValue( "security", self )
 	Data_OutputValue( "politicalPoint", self )
 	
 	Data_OutputValue( "instruction", self )
@@ -143,7 +117,6 @@ function City:SaveData()
 	Data_OutputTable( "troops", self, "id" )
 	Data_OutputTable( "corps", self, "id" )
 	Data_OutputTable( "constrs", self, "id" )
-	Data_OutputTable( "resources", self, "id" )
 	
 	Data_IncIndent( -1 )
 	Data_OutputEnd()
@@ -189,7 +162,7 @@ function City:ConvertID2Data()
 	for k, id in ipairs( self.troops ) do
 		local troop = g_troopDataMng:GetData( id )
 		if troop.encampment == 0 then
-			print( "Add missing encampment data for troop" )
+			--print( "Add missing encampment data for troop" )
 			troop.location   = self.id
 			troop.encampment = self.id
 		end
@@ -211,61 +184,61 @@ function City:ConvertID2Data()
 			end
 		end
 	end
-	
-	local resources = {}
-	for k, res in ipairs( self.resources ) do
-		local res = g_resourceTableMng:GetData( res )
-		table.insert( resources, res )
-	end
-	self.resources = resources
-	
-	self:InitPlots( self.plots, true )
-	
-	--[[
-	local resources = {}
-	for k, id in ipairs( self.resources ) do
-		table.insert( resources, g_constrTableMng:GetData( id ) )
-	end
-	self.resources = resources
-	]]
+
+	self:SetPlots( self.plots, true )
 end
 
-function City:UpdatePlots()
-	self.maxAgriculture = CityParams[self.size].STANDARD_AGRICULTURE
-	self.maxEconomy     = CityParams[self.size].STANDARD_ECONOMY
-	self.maxProduction  = CityParams[self.size].STANDARD_PRODUCTION
+function City:UpdatePlots( allocate )
+	self.agriculture    = 0
+	self.economy        = 0
+	self.production     = 0
+	self.maxAgriculture = self.agriculture
+	self.maxEconomy     = self.economy
+	self.maxProduction  = self.production
+	self.livingspace    = 0
+	self.population     = 0
+	self.security       = 0
+	local plotDesc = ""
 	local plots = {}
 	for k, pos in pairs( self.plots ) do
 		local plot = g_plotMap:GetPlot( pos.x, pos.y )
-		table.insert( plots, plot )
-		--calculate real arg/eco/prod
-		if plot and plot.table then
-			self.maxAgriculture = self.maxAgriculture + plot.table:GetTraitValue( PlotTraitType.AGRICULTURE )
-			self.maxEconomy     = self.maxEconomy + plot.table:GetTraitValue( PlotTraitType.ECONOMIC )
-			self.maxProduction  = self.maxProduction + plot.table:GetTraitValue( PlotTraitType.PRODUCTION )
+		if allocate then
+			table.insert( plots, plot )
+		end
+		if plot then
+			plotDesc = plotDesc .. ( plot.table and plot.table.name or "--" ) .. ","
+			self.maxAgriculture = self.maxAgriculture + plot:GetBonusValue( PlotResourceBonusType.AGRICULTURE )
+			self.maxEconomy     = self.maxEconomy     + plot:GetBonusValue( PlotResourceBonusType.ECONOMY )
+			self.maxProduction  = self.maxProduction  + plot:GetBonusValue( PlotResourceBonusType.PRODUCTION )
+			self.livingspace    = self.livingspace    + plot:GetBonusValue( PlotResourceBonusType.LIVING_SPACE )
+			
+			self.agriculture    = self.agriculture    + plot:GetAsset( PlotAssetType.AGRICULTURE )
+			self.economy        = self.economy        + plot:GetAsset( PlotAssetType.ECONOMY )
+			self.production     = self.production     + plot:GetAsset( PlotAssetType.PRODUCTION )			
+			self.population     = self.population     + plot:GetAsset( PlotAssetType.POPULATION )
+			self.security       = self.security       + plot:GetAsset( PlotAssetType.SECURITY )
 		end
 	end
-	if typeof( self.agriculture ) == "string" then
-		local str = string.gsub( self.agriculture, "%%", "" )
-		self.agriculture = math.ceil( self.maxAgriculture * tonumber( str ) * 0.01 )
-	end
-	if typeof( self.economy ) == "string" then 
-		local str = string.gsub( self.economy, "%%", "" )
-		self.economy = math.ceil( self.maxEconomy * tonumber( str ) * 0.01 )
-	end
-	if typeof( self.production ) == "string" then 
-		local str = string.gsub( self.production, "%%", "" )
-		self.production = math.ceil( self.maxProduction * tonumber( str ) * 0.01 )
-	end
-	self.plots = plots
-	print( self.name .. " plot="..#self.plots.." agr="..self.maxAgriculture.. " eco="..self.maxEconomy.. " pro="..self.maxProduction )
+	--use average evaluation
+	self.security = math.floor( self.security / #self.plots )
+	
+	print( self.name .. " plot="..#self.plots .. " lv=" .. self.level )
+	--print( plotDesc )
+	print( "population=" .. Helper_CreateNumberDesc( self.population ) .. "/" .. Helper_CreateNumberDesc( CalcPlotPopulation( self.livingspace ) ) .. "("..self.livingspace..")" )	
+	print( "agr="..self.agriculture.."/"..self.maxAgriculture.." Supply="..Helper_CreateNumberDesc( CalcPlotSupply( self.agriculture ) ) .. "/" .. Helper_CreateNumberDesc( CalcPlotSupply( self.maxAgriculture ) ) .. " Surplus="..Helper_CreateNumberDesc( CalcPlotSupply( self.agriculture ) - self.population ).."/"..Helper_CreateNumberDesc( CalcPlotSupply( self.maxAgriculture ) - CalcPlotPopulation( self.livingspace ) ) )
+	print( "eco="..self.economy.."/"..self.maxEconomy.. " pro="..self.production.."/"..self.maxProduction .. " sec=" ..self.security )	
+	print( "military=" .. self:GetMilitaryPower() .. "/" .. self:GetRequiredMilitaryPower() )
+	--InputUtility_Pause( "" )
+	if allocate then
+		self.plots = plots
+	end	
 end
 
-function City:InitPlots( plotDatas, reset )
+function City:SetPlots( plotDatas, reset )
 	self.plots = plotDatas
 	
 	if reset then
-		self:UpdatePlots()
+		self:UpdatePlots( true )
 	end
 end
 
@@ -301,8 +274,8 @@ function City:IsBattleFront()
 	return self:GetTag( CityTag.BATTLEFRONT )
 end
 
-function City:IsBorder()
-	return self:GetTag( CityTag.BORDER ) ~= nil
+function City:IsFrontier()
+	return self:GetTag( CityTag.FRONTIER ) ~= nil
 end
 
 function City:HasChara( chara )
@@ -421,13 +394,18 @@ function City:GetNumOfIdleCorps()
 end
 
 function City:GetNumOfVacancyCorps()
-	return Helper_ListIf( self.corps, function ( corps )
+	return Helper_CountIf( self.corps, function ( corps )
 		return corps:IsStayCity( self ) and corps:GetVacancyNumber() > 0
 	end )
 end
 function City:GetVacancyCorpsList()
 	return Helper_ListIf( self.corps, function ( corps )
 		return corps:IsStayCity( self ) and corps:GetVacancyNumber() > 0
+	end )
+end
+function City:GetUnTrainedCorpsList()
+	return Helper_ListIf( self.corps, function ( corps )
+		return corps:IsStayCity( self ) and corps:IsUntrained()
 	end )
 end
 function City:GetNumOfUnderstaffedCorps()
@@ -440,7 +418,21 @@ function City:GetUnderstaffedCorpsList()
 		return corps:IsStayCity( self ) and corps:IsUnderstaffed()
 	end )
 end
-
+function City:GetNumOfUnderstaffedCorpsList()
+	return Helper_CountIf( self.corps, function ( corps )
+		return corps:IsStayCity( self ) and corps:IsUnderstaffed()
+	end )
+end
+function City:GetUntrainedCorpsList()
+	return Helper_ListIf( self.corps, function ( corps )
+		return corps:IsStayCity( self ) and corps:IsUntrained()
+	end )
+end
+function City:GetNumOfUntrainedCorpsList()
+	return Helper_CountIf( self.corps, function ( corps )
+		return corps:IsStayCity( self ) and corps:IsUntrained()
+	end )
+end
 function City:GetNumOfNonLeaderTroop()
 	return Helper_CountIf( self.troops, function ( troop )	
 		return ( not troop:GetCorps() or troop:GetCorps():IsStayCity( self ) ) and not troop:GetLeader()
@@ -486,42 +478,38 @@ function City:GetMilitaryPower()
 end
 
 function City:GetMinPopulation()
-	return CityParams[self.size].MIN_POPULATION
+	return CalcPlotPopulation( self.level - 1 )
 end
 
-function City:GetFormulaPopuplation()
-	return self.population > 0 and self.population or CityParams[self.size].MAX_POPULATION
+function City:GetRequiredMilitaryPower()
+	local plotNumber = #self.plots
+	if self:IsBattleFront() then
+		return plotNumber * CityParams.MILITARY.BATTLEFRONT_MILITARYPOWER_PER_PLOT
+	elseif self:IsFrontier() then
+		return plotNumber * CityParams.MILITARY.FRONTIER_MILITARYPOWER_PER_PLOT
+	elseif self:GetGroup() and self == self:GetGroup():GetCapital() then
+		return plotNumber * CityParams.MILITARY.SECURITY_MILITARYPOWER_PER_PLOT
+	end
+	return plotNumber * CityParams.MILITARY.SAFETY_MILITARYPOWER_PER_PLOT
 end
 
-function City:GetSafetyMilitaryPower()
-	local reqPower = self:GetFormulaPopuplation() * CityParams[self.size].SAFETY_MILITARY_MODULUS
-	return reqPower
-end
-
-function City:GetSecurityMilitaryPower()
-	local reqPower = self:GetFormulaPopuplation() * CityParams[self.size].SECURITY_MILITARY_MODULUS	
-	return reqPower
-end
-
-function City:GetBattlefrontMilitaryPower()
-	local reqPower = self:GetFormulaPopuplation() * CityParams[self.size].BATTLEFRONT_MILITARY_MODULUS
-	return reqPower
-end
-
-function City:GetSupplyModulus()
-	local standard = CityParams.SUPPLY.SUPPLY_PER_MODULUS_UNIT
+function City:GetSupplyBonus()
+	local standard = 0
 	local modulus = 0
 	local modulusNum = 0
-	for k, resource in ipairs( self.resources ) do
-		if resource.category == ResourceCategory.BONUS then
-			local index = MathUtility_IndexOf( resource.bonuses, "SUPPLY_FOOD", "type" )
-			if index then				
-				standard = standard + resource.bonuses[index].value
-			end
-			local index = MathUtility_IndexOf( resource.bonuses, "SUPPLY_MODULUS", "type" )
-			if index then				
-				modulus = modulus + resource.bonuses[index].value
-				modulusNum = modulusNum + 1
+	for k, plot in ipairs( self.plots ) do
+		local resource = plot:GetResource()
+		if resource then			
+			if resource.category == ResourceCategory.BONUS then
+				local index = MathUtility_IndexOf( resource.bonuses, "SUPPLY_FOOD", "type" )
+				if index then				
+					standard = standard + resource.bonuses[index].value
+				end
+				local index = MathUtility_IndexOf( resource.bonuses, "SUPPLY_MODULUS", "type" )
+				if index then				
+					modulus = modulus + resource.bonuses[index].value
+					modulusNum = modulusNum + 1
+				end
 			end
 		end
 	end
@@ -530,20 +518,28 @@ function City:GetSupplyModulus()
 	else
 		modulus = modulus / modulusNum
 	end
+	return standard, modulus
 	--print( "supply=", standard, modulus, modulusNum )
-	return math.floor( standard * modulus )
+	--return math.floor( standard * modulus )
 end
 
-function City:GetHarvestGrain()
-	return math.ceil( self.agriculture * self:GetSupplyModulus() + CityParams.SUPPLY.SUPPLY_POPULATION_MODULUS * self.population )
+function City:GetHarvestFood()
+	local output = self:GetSupply() * CityParams.HARVEST.HARVEST_CYCLE_TIME
+	return math.max( output, 0 )
 end
 
 function City:GetSupply()
-	return math.ceil( self.agriculture * self:GetSupplyModulus() + CityParams.SUPPLY.SUPPLY_POPULATION_MODULUS * self.population ) - self.population
+	local bonus, modulus = self:GetSupplyBonus()
+	local supply = CalcPlotSupply( ( self.agriculture + bonus ) * modulus )	
+	local ret = supply - self.population
+	--InputUtility_Pause( self.name, "output=" .. supply, "popu=".. self.population, " surplus="..ret)	
+	return ret
 end
 
 function City:GetMaxSupply()
-	return math.ceil( self.maxAgriculture * self:GetSupplyModulus() + CityParams.SUPPLY.SUPPLY_POPULATION_MODULUS * self.population ) - self.population
+	local bonus, modulus = self:GetSupplyBonus()
+	local supply = CalcPlotSupply( ( self.agriculture + bonus ) * modulus )
+	return supply - self.population
 end
 
 function City:GetIncomeModulus()
@@ -603,15 +599,15 @@ function City:GetRecruitList()
 end
 
 function City:GetTag( tagType )
-	return Helper_GetTag( self.tags, tagType )
+	return Helper_GetVarb( self.tags, tagType )
 end
 
 function City:AppendTag( tagType, value, range )
-	Helper_AppendTag( self.tags, tagType, value, range )
+	Helper_AppendVarb( self.tags, tagType, value, range )
 end
 
 function City:RemoveTag( tagType, value )
-	Helper_RemoveTag( self.tags, tagType, value )
+	Helper_RemoveVarb( self.tags, tagType, value )
 end
 
 ------------------------------------------
@@ -630,7 +626,15 @@ end
 
 -- Check city is not building any construction or recruit any troop
 function City:CanInvest()
-	return not self:IsInSiege() and self:GetGroup().money >= QueryInvestNeedMoney( self )
+	return not self:IsInSiege() and self:GetGroup().money >= QueryInvestNeedMoney( self ) and self.economy < self.maxEconomy * CityParams.INVEST.NEED_INVEST_LIMIT_RATE
+end
+
+function City:CanFarm()
+	return not self:IsInSiege() and self:GetGroup().money >= QueryFarmNeedMoney( self ) and self.agriculture < self.maxAgriculture * CityParams.FARM.NEED_FARM_LIMIT_RATE
+end
+
+function City:CanPatrol()
+	return not self:IsInSiege() and self.security < CityParams.PLOT.SAFETY_PLOT_SECURITY
 end
 
 function City:CanLevyTax()
@@ -688,7 +692,11 @@ function City:CanRegroupCorps()
 end
 
 function City:CanReinforceCorps()
-	return self:GetUnderstaffedCorpsList() > 0
+	return self:GetNumOfUnderstaffedCorpsList() > 0
+end
+
+function City:CanTrainCorps()
+	return self:GetNumOfUntrainedCorpsList() > 0
 end
 
 function City:CanDispatchCorps()
@@ -746,15 +754,6 @@ function City:DumpAdjacentDetail( indent )
 	print( content )
 end
 
-function City:DumpResourceDetail( indent )
-	if #self.resources == 0 then return end
-	local content = indent .. "    "
-	for k, resource in ipairs( self.resources ) do
-		content = content .. ( k > 1 and "," or "" ) .. resource.name
-	end
-	print( content )
-end
-
 function City:DumpPlotsDetail( indent )
 	if #self.plots == 0 then return end
 	local content = indent .. "    "
@@ -786,18 +785,17 @@ function City:Dump( indent )
 	print( indent .. "Population", self.population )	
 	print( indent .. 'Agri+Ecom+Prod ', self.agriculture .. "/" .. self.maxAgriculture .. " " .. self.economy .. "/" .. self.maxEconomy .. " " .. self.production .. "/" .. self.maxProduction )
 	print( indent .. 'Secu / Popu    ', self.security .. ' / ' .. self.population )
-	print( indent .. 'Supply/Harvest ', self:GetSupply() .. ' / ' .. self:GetHarvestGrain() )
-	print( indent .. 'Money / Food   ', self.money .. ' / ' .. self.food )
+	print( indent .. 'Supply/Harvest ', self:GetSupply() .. ' / ' .. self:GetHarvestFood() )
+	print( indent .. 'Money / Food   ', self.money .. ' / ' .. self.food .. "+" .. ( self:GetConsumeFood() > 0 and math.floor( self.food / self:GetConsumeFood() ) or "*" ) )
 	print( indent .. 'Leader         ', ( self.leader and self.leader.name or "" ) )
 	print( indent .. 'Charas         ', #self.charas )
+	print( indent .. 'Power/Req Pow  ', self:GetMilitaryPower() .. "/" .. self:GetRequiredMilitaryPower() )
 	self:DumpCharaDetail( indent )
 	print( indent .. 'Troops+Corps   ', #self.troops .. '+' .. #self.corps )
 	self:DumpTroopDetail( indent )
 	self:DumpCorpsDetail( indent )
 	print( indent .. 'Construction   ', #self.constrs )
 	self:DumpConstructionDetail( indent )
-	print( indent .. 'Resources      ', #self.resources )	
-	self:DumpResourceDetail( indent )
 	print( indent .. 'Plots          ', #self.plots )	
 	self:DumpPlotsDetail( indent )
 	print( indent .. 'Tags           ', #self.tags )
@@ -858,43 +856,93 @@ function City:EstablishCorps( corps )
 	end
 end
 
-function City:Invest()
-	Debug_Normal( NameIDToString( self ) .. " develop by investment" )
-	local agrDelta = CalcInvestBonusValue( self.agriculture, self.maxAgriculture )
-	local ecoDelta = CalcInvestBonusValue( self.economy, self.maxEconomy )
-	local proDelta = CalcInvestBonusValue( self.production, self.maxProduction )
-	--Debug_Normal( self.agriculture .. "/" .. self.maxAgriculture .. " +" .. agrDelta )
-	--Debug_Normal( self.economy .. "/" .. self.maxEconomy .. " +" .. ecoDelta )
-	--Debug_Normal( self.production .. "/" .. self.maxProduction .. " +" .. proDelta )
-	self.agriculture = MathUtility_Clamp( self.agriculture + agrDelta, 0, self.maxAgriculture )
-	self.economy = MathUtility_Clamp( self.economy + ecoDelta, 0, self.maxEconomy )
-	self.production = MathUtility_Clamp( self.production + proDelta, 0, self.maxProduction )	
+function City:Patrol()
+	local oldSecurity = self.security
+	self.security = 0
+	for k, plot in ipairs( self.plots ) do
+		local current = plot:GetAsset( PlotAssetType.SECURITY )
+		local delta   = g_syncRandomizer:GetInt( CityParams.PATROL.MINIMUM_EFFECT, CityParams.PATROL.MAXIMUM_EFFECT )
+		local final   = MathUtility_Clamp( current + delta, 0, CityParams.PLOT.MAX_PLOT_SECURITY )
+		plot:SetAsset( PlotAssetType.SECURITY, final )
+		self.security = self.security + final
+	end
+	self.security = math.floor( self.security / #self.plots )
+	Debug_Normal( "Patrol result security=" .. oldSecurity .. "->" .. self.security )
+end
+
+function City:Farm()
+	local oldValue = self.agriculture
+	local increase = 0
+	self.agriculture = 0
+	for k, plot in ipairs( self.plots ) do
+		local current = plot:GetAsset( PlotAssetType.AGRICULTURE )
+		local delta   = CalcFarmBonusValue( current, plot.maxAgriculture )
+		local final   = MathUtility_Clamp( current + delta, 0, plot.maxAgriculture )
+		plot:SetAsset( PlotAssetType.AGRICULTURE, final )
+		self.agriculture = self.agriculture + final
+		increase = increase + delta
+	end
+	Debug_Normal( "Farm result agriculture=" .. oldValue .. "->" .. self.agriculture .. "/" .. self.maxAgriculture .. " +" .. increase )
+end
+
+function City:Invest()	
+	local oldValue = self.economy
+	local increase = 0
+	self.economy = 0
+	for k, plot in ipairs( self.plots ) do
+		local current = plot:GetAsset( PlotAssetType.ECONOMY )
+		local delta   = CalcInvestBonusValue( current, plot.maxEconomy )
+		local final   = MathUtility_Clamp( current + delta, 0, plot.maxEconomy )
+		plot:SetAsset( PlotAssetType.ECONOMY, final )
+		self.economy = self.economy + final
+		increase = increase + delta
+	end
+	Debug_Normal( "Farm result economy=" .. oldValue .. "->" .. self.economy .. "/" .. self.maxEconomy .. " +" .. increase )
+	
+	--local proDelta = CalcInvestBonusValue( self.production, self.maxProduction )
+	--self.production = MathUtility_Clamp( self.production + proDelta, 0, self.maxProduction )	
+	--Debug_Normal( "Invest result economy=" .. self.production .. "/" .. self.maxProduction .. " +" .. proDelta )
 end
 
 function City:Harvest()
 	--Harvest
-	local harvest = self:GetSupply()
-	if harvest > 0 then
-		self.food = self.food + harvest
-		if not self:GetGroup() then
-			if self.food > self.population then
-				self.food = self.population
-			end
-		end
-		print( "Harves food", harvest, self.food, self.name )
+	local oldValue = self.food
+	local harvest = self:GetHarvestFood()
+	self.food = self.food + harvest
+	if not self:GetGroup() then
+		self.food = MathUtility_Clamp( self.food, 0, self.population * CityParams.FOOD.NONGROUP_CITY_FOODRESERVE_TIMES )
 	end
+	--print( self.name, "Harvest food", oldValue .. "+" .. harvest .. "->" .. self.food )
+end
+
+function City:GetConsumeFood()
+	return self:GetMilitaryPower()
 end
 
 function City:ConsumeFood()
 	--Consume
-	local foodConsume = self:GetMilitaryPower()	
-	self.food = self.food - foodConsume
-	print( "Consume food", foodConsume, self.food, self.name )
+	local consume = self:GetConsumeFood()
+	--print( self.name, "Consume food", self.food .. "-" .. consume .. "->" .. ( self.food - consume ) )
+	self.food = self.food - consume	
 	if self.food < 0 then
-		self:AppendTag( CityTag.STARVATION, 1, CityParams.MAX_TRAIT_VALUE["STARVATION"] )
+		self:AppendTag( CityTag.STARVATION, 1, CityParams.MAX_TAG_VALUE["STARVATION"] )
 	else
-		self:RemoveTag( CityTag.STARVATION, CityParams.MAX_TRAIT_VALUE["STARVATION"] )
+		self:RemoveTag( CityTag.STARVATION, CityParams.MAX_TAG_VALUE["STARVATION"] )
 	end
+	--Corrupt
+	if self.food > 0 then
+		local corruption = math.ceil( self.food * CityParams.FOOD.FOOD_CORRUPTION_MODULUS )		
+		--print( self.name, "Food Corrupt", self.food .."-" .. corruption .."->"..( self.food - corruption) )
+		self.food = self.food - corruption
+	end
+end
+
+function City:GetTroopSalary()
+
+end
+
+function City:Maintain()
+	local maintainTroop = self:GetTroopSalary()
 end
 
 function City:LevyTax( income )
@@ -903,7 +951,7 @@ function City:LevyTax( income )
 		self.money = self.money + reserveMoney		
 		local turnOverMoney = income - reserveMoney
 		if turnOverMoney then
-			if self:GetGroup():GetCapital() == self then
+			if self:GetGroup() and self:GetGroup():GetCapital() == self then
 				self:GetGroup():ReceiveTax( turnOverMoney, self )
 			else
 				g_movingActorMng:AddMovingActor( MovingActorType.CASH_TRUCK, { number = turnOverMoney, group = self:GetGroup(), location = self } )
@@ -960,9 +1008,7 @@ function City:UpdateDynamicData()
 	self._militaryPower = -1
 end
 
-function City:Update()	
-	--InputUtility_Pause( "update city=" .. self.name .. " " .. #self.tags )
-
+function City:Update()
 	--Starvation	
 	local tag = self:GetTag( CityTag.STARVATION )
 	if tag and tag.value > 1 then
@@ -979,10 +1025,10 @@ function City:Update()
 		print( NameIDToString( self ) .. " in starvation, "..dead.." people die, " .. refugee .. " become refugee, left " .. self.population )
 	end
 
+	--Harvest
 	if Helper_IsHarvestTime() then
 		self:Harvest()
 	end
-	self:ConsumeFood()
 	
 	--Levy Tax
 	if Helper_IsLevyTaxTime() then
@@ -990,16 +1036,22 @@ function City:Update()
 		self:LevyTax( income )
 	end
 	
+	self:ConsumeFood()
+	
+	self:Maintain()
+	
 	--Adjacent	
 	for k, otherCity in ipairs( self.adjacentCities ) do		
 		if self._group and otherCity._group ~= self._group then
-			self:AppendTag( CityTag.BORDER, 1, CityParams.MAX_TRAIT_VALUE["BORDER"] )
+			self:AppendTag( CityTag.FRONTIER, 1, CityParams.MAX_TAG_VALUE["FRONTIER"] )
 			if otherCity._group and self._group:IsHostility( otherCity._group ) then
-				self:AppendTag( CityTag.BATTLEFRONT, 1, CityParams.MAX_TRAIT_VALUE["BATTLEFRONT"] )
+				self:AppendTag( CityTag.BATTLEFRONT, 1, CityParams.MAX_TAG_VALUE["BATTLEFRONT"] )
 			end
 		end
 	end
 	
 	--Temp data
 	self:UpdateDynamicData()
+	
+	--InputUtility_Pause( "update city=" .. self.name .. " " .. #self.tags )
 end

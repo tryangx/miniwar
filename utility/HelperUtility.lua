@@ -10,8 +10,8 @@ function Random_SyncGetRange( min, max, desc )
 	return value
 end
 
-function Random_LocalGetRange( min, max, desc )
-	local value = g_globalRandomizer:GetInt( min, max )
+function Random_SyncGetRange( min, max, desc )
+	local value = g_syncRandomizer:GetInt( min, max )
 	if desc then 
 		Debug_Log( "Gen Random ["..value.."] in ["..min..","..max.."] : " .. desc )
 	end
@@ -31,7 +31,54 @@ function NameIDToString( data )
 	return content
 end
 
+function Helper_CreateNumberDesc( number, digit )
+	if digit == 2 then
+		digit = 100
+	else
+		digit = 10
+	end
+	local eng_units= 
+	{
+		{ range = 1000000, unit = "M", },
+		{ range = 1000, unit = "K", },
+	}
+	local chi_units = 
+	{
+		{ range = 1000000, unit = "°ÙÍò", },
+		{ range = 10000, unit = "Íò", },
+	}
+	local items = chi_units--eng_units
+	for k, v in ipairs( items ) do
+		if math.abs( number ) > v.range then
+			local integer = number * digit / v.range
+			local ret = math.floor( integer / digit ) .. "." .. ( math.floor( integer ) % digit ) .. v.unit
+			--print( number .. "->" .. ret )
+			return ret
+		end
+	end
+	return number
+end
+
 ---------------------------------------------
+
+function Helper_SumIf( datas, itemName, itemValue, countName, itemNameEnum )
+	local ret = 0
+	if itemNameEnum then
+		for k, data in ipairs( datas ) do					
+			if itemNameEnum[data[itemName]] == itemValue then
+				--print( itemName, data[itemName], itemNameEnum[data[itemName]], itemValue )
+				ret = ret + data[countName]
+			end
+		end
+	else
+		for k, data in ipairs( datas ) do		
+			if data[itemName] == itemValue then
+				ret = ret + data[countName]
+			end
+		end
+	end
+	return ret
+end
 
 function Helper_CountIf( datas, condition )
 	local number = 0
@@ -93,40 +140,41 @@ end
 function Helper_GetRelation( relations, relationType, id1, id2 )
 	if not relations then return nil end
 	for k, relation in ipairs( relations ) do
-		if relation.type == relationType and ( relation.id == 0 or relation.id == id1 or trait.id == id2 ) then
+		if relation.type == relationType and ( relation.id == 0 or relation.id == id1 or relation.id == id2 ) then
 			return tag
 		end
 	end
 	return nil
 end
 
-function Helper_GetTag( tags, tagType )
-	if not tags then return nil end
-	for k, tag in ipairs( tags ) do		
-		if tag.type == tagType then
-			return tag
+function Helper_GetVarb( varbs, varbType )
+	if not varbs then return nil end
+	for k, varb in ipairs( varbs ) do		
+		if varb.type == varbType then
+			return varb
 		end
 	end
 	return nil
 end
-function Helper_AppendTag( tags, tagType, value, range )
-	for k, tag in ipairs( tags ) do
-		if tag.type == tagType then
-			if not range or tag.value <= range - value then
-				tag.value = tag.value + value
+function Helper_AppendVarb( varbs, varbType, value, maximum )
+	for k, varb in ipairs( varbs ) do
+		if varb.type == varbType then
+			if not maximum or varb.value <= maximum - value then
+				varb.value = varb.value + value
 			end
 			return
 		end
 	end
-	table.insert( tags, { type = tagType, value = value } )
+	table.insert( varbs, { type = varbType, value = value } )
 end
-function Helper_RemoveTag( tags, tagType, value )
-	for k, tag in ipairs( tags ) do
-		if tag.type == tagType then
-			if tag.value and tag.value > value then
-				tag.value = tag.value - value
+function Helper_RemoveVarb( varbs, varbType, value, minimum )
+	minimum = minimum or 0
+	for k, varb in ipairs( varbs ) do
+		if varb.type == varbType then
+			if varb.value and varb.value > value + minimum then
+				varb.value = varb.value - value
 			else
-				table.remove( tags, k )
+				table.remove( varbs, k )
 			end
 			return
 		end
@@ -136,11 +184,11 @@ end
 ------------------------------------------
 -- 
 function Helper_IsHarvestTime()
-	return MathUtility_IndexOf( CityParams.HARVEST_TIME, g_calendar:GetMonth() ) and g_calendar:GetDay() <= 1
+	return MathUtility_IndexOf( CityParams.HARVEST.HARVEST_TIME, g_calendar:GetMonth() ) and g_calendar:GetDay() <= 1
 end
 
 function Helper_IsLevyTaxTime()
-	return MathUtility_IndexOf( CityParams.LEVY_TAX_TIME, g_calendar:GetMonth() ) and g_calendar:GetDay() <= 1
+	return MathUtility_IndexOf( CityParams.LEVY_TAX.LEVY_TAX_TIME, g_calendar:GetMonth() ) and g_calendar:GetDay() <= 1
 end
 
 function Helper_IsTurnOverTaxTime()
@@ -150,21 +198,45 @@ end
 ------------------------------------------
 -- String
 
-function Helper_Abbreviate( str, length )
+function Helper_TrimString( str, finalLength, curLength )
+	local ret
+	local length = #str
+	if finalLength then
+		if length < finalLength then
+			ret = str
+			for k = 1, finalLength - length do
+				ret = ret .. " "
+			end
+		else
+			ret = string.sub( str, 1, finalLength )
+		end
+	elseif cutLength then
+		if curLength >= length then
+			ret = ""
+		else
+			ret = string.sub( str, 1, length - curLength )
+		end
+	end
+	return ret
+end
+
+function Helper_AbbreviateString( str, length )
 	local ret = ""
-	for word in string.gmatch( str, "%a+" ) do
-		local c = string.sub( word, 1, 1 )		
-		ret = ret .. c
-		if length >= 1 then length = length - 1 else break end
-	end
-	if length > 0 then
-		local len = string.len( str )
-		ret = ret .. string.sub( str, len - length + 1, len )
-	end
 	local len = string.len( str )
-	while len < 3 do
-		str = str .. " "
-		len = len + 1
+	if len < length then
+		ret = str
+	else
+		for word in string.gmatch( str, "%a+" ) do
+			local c = string.sub( word, 1, 1 )		
+			ret = ret .. c
+			if length >= 1 then length = length - 1 else break end
+		end
+		if length > 0 then		
+			ret = ret .. string.sub( str, len - length + 1, len )
+		end
+	end
+	for k = 1, length - len do
+		ret = ret .. " "
 	end
 	return ret
 end

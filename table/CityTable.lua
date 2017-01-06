@@ -13,16 +13,9 @@ function CityTable:Load( data )
 	-----------------------------------
 	-- Basic Attributes
 
-	self.size        = CitySize[data.size] or CitySize.CITY
+	--self.size        = CitySize[data.size] or CitySize.CITY
 	
 	self.status      = data.status or {}
-
-	--[[
-	self.population  = data.population or ""	
-	self.agriculture = data.agriculture	or self.maxAgriculture	
-	self.economy     = data.economy or self.maxEconomy	
-	self.production   = data.production or self.maxProduction
-	]]
 	
 	-----------------------------------
 	-- extension
@@ -30,9 +23,6 @@ function CityTable:Load( data )
 	--Culture circle
 	--More deep effects
 	self.cultrueCircle = data.cultureCircle or 0
-	
-	--Determine ???
-	self.security    = data.security or 0
 	
 	--political point
 	self.politicalPoint = data.politicalPoint or 0

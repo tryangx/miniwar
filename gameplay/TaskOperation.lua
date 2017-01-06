@@ -49,83 +49,30 @@ function CityBuildConstruction( city, construction )
 	Debug_Normal( "Build [" .. construction.name .. "]("..construction.prerequisites.points..") in city [" .. city.name .. "]" )
 end
 
-function CityBuildAuto( city )
-	if city.recruitTroopId ~= 0 then
-		Debug_Error( "City is recruiting" )
-	end
-	if city.buildConstructionId ~= 0 then
-		Debug_Error( "City is building" )
-	end
-			
-	--calculate priority
-	--supply->economy->military->culture	
-	local priorityTrait = ConstructionTrait.SUPPLY
-	if city._supplyConsume / city._supplyIncome < Parameter.SAFETY_CITY_SUPPLY_CONSUME_RATIO then
-		priorityTrait = ConstructionTrait.SUPPLY
-	elseif city.economy / city.maxEconomy < Parameter.SAFETY_CITY_ECONOMY_RATIO then
-		priorityTrait = ConstructionTrait.ECONOMY
-	elseif city:GetMilitaryPower() < Parameter.SAFETY_CITY_MILITARY_POWER[city.size] then
-		priorityTrait = ConstructionTrait.MILITARY
-	elseif city:GetTraitPower() / Parameter.SAFETY_CITY_CULTURE_POWER[city.size] then
-		priorityTrait = ConstructionTrait.CULTURE
-	end	
-	
-	local constrList = city:GetBuildList()
-	local priorityConstrList = {}	
-	table.sort( constrList, function( left, right )
-		return left.points < right.points 
-	end )
-	for k, constr in ipairs( constrList ) do
-		if priorityTrait == constr.trait then			
-			table.insert( priorityConstrList, constr )
-		end
-	end
-	
-	--print( #constrList, #priorityConstrList )
-	
-	--process with priority construction list
-	if #priorityConstrList > 0 then
-		city.recruitTroopId      = 0
-		city.buildConstructionId = priorityConstrList[1].id
-		city.remainBuildPoints = priorityConstrList[1].points
-		
-		local constr = g_constrTableMng:GetData( city.buildConstructionId )
-		Debug_Normal( "Build [" .. constr.name .. "]("..constr.points..") in city [" .. city.name .. "]" )
-		return
-	end
-	
-	if #constrList > 0 then
-		CityBuildConstruction( constrList[1] )
-		return
-	end	
-end
-
-
 --------------------------
 -- Invest in City
 -- 
 --
 --------------------------
 function CityInvest( city )
-	if not city._group then Debug_Error( "City is not belong to any group" ) return end
-	
+	if not city._group then Debug_Error( "City is not belong to any group" ) return end	
 	city:Invest()
-	
-	Debug_Normal( "Invest in city [" .. city.name .. "]" )
 end
 
---------------------------
--- Collect tax in City
--- 
---
---------------------------
+function CityFarm( city )
+	if not city._group then Debug_Error( "City is not belong to any group" ) return end
+	city:Farm()
+end
+
 function CityLevyTax( city )
 	if not city._group then Debug_Error( "City is not belong to any group" ) return end
-
 	local income = city:GetIncome()
 	city:LevyTax( income )
-	
-	--Debug_Normal( "Collect tax in city [" .. city.name .. "] with money ["..income.."]" )
+end
+
+function CityPatrol( city )
+	if not city._group then Debug_Error( "City is not belong to any group" ) return end
+	city:Patrol()
 end
 
 --------------------------
@@ -290,6 +237,11 @@ function CharaEstablishCorps( city )
 		troopNum[cate] = 0
 	end
 	local movement = nil
+	for k, troop in ipairs( idleTroopList ) do
+		if #corps.troops >= CorpsParams.NUMBER_OF_TROOP_MAXIMUM then break end		
+		corps:AddTroop( troop )
+	end
+	--[[
 	local leftSlot = formation.maxTroop
 	if leftSlot >= idleTroopNum then
 		for k, troop in ipairs( idleTroopList ) do
@@ -315,7 +267,7 @@ function CharaEstablishCorps( city )
 			if leftSlot <= 0 then break end
 		end
 	end
-	
+	]]
 	corps.location   = city
 	corps.encampment = city	
 	corps.formation  = formation
@@ -360,18 +312,34 @@ function CorpsReinforce( corps )
 	local reinforcement = needPeople + minPopulation >= city.population and city.population - minPopulation or needPeople
 	city.population = city.population - reinforcement
 	corps:Reinforce( reinforcement )	
-	print( "Reinforce ["..corps.name.."] with soldier ["..reinforcement.."] from " .. totalNumber .. " to " .. totalNumber + reinforcement )
+	Debug_Normal( "Reinforce ["..corps.name.."] with soldier ["..reinforcement.."] from " .. totalNumber .. " to " .. totalNumber + reinforcement )
+end
+
+function CorpsTrain( corps )
+	local oldValue = 0
+	local training = 0
+	for k, troop in ipairs( corps.troops ) do
+		local tag = troop:GetAsset( TroopTag.TRAINING )
+		local current = tag and tag.value or 0
+		oldValue = oldValue + current
+		local delta = MathUtility_Clamp( ( TroopParams.MAX_ASSET_VALUE[TroopTag.TRAINING] - current ) * TroopParams.TRAINING.TRAIN_DIFF_MODULUS + TroopParams.TRAINING.TRAIN_STANDARD_VALUE, 0, TroopParams.MAX_ASSET_VALUE[TroopTag.TRAINING] )
+		training = training + current + delta
+		troop:AppendAsset( TroopTag.TRAINING, delta, TroopParams.MAX_ASSET_VALUE[TroopTag.TRAINING] )
+	end
+	oldValue = math.floor( oldValue / #corps.troops )
+	training = math.floor( training / #corps.troops )
+	Debug_Normal( "Train ["..corps.name.."] from " .. oldValue .. "->" .. training )
 end
 
 function CorpsAttack( corps, city )
-	g_warfare:AddPlan( corps, city )
+	g_warfare:AddWarfarePlan( corps, city )
 	corps:MoveToLocation( city )
 	
 	Debug_Normal( "["..corps.name.."] attack ["..city.name.."]" )
 end
 
 function CorpsExpedition( corps, city )
-	g_warfare:AddPlan( corps, city )	
+	g_warfare:AddWarfarePlan( corps, city )	
 	corps.location = city
 	
 	Debug_Normal( "["..corps.name.."] go expedition to ["..city.name.."]" )

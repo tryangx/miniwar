@@ -429,7 +429,10 @@ function GroupRelation:IsMethodValid( method, group, target )
 		end
 	elseif method == DiplomacyMethod.MAKE_PEACE then
 		if self.type == GroupRelationType.BELLIGERENT then
-			return true
+			local detail = self:GetDetail( GroupRelationDetail.BELLIGERENT_DURATION )	
+			if detail and detail >= GroupRelationParam.MAKE_PEACE_BELLIGERENT_TIME then
+				return true
+			end
 		end
 		return false
 	elseif method == DiplomacyMethod.BREAK_CONTRACT then
@@ -643,7 +646,7 @@ function GroupRelation:BreakContract( group, chara )
 		return false
 	end
 	self:AppendDetail( GroupRelationDetail.BETRAYER, group.id, value, GroupRelationParam.MAX_DETAIL_VALUE[GroupRelationDetail.BETRAYER] )
-	target:AppendTag( GroupTag.BETRAYER, value, GroupRelationParam.MAX_TAG_VALUE[GroupTag.BETRAYER] )
+	target:AppendAsset( GroupTag.BETRAYER, value, GroupRelationParam.MAX_TAG_VALUE[GroupTag.BETRAYER] )
 	self.evaluation = GroupRelationParam.MIN_EVALUATION
 	self:DebugRelationChanged( NameIDToString( group ) .. "("..group:GetPower()..")" .. " break contract with " .. NameIDToString( target ) .. "("..target:GetPower()..")" )
 	return true
@@ -681,7 +684,7 @@ function GroupRelation:DeclareWar( group, chara )
 		self:RemoveDetail( GroupRelationDetail.CASUS_BELLI, detail.value )
 	end
 	if value > 0 then
-		group:AppendTag( GroupTag.MILITANT, value, GroupRelationParam.MAX_TAG_VALUE[GroupTag.MILITANT] )
+		group:AppendAsset( GroupTag.MILITANT, value, GroupRelationParam.MAX_TAG_VALUE[GroupTag.MILITANT] )
 	end
 	self:AppendDetail( GroupRelationDetail.HOSTILITY, 1 )
 	self.type = GroupRelationType.BELLIGERENT

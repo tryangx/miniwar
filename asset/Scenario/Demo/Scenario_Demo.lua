@@ -44,6 +44,6 @@ ScenarioDemo =
 		GROUP_DATA         = { data = Scenario_Demo_Group_Data },
 		CHARA_DATA         = { data = Scenario_Demo_Chara_Data },
 		GROUPRELATION_DATA = { data = Scenario_Demo_GroupRelation_Data },
-		PLOT_DATA          = { data = Scenario_Demo_Plot_Data },
+		--PLOT_DATA          = { data = Scenario_Demo_Plot_Data },
 	},
 }

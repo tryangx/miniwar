@@ -457,7 +457,6 @@ function Group:GetGroupRelation( id )
 end
 
 function Group:GetAdjacentGroups()
-	print( "Get adja group")
 	if self._adjacentGroups then return self._adjacentGroups end	
 	self._adjacentGroups = {}
 	for k, city in ipairs( self.cities ) do
@@ -1075,16 +1074,16 @@ end
 --------------------------------------
 -- Tag
 
-function Group:GetTag( tagType )
-	Helper_GetTag( self.tags, tagType )
+function Group:GetAsset( tagType )
+	Helper_GetVarb( self.tags, tagType )
 end
 
-function Group:AppendTag( tagType, value, range )
-	Helper_AppendTag( self.tags, tagType, value, range )
+function Group:AppendAsset( tagType, value, range )
+	Helper_AppendVarb( self.tags, tagType, value, range )
 end
 
-function Group:RemoveTag( tagType, value )
-	Helper_RemoveTag( self.tags, tagType, value )
+function Group:RemoveAsset( tagType, value )
+	Helper_RemoveVarb( self.tags, tagType, value )
 end
 
 --------------------------------------

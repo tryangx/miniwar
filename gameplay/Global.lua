@@ -26,7 +26,7 @@ require "DataUtility"
 
 ---------------------------------------
 -- Configure
-require "Parameter"
+--require "Parameter"
 require "Policy"
 require "GlobalParams"
 
@@ -142,7 +142,7 @@ g_combatDataMng = DataManager( "COMBAT_DATA", Combat )
 -- Randomizer
 
 -- Lock step
-g_globalRandomizer = Randomizer()
+g_syncRandomizer = Randomizer()
 
 -- Local game
 g_asyncRandomizer = Randomizer()
@@ -150,10 +150,8 @@ g_asyncRandomizer = Randomizer()
 ---------------------------
 -- AI
 
---g_groupAI = g_groupAI()
---g_groupAI:SetRandomizer( g_globalRandomizer )
 g_charaAI = CharacterAI()
-g_charaAI:SetRandomizer( g_globalRandomizer )
+g_charaAI:SetRandomizer( g_syncRandomizer )
 
 ---------------------------
 -- Combat Event Trigger
@@ -169,6 +167,7 @@ g_menu = MenuUtility()
 ---------------------------
 -- Running Data
 g_numOfIndependenceGroup = 0
+
 g_activateCharaList  = {}
 g_outCharacterList   = {}
 g_otherCharacterList = {}

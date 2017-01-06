@@ -337,3 +337,56 @@ function Order_CharacterExecute( actor )
 	elseif type == OrderType.REST then
 	end
 end
+
+---------------------------
+
+function CityBuildAuto( city )
+	if city.recruitTroopId ~= 0 then
+		Debug_Error( "City is recruiting" )
+	end
+	if city.buildConstructionId ~= 0 then
+		Debug_Error( "City is building" )
+	end
+			
+	--calculate priority
+	--supply->economy->military->culture	
+	local priorityTrait = ConstructionTrait.SUPPLY
+	if city._supplyConsume / city._supplyIncome < Parameter.SAFETY_CITY_SUPPLY_CONSUME_RATIO then
+		priorityTrait = ConstructionTrait.SUPPLY
+	elseif city.economy / city.maxEconomy < Parameter.SAFETY_CITY_ECONOMY_RATIO then
+		priorityTrait = ConstructionTrait.ECONOMY
+	elseif city:GetMilitaryPower() < Parameter.SAFETY_CITY_MILITARY_POWER[city.size] then
+		priorityTrait = ConstructionTrait.MILITARY
+	elseif city:GetTraitPower() / Parameter.SAFETY_CITY_CULTURE_POWER[city.size] then
+		priorityTrait = ConstructionTrait.CULTURE
+	end	
+	
+	local constrList = city:GetBuildList()
+	local priorityConstrList = {}	
+	table.sort( constrList, function( left, right )
+		return left.points < right.points 
+	end )
+	for k, constr in ipairs( constrList ) do
+		if priorityTrait == constr.trait then			
+			table.insert( priorityConstrList, constr )
+		end
+	end
+	
+	--print( #constrList, #priorityConstrList )
+	
+	--process with priority construction list
+	if #priorityConstrList > 0 then
+		city.recruitTroopId      = 0
+		city.buildConstructionId = priorityConstrList[1].id
+		city.remainBuildPoints = priorityConstrList[1].points
+		
+		local constr = g_constrTableMng:GetData( city.buildConstructionId )
+		Debug_Normal( "Build [" .. constr.name .. "]("..constr.points..") in city [" .. city.name .. "]" )
+		return
+	end
+	
+	if #constrList > 0 then
+		CityBuildConstruction( constrList[1] )
+		return
+	end	
+end

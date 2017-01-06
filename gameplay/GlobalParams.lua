@@ -1,19 +1,78 @@
+PlotAdjacentOffsets = {
+	{ x = -1, y = -1, distance = 1, },
+	{ x = 0,  y = -1, distance = 1, },
+	{ x = 1,  y = 0,  distance = 1, },
+	{ x = 0,  y = 1,  distance = 1, },
+	{ x = -1, y = 1,  distance = 1, },
+	{ x = -1, y = 0,  distance = 1, },	
+	{ x = -2, y = -2, distance = 2, },
+	{ x = -1, y = -2, distance = 2, },
+	{ x = 0,  y = -2, distance = 2, },
+	{ x = 1,  y = -1, distance = 2, },
+	{ x = 2,  y = 0,  distance = 2, },
+	{ x = 1,  y = 1,  distance = 2, },
+	{ x = 0,  y = 2,  distance = 2, },
+	{ x = -1, y = 2,  distance = 2, },
+	{ x = -2, y = 2,  distance = 2, },
+	{ x = -1, y = 1,  distance = 2, },
+	{ x = -2, y = 0,  distance = 2, },
+	{ x = -1, y = -1, distance = 2, },
+}
+
 GlobalConst = 
 {
-	INVALID_MONEY = 100000000,
-	MAX_MONEY     = 99999999,
-	
+	--time
 	ELPASED_TIME  = 30,
 	UNIT_TIME     = 30,
 	MOVE_TIME     = 5,
 	
+	--assets
+	INVALID_MONEY = 100000000,
+	MAX_MONEY     = 99999999,
+	
+	--troop
 	DEFAULT_TROOP_NUMBER = 1000,
+
+	----------------------------
+	--      plot growth	
+	--Population Limit
+	PLOT = 
+	{
+		--Population
+		PLOT_POPULATION_CONSTANT = 100,
+		
+		--Supply
+		PLOT_SUPPLY_OUTPUT_CONSTANT     = 110,
+		
+		--Income
+		PLOT_INCOME_CAPITATION_CONSTNAT = 1,
+		PLOT_INCOME_ECONOMY_CONSTANT    = 100,
+	}
 }
 
 RandomParams = 
 {
 	MAX_PROBABILITY  = 10000,
 	PROBABILITY_UNIT = 100,
+}
+
+-----------------------------------------
+-- Plot & Resource Bonus
+PlotResourceBonusType =
+{
+	NONE              = 0,	
+	LIVING_SPACE      = 1,
+	AGRICULTURE       = 10,
+	ECONOMY           = 11,
+	PRODUCTION        = 12,	
+	FOOD_OUTPUT       = 20,
+	PRODUCTION_OUTPUT = 21,
+	MONEY_OUTPUT      = 22,
+	SCIENCE_OUTPUT    = 23,
+	CULTURE_OUTPUT    = 24,
+	FAITH_OUTPUT      = 25,	
+	SUPPLY_FOOD       = 30,
+	SUPPLY_MODULUS    = 31,
 }
 
 -----------------------------------------
@@ -49,9 +108,10 @@ CombatResult =
 	TACTICAL_VICTORY  = 1,	
 	--All troops neutralized or fled
 	TACTICAL_LOSE     = 2,
-	
-	COMBAT_END_RESULT = 3,
-	
+	---------------------------
+	--Seperator
+	COMBAT_END_RESULT = 3,	
+	---------------------------
 	--All enemy neutralized or fled
 	STRATEGIC_VICTORY = 3,		
 	--Gain less advantage than opponent
@@ -83,26 +143,6 @@ CombatTactic =
 	DEFEND       = 4,
 }
 
-CombatAction = 
-{
-    IDLE         = 0,
-	REST         = 1,
-	FIRE         = 2,
-	ATTACK       = 3,	
-	FORWARD      = 4,
-	DEFEND       = 5,	
-	-- trigger preparation skill
-	PREPARE      = 6,	
-	BACKWARD     = 8,
-	FLEE         = 9,	
-	HOLD         = 10,	
-	TOWARD       = 11,	
-	HEAL         = 12,	
-	REFORM       = 13,	
-	COOLDOWN     = 14,	
-	SURRENDER    = 15,	
-	RETREAT      = 16,
-}
 -----------------------------------------
 
 TroopCategory =
@@ -130,6 +170,22 @@ TroopStartLine =
 TroopTag = 
 {
 	TRAINING = 1,
+}
+
+TroopParams =
+{
+	TRAINING = 
+	{
+		UNTRAINED_VALUE      = 100,
+		TRAIN_STANDARD_VALUE = 5,
+		TRAIN_DIFF_MODULUS   = 0.25,
+	},
+	
+	MAX_ASSET_VALUE =
+	{
+		--training
+		[1] = 120,
+	},
 }
 
 -----------------------------------------
@@ -163,6 +219,30 @@ CityCultureCircle =
 {
 }
 
+
+CityLevel = 
+{
+	VILLAGE      = 1,
+	TOWN1        = 2,
+	TOWN2        = 3,
+	CITY1        = 4,
+	CITY2        = 5,
+	CITY3        = 6,
+	LARGE_CITY1  = 7,
+	LARGE_CITY2  = 8,
+	LARGE_CITY3  = 9,
+	LARGE_CITY4  = 10,
+	HUGE_CITY1   = 11,
+	HUGE_CITY2   = 12,
+	HUGE_CITY3   = 13,
+	HUGE_CITY4   = 14,
+	METRO_CITY1  = 15,
+	METRO_CITY2  = 16,
+	METRO_CITY3  = 17,
+	METRO_CITY4  = 18,
+	METRO_CITY5  = 19,
+}
+
 CitySize = 
 {
 	VILLAGE     = 1,	
@@ -184,7 +264,7 @@ CityTag =
 	--Nomad / Barbarian invade
 	--Good: Soldier Quality
     --Bad : War Fearness 
-	BORDER      = 10,
+	FRONTIER    = 10,
 	
 	--Adjacent to enemy
 	--Good:
@@ -211,10 +291,6 @@ CityTag =
 
 CityParams = 
 {
-	LEVY_TAX_TIME = { 1, 4, 7, 11, },
-
-	HARVEST_TIME  = { 7 },
-	
 	CITY_TAX_RESERVE_RATE = 0.3,
 	
 	SAFETY_TROOP_MAINTAIN_TIME      = 90,
@@ -223,8 +299,30 @@ CityParams =
 	
 	-----------------------------	
 	
+	FOOD = 
+	{
+		FOOD_CORRUPTION_MODULUS         = 0.015,
+		NONGROUP_CITY_FOODRESERVE_TIMES = 24,
+		STANDARD_FOODRESERVE_TIMES      = 36,
+	},
+	
+	LEVY_TAX = 
+	{
+		LEVY_TAX_TIME = { 1, 4, 7, 11, },	
+	},
+	
+	HARVEST = 
+	{
+		HARVEST_TIME        = { 7 },
+		HARVEST_CYCLE_TIME  = 12,
+	},
+	
 	MILITARY = 
 	{
+		SAFETY_MILITARYPOWER_PER_PLOT      = 500,
+		SECURITY_MILITARYPOWER_PER_PLOT    = 800,
+		FRONTIER_MILITARYPOWER_PER_PLOT    = 1200,
+		BATTLEFRONT_MILITARYPOWER_PER_PLOT = 2000,
 		SAFETY_ADJACENT_SINGLE_MILITARY_POWER_RATE = 0.5,
 		SAFETY_ADJACENT_TOTAL_MILITARY_POWER_RATE  = 0.35,
 	},
@@ -235,10 +333,10 @@ CityParams =
 		STARVATION_DEAD_MODULUS     = 0.05,
 	},
 	
-	MAX_TRAIT_VALUE = 
+	MAX_TAG_VALUE = 
 	{
 		SIEGE       = 3,
-		BORDER      = 1,
+		FRONTIER    = 1,
 		BATTLEFRONT = 1,
 		PROSPERITY  = 3,
 		DEPRESSED   = 3,
@@ -248,28 +346,43 @@ CityParams =
 	
 	-----------------------------
 	
-	INVEST = 
+	PLOT = 
 	{
+		MAX_PLOT_SECURITY    = 100,
+		SAFETY_PLOT_SECURITY = 80,
+	},	
+	
+	FARM = 
+	{
+		NEED_FARM_LIMIT_RATE = 0.85,
 		STANDARD_MODULUS = 0.04,
 		MINIMUM_MODULUS  = 0.1,
 		MAXIMUM_MODULUS  = 0.2,
 	},	
+	
+	INVEST = 
+	{
+		NEED_INVEST_LIMIT_RATE = 0.85,
+		MONEY_PER_PLOT   = 1000,
+		STANDARD_MODULUS = 0.04,
+		MINIMUM_MODULUS  = 0.1,
+		MAXIMUM_MODULUS  = 0.2,
+	},
+	
+	PATROL = 
+	{
+		MINIMUM_EFFECT  = 3,
+		MAXIMUM_EFFECT  = 6,
+	},
 	
 	ECONOMY = 
 	{
 		INCOME_PER_MODULUS_UNIT       = 1,
 		INCOME_POPULATION_MODULUS     = 0.1,
 	},
-	
+		
 	-----------------------------
-	
-	SUPPLY = 
-	{
-		SUPPLY_PER_MODULUS_UNIT   = 500,
-		SUPPLY_POPULATION_MODULUS = 0.0,
-	},
-	
-	-----------------------------
+	--[[
 	--Village
 	[1] = 
 	{
@@ -358,6 +471,7 @@ CityParams =
 		BATTLEFRONT_MILITARY_MODULUS = 0.08,
 		SUPPLY_MILITARY_MODULUS      = 0.1,
 	},
+	]]
 }
 
 ----------------------------------------
@@ -562,10 +676,9 @@ CityType =
 CityInstruction =
 {
 	NONE             = 0,
-	BUILD            = 10,	
-	ECONOMIC         = 20,
-	WAR_PREPAREDNESS = 30,
-	ATTACK           = 40,
+	CITY_DEVELOP     = 1,
+	WAR_PREPAREDNESS = 2,
+	ATTACK           = 3,
 }
 
 --------------------------------
@@ -1081,6 +1194,7 @@ GroupRelationParam =
 	--make peace
 	MAKE_PEACE_DAYS_STANDARD     = -3000,
 	MAKE_PEACE_DAYS_POW_MODULUS  = 10,
+	MAKE_PEACE_BELLIGERENT_TIME  = 90,
 	
 	--Declare war
 }
@@ -1291,6 +1405,8 @@ CharacterProposal =
 	CITY_LEVY_TAX    = 32,
 	CITY_BUILD       = 33,
 	CITY_INSTRUCT    = 34,
+	CITY_PATROL      = 35,
+	CITY_FARM        = 36,
 	CITY_AFFAIRS_END = 39,
 	
 	-- Human resource	
@@ -1310,12 +1426,14 @@ CharacterProposal =
 	DISPATCH_CORPS   = 54,
 	REINFORCE_CORPS  = 55,
 	REGROUP_CORPS    = 56,
+	TRAIN_CORPS      = 57,
 	WAR_PREPAREDNESS_AFFAIRS_END = 59,
 	
 	-- Military
 	MILITARY_AFFAIRS = 60,
 	ATTACK_CITY      = 61,
 	EXPEDITION       = 62,
+	CONTROL_PLOT     = 63,
 	MILITARY_AFFAIRS_END = 69,
 
 	-- Diplomacy

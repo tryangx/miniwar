@@ -65,15 +65,15 @@ function Corps:ConvertID2Data()
 		local troop = g_troopDataMng:GetData( id )
 		table.insert( troops, troop )
 		if troop.corps == 0 then
-			print( "!!! Fix troop corps error" )
+			--print( "!!! Fix troop corps error" )
 			troop.corps = self.id
 		end
 		if troop.corps ~= self and troop.corps ~= self.id then
-			print( "!!! Fix troop corps error 2" )
+			--print( "!!! Fix troop corps error 2" )
 			troop.corps = self.id
 		end
 		if troop.encampment == 0 then
-			print( "!!! Fix troop corps encampment error" )
+			--print( "!!! Fix troop corps encampment error" )
 			troop.encampment = self.encampment
 		end
 	end
@@ -111,16 +111,16 @@ function Corps:RemoveTroop( troop )
 	MathUtility_Remove( self.troops, troop )
 end
 
-function Corps:GetTag( tagType )
-	return Helper_GetTag( self.tags, tagType )
+function Corps:GetAsset( tagType )
+	return Helper_GetVarb( self.tags, tagType )
 end
 
-function Corps:AppendTag( tagType, value, range )
-	Helper_AppendTag( self.tags, tagType, value, range )
+function Corps:AppendAsset( tagType, value, range )
+	Helper_AppendVarb( self.tags, tagType, value, range )
 end
 
-function Corps:RemoveTag( tagType, value )
-	Helper_RemoveTag( self.tags, tagType, value )
+function Corps:RemoveAsset( tagType, value )
+	Helper_RemoveVarb( self.tags, tagType, value )
 end
 
 ------------------------------------------
@@ -185,6 +185,16 @@ function Corps:GetVacancyNumber()
 	return math.max( 0, CorpsParams.NUMBER_OF_TROOP_MAXIMUM - #self.troops )
 end
 
+function Corps:GetTrainingEval()
+	local training = 0
+	for k, troop in ipairs( self.troops ) do
+		local tag = troop:GetAsset( TroopTag.TRAINING )
+		training = training + ( tag and tag.value or 0 )
+	end
+	training = math.floor( training / #self.troops )
+	return training
+end
+
 function Corps:IsStayCity( city )
 	--print( "check stay", self.location.name, city.name )
 	return self.location == city
@@ -212,6 +222,10 @@ function Corps:IsUnderstaffed()
 		end
 	end
 	return false
+end
+
+function Corps:IsUntrained()
+	return self:GetTrainingEval() < TroopParams.TRAINING.UNTRAINED_VALUE
 end
 
 ------------------------------------------
@@ -251,11 +265,11 @@ function Corps:Reinforce( reinforcement )
 			break
 		end
 	end
-	local teamWorkTag = Helper_GetTag( self.tags, CorpsTag.TEAMWORK )
+	local teamWorkTag = Helper_GetVarb( self.tags, CorpsTag.TEAMWORK )
 	if teamWorkTag then
 		local loseTeamwork = math.ceil( teamWork.value * reinforcement / ( reinforcement + totalNumber ) )
 		print( "reduce teamwork", loseTeamwork, teamWork.value )
-		Helper_RemoveTag( self.tags, CorpsTag.TEAMWORK, loseTeamwork )
+		Helper_RemoveVarb( self.tags, CorpsTag.TEAMWORK, loseTeamwork )
 	end
 	
 	InputUtility_Pause( "" )

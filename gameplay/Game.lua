@@ -17,28 +17,12 @@
 --          4) honor( did special action or get a title )
 --
 --
-----
---
 -- To Do
 -- 1. Support save/load defense troop like gate, wall, militia
--- [OK]2. Walk through whole game process to win
--- [OK]3. Re factor Game Prototype as recruit/build/invest/attack
--- 4. Data validation( troop.city <-> city->troop like this )
--- 5. Intelligence System, every group has a intel-lib which store other group's info detail as troop, corps, character, city, group, etc
--- [OK]6. Diplomacy System
--- Scenario Event
--- Treasure( book / antique / beauty /  )
--- Nature Diplomacy Change
+-- 2. Intelligence System, every group has a intel-lib which store other group's info detail as troop, corps, character, city, group, etc
+-- 3. Scenario Event
+-- 4. Treasure( book / antique / beauty /  )
 --
--- ***combat will end after make peace
---
---
--- Game Flow
--- 1. Select MOD( Include configuration )
--- 2. Select scenario( Include dynamic data based on the configuration of the MOD )
--- 3. Select Role ( Now only support Group )
--- 4. Enter Game
--- 5. 
 --
 
 require "Global"
@@ -125,7 +109,7 @@ function Game:NewGame()
 
 	self.turn   = 1
 
-	--load data from configure
+	--Load data from configure
 	g_troopDataMng:LoadFromData( g_scenario:GetTableData( "TROOP_DATA" ) )
 	g_corpsDataMng:LoadFromData( g_scenario:GetTableData( "CORPS_DATA" ) )
 	g_cityDataMng:LoadFromData( g_scenario:GetTableData( "CITY_DATA" ) )
@@ -133,11 +117,11 @@ function Game:NewGame()
 	g_charaDataMng:LoadFromData( g_scenario:GetTableData( "CHARA_DATA" ) )
 	g_groupRelationDataMng:LoadFromData( g_scenario:GetTableData( "GROUPRELATION_DATA" ) )
 	
-	--plot map
+	--Plot map
 	g_plotMap:RandomMap( 10, 10 )
 	g_plotMap:AllocateToCity()
 
-	--Control Player
+	--Choice Player
 	local group = g_groupDataMng:GetDataByIndex( 1 )
 	--self.player = g_charaDataMng:GetData( 100 )--g_charaDataMng:GetData( group:GetLeader() )
 	print( "Select ["..NameIDToString( self.player ) .. "] as player's character" )
@@ -210,7 +194,7 @@ function Game:Init()
 	Debug_SetFileMode( false )
 
 	self.turn = 0
-	self.maxTurn = 40
+	self.maxTurn = 80
 	
 	local g_scenarioName = "Demo"
 	package.path = package.path .. ";asset/Scenario/" .. g_scenarioName .. "/?.lua"
@@ -280,7 +264,8 @@ function Game:PreprocessGameData()
 	g_cityDataMng:Foreach( function ( data )
 		data:ConvertID2Data()
 		table.insert( self._cityList, data )
-	end )
+	end )	
+	g_plotMap:AllocateToCity()
 	g_cityDataMng:Foreach( function ( data )
 		data:InitAdjacentCity()
 		if self.gameMode == GameMode.NEW_GAME then
@@ -389,7 +374,9 @@ function Game:Run()
 			group:Dump()
 		end
 		for k, city in ipairs( self._cityList ) do
-			city:Dump()
+			if city:GetGroup() then
+				city:Dump()
+			end
 		end
 		g_taskMng:DumpResult()
 	end
@@ -461,34 +448,44 @@ function Game:NextTurn()
 end
 
 function Game:DrawMap()
+	function DrawMapTable( map, fn )
+		for y = 1, g_plotMap.height do
+			local row = map[y]
+			local content = ""
+			for x = 1, g_plotMap.width do
+				content = content .. fn( x, y )
+			end
+			print( "Y=".. y, content )
+		end
+	end
 	local map = {}
 	for k, city in ipairs( self._cityList ) do
 		local pos = city.coordinate
-		if not map[pos.y] then
-			map[pos.y] = {} 
-		end
-		if map[pos.y][pos.x] then
-			print( "Duplicate", city.name, map[pos.y][pos.x].name )
-		end
+		if not map[pos.y] then map[pos.y] = {} end
+		if map[pos.y][pos.x] then print( "Duplicate", city.name, map[pos.y][pos.x].name ) end
 		map[pos.y][pos.x] = city
-	end
-	for y = 1, 10 do
-		local row = map[y]
-		local content = ""
-		for x = 1, 10 do			
-			local city = row and row[x]
-			if not city then
-				content = content .. "     "
-			else				
-				content = content .. "<".. Helper_Abbreviate( city.name, 3 ) ..">"
+	end	
+	if self.turn == 1 then
+		g_plotMap:Dump()
+		print( "City Map" )		
+		DrawMapTable( map, function( x, y )
+			local city = map[y] and map[y][x]		
+			if city then return "<".. Helper_AbbreviateString( city.name, 5 ) ..">" end
+			return "       "
+		end )
+		print( "Resource Map" )
+		DrawMapTable( map, function ( x, y )
+			local plot = g_plotMap:GetPlot( x, y )
+			if plot.resource then
+				return "<".. Helper_TrimString( plot.resource.name, 5 ) ..">"
 			end
-		end
-		print( "Y=".. y, content )
+			return "       "
+		end )
 	end
+	--InputUtility_Pause()
 end
 
 function Game:ActionFlow()	
-	g_plotMap:Dump()
 	self:DrawMap()
 	
 	-- Personal Choice
@@ -507,7 +504,7 @@ function Game:ActionFlow()
 			}
 			input:PopupMenu( cmds, "Please select your action" )
 		else
-			local action = g_globalRandomizer:GetInt( 1, 3 )		
+			local action = g_syncRandomizer:GetInt( 1, 3 )		
 			action = CharacterAction.ATTEND_MEETING
 			chara:ChoiceAction( action )
 		end

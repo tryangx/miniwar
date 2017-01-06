@@ -329,16 +329,16 @@ end
 --
 -----------------------------------
 
-ResourceType = 
+local ResourceType = 
 {
 	--Strategic
 	COPPER         = 100,
-	IRON           = 101,	
-	HORSE          = 102,	
-	NITER          = 110,	
-	COAL           = 120,	
-	OIL            = 130,	
-	ALUMINUM       = 140,	
+	IRON           = 101,
+	HORSE          = 102,
+	NITER          = 110,
+	COAL           = 120,
+	OIL            = 130,
+	ALUMINUM       = 140,
 	URANIUM        = 150,
 	
 	--Bonus	
@@ -394,53 +394,239 @@ ResourceType =
 
 local ResourceTableData = 
 {
+	--Strategic Resource
+	[100] = 
+	{
+		name="Copper", category="STRATEGIC", bonuses={ { type="ECONOMY", value=50 }, { type="PRODUCTION", value=50 }, }, 
+		conditions={ 
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TYPE", value="HILLS" },
+					{ type="PLOT_TERRAIN_TYPE_EXCEPT", value="SNOW" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+				}
+			},	
+		}
+	},
+	[101] = 
+	{
+		name="Iron", category="STRATEGIC", bonuses={ { type="ECONOMY", value=50 }, { type="PRODUCTION", value=100 }, }, 
+		conditions={
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TYPE", value="HILLS" },
+					{ type="PLOT_TERRAIN_TYPE_EXCEPT", value="SNOW" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+				}
+			},	
+		}
+	},
+	[110] = { name="Aluminum", category="STRATEGIC" },
+	[111] = { name="Uranium", category="STRATEGIC" },
+	
+	[120] = 
+	{
+		name="Horse", category="STRATEGIC", bonuses={ { type="ECONOMY", value=50 }, },
+		conditions={ 
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TYPE", value="LAND" },
+					{ type="PLOT_TERRAIN_TYPE", value="PLAINS" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+				}
+			},
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TYPE", value="LAND" },
+					{ type="PLOT_TERRAIN_TYPE", value="GRASSLAND" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+				}
+			},	
+		}
+	},
+	[130] = { name="Niter", category="STRATEGIC" },
+	[140] = { name="Coal", category="STRATEGIC" },
+	[141] = { name="Oil", category="STRATEGIC" },
+	[142] = { name="Gas", category="STRATEGIC" },
+	
+	--Bonus Resource
 	[200] = 
 	{
-		name = "RICE",	
-		category = "BONUS",
-		bonuses = { { type = "SUPPLY_FOOD", value = 200 } },
+		name="RICE", category="BONUS", bonuses={ { type="SUPPLY_FOOD", value=200 }, }, 
+		conditions={ 
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TERRAIN_TYPE", value="PLAINS" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+				}
+			},
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TERRAIN_TYPE", value="PLAINS" },
+					{ type="PLOT_FEATURE_TYPE", value="MARSH" },
+				}
+			},
+		}
 	},
 	[201] = 
 	{
-		name = "WHEAT",	
-		category = "BONUS",
-		bonuses = { { type = "SUPPLY_FOOD", value = 150 } },
+		name="WHEAT", category="BONUS", bonuses={ { type="SUPPLY_FOOD", value=150 }, }, 
+		conditions={ 
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TERRAIN_TYPE", value="PLAINS" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+				}
+			},
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TERRAIN_TYPE", value="DESERT" },
+					{ type="PLOT_FEATURE_TYPE", value="FLOOD_PLAIN" },
+				}
+			},			
+		}		
 	},
-	[202] = 
+	[202] = { name="CORN", category="BONUS", bonuses={ { type="SUPPLY_FOOD", value=200 } }, },
+	[203] = { name="POTATO", category="BONUS", bonuses={ { type="SUPPLY_FOOD", value=200 }, }, },
+	[204] = { name="FRUITS", category="BONUS", bonuses={ { type="SUPPLY_FOOD", value=50 }, { type="SUPPLY_MODULUS", value=1.2 }, }, },
+	[205] =
 	{
-		name = "CORN",	
-		category = "BONUS",
-		bonuses = { { type = "SUPPLY_FOOD", value = 200 } },
-	},	
-	[203] = 
-	{
-		name = "POTATO",	
-		category = "BONUS",
-		bonuses = { { type = "SUPPLY_FOOD", value = 300 } },
-	},
-	[204] = 
-	{
-		name = "FRUITS",	
-		category = "BONUS",
-		bonuses = { { type = "SUPPLY_FOOD", value = 50 }, { type = "SUPPLY_MODULUS", value = 1.2 } },
-	},
-	[205] = 
-	{
-		name = "SALT",	
-		category = "BONUS",
-		bonuses = { { type = "SUPPLY_MODULUS", value = 1.4 } },
+		name="SALT", category="BONUS", bonuses={ { type="SUPPLY_MODULUS", value=1.4 }, },
+		conditions={
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TERRAIN_TYPE_EXCEPT", value="GRASSLAND" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+				}
+			},
+			--[[
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TYPE", value="LAND" },
+					{ type="PLOT_TERRAIN_TYPE", value="PLAINS" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+					{ type="NEAR_PLOT_TYPE", value="WATER" },
+				}
+			},
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TYPE", value="HILLS" },
+					{ type="PLOT_TERRAIN_TYPE", value="PLAINS" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+				}
+			},
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TYPE", value="LAND" },
+					{ type="PLOT_TERRAIN_TYPE", value="DESERT" },
+					{ type="NEAR_FEATURE_TYPE", value="OASIS" },
+				}
+			},
+			]]
+		}
 	},
 	[206] = 
 	{
-		name = "FERTILE",	
-		category = "BONUS",
-		bonuses = { { type = "SUPPLY_MODULUS", value = 1.8 } },
+		name="FERTILE", category="BONUS", bonuses={ { type="SUPPLY_MODULUS", value=1.8 }, },
+		conditions={ 
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TYPE", value="LAND" },
+					{ type="PLOT_TERRAIN_TYPE", value="PLAINS" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+					{ type="AWAY_FROM_TERRAIN_TYPE", value="DESERT" },
+				}
+			},
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TYPE", value="LAND" },
+					{ type="PLOT_TERRAIN_TYPE", value="GRASSLAND" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+					{ type="AWAY_FROM_TERRAIN_TYPE", value="DESERT" },
+				}
+			},
+		}
 	},
-	[207] = 
+	[207] =
 	{
-		name = "INFERTILE",	
-		category = "BONUS",
-		bonuses = { { type = "SUPPLY_MODULUS", value = 0.6 } },
+		name="INFERTILE", category="BONUS", bonuses={ { type="SUPPLY_MODULUS", value=0.6 }, },
+		conditions={ 
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TYPE", value="LAND" },
+					{ type="PLOT_TERRAIN_TYPE", value="PLAINS" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+					{ type="NEAR_TERRAIN_TYPE", value="DESERT" },
+				}
+			},
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TYPE", value="LAND" },
+					{ type="PLOT_TERRAIN_TYPE", value="GRASSLAND" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+					{ type="NEAR_TERRAIN_TYPE", value="DESERT" },
+				}
+			},
+		}
+	},
+	
+	--Luxury Resource
+	[300] = 
+	{
+		name="SILVER", category="LUXURY", bonuses={ { type="ECONOMY", value=200 }, }, 
+		conditions={
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TYPE", value="LIVING" },
+					{ type="PLOT_TERRAIN_TYPE", value="DESERT" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+				}
+			},
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TYPE", value="LIVING" },
+					{ type="PLOT_TERRAIN_TYPE", value="TUNDRA" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+				}
+			},
+		}
+	},
+	[301] = 
+	{
+		name="GOLD", category="LUXURY", bonuses={ { type="ECONOMY", value=500 }, }, 
+		conditions={
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TYPE", value="LIVING" },
+					{ type="PLOT_TERRAIN_TYPE", value="DESERT" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+				}
+			},
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TYPE", value="LIVING" },
+					{ type="PLOT_TERRAIN_TYPE", value="TUNDRA" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+				}
+			},
+		}
+	},
+	
+	[400] = { name="Everest", category="NATURAL", },
+	
+	--Artificial Resource
+	[500] =
+	{
+		name="Settlement", cateogory="ARTIFICIAL", bonuses={ { type="LIVING_SPACE", value=100 }, },
+		conditions={
+			{ type="CONDITION_BRANCH", value=
+				{
+					{ type="PLOT_TYPE", value="LIVING" },
+					{ type="PLOT_TERRAIN_TYPE", value="PLAINS" },
+					{ type="PLOT_FEATURE_TYPE_EXCEPT", value="ALL" },
+				}
+			},
+		}
 	},
 }
 

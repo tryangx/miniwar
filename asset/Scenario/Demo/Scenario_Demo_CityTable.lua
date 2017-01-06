@@ -20,33 +20,14 @@ local CityTableData =
 	[11] = 
 	{
 		id   = 11,
-		name = "Red City",
-		
-		population = 10000,
-		
-		agriculture    = 100,
-		maxAgriculture = 300,
-		
-		economy        = 100,
-		maxEconomy     = 200,
-		
-		production     = 100,
-		maxProduction  = 250,
-		
-		cultureCircle = 0,
-		
-		security = 80,
-		
-		traits = {},
-		
-		charas = {},
-		
-		troops = {},	
-				
-		constructions = {},
-		
-		resources = {},
-		
+		name = "Red City",		
+		cultureCircle = 0,		
+		security = 80,		
+		traits = {},		
+		charas = {},		
+		troops = {},
+		constructions = {},		
+		resources = {},		
 		adjacentCities = { 10, 21 },
 	},
 	
@@ -55,14 +36,11 @@ local CityTableData =
 		id   = 20,
 		name = "Blue Capital",
 		
-		population = 10000,
-		
+		population = 10000,		
 		agriculture    = 100,
-		maxAgriculture = 300,
-		
+		maxAgriculture = 300,		
 		economy        = 100,
-		maxEconomy     = 200,
-		
+		maxEconomy     = 200,		
 		production     = 100,
 		maxProduction  = 250,
 		

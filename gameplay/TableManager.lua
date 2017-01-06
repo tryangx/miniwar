@@ -55,6 +55,7 @@ function TableManager:LoadTable( sources )
 end
 
 function TableManager:GetData( id )
+	if not id or id == 0 then return nil end
 	return self.datas and self.datas[id]
 end
 

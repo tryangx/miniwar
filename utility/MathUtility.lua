@@ -42,9 +42,11 @@ function MathUtility_Shuffle( table, randomizer, desc )
 	end
 	local length = #table
 	if length > 1 then
-		for i = 1, length do
+		for i = 1, length do			
 			local t = randomizer:GetInt( 1, length - 1, desc ) + 1
-			table[i], table[t] = table[i], table[t]
+			local temp = table[i]
+			table[i] = table[t]
+			table[t] = temp
 		end
 	end
 	return table
@@ -55,7 +57,9 @@ function MathUtility_ShuffleByGetter( table, getter, desc )
 	if length > 1 then
 		for i = 1, length do
 			local t = getter( 1, length - 1, desc ) + 1
-			table[i], table[t] = table[i], table[t]
+			local temp = table[i]
+			table[i] = table[t]
+			table[t] = temp
 		end
 	end
 	return table
@@ -157,6 +161,7 @@ function MathUtility_Merge( left, right, condition )
 			table.insert( destination, v )
 		end
 	end
+	--print( #left, #right, #destination )
 	return destination
 end
 

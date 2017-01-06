@@ -404,6 +404,7 @@ local CityData =
 	{
 		name = "Xian Yang",
 		coordinate = { x = 1, y = 5 },
+		level = 6,
 		population = 60000,
 		size = "CITY",
 		agriculture    = "50%",
@@ -412,7 +413,7 @@ local CityData =
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},
-		charas = { 100, 101, 102, 105, 104 },
+		charas = { 100, 102 },--101, 102, 105, 104 },
 		corps  = { 1 },	
 		troops = { 1, 2 },	
 		constructions = {},		
@@ -425,6 +426,7 @@ local CityData =
 		name = "Han gu guan",
 		coordinate = { x = 2, y = 5 },
 		population = 3000,
+		level = 1,
 		size = "TOWN",
 		agriculture    = "50%",
 		economy        = "50%",
@@ -446,6 +448,7 @@ local CityData =
 	{
 		name = "LIN ZI",
 		coordinate = { x = 8, y = 3 },
+		level = 8,
 		population = 200000,		
 		size = "LARGE_CITY",
 		agriculture    = "50%",
@@ -466,6 +469,7 @@ local CityData =
 	{
 		name = "YING",
 		coordinate = { x = 6, y = 10 },
+		level = 7,
 		population = 180000,		
 		size = "LARGE_CITY",
 		agriculture    = "50%",
@@ -486,6 +490,7 @@ local CityData =
 	{
 		name = "DA LIANG",
 		coordinate = { x = 4, y = 4 },
+		level = 8,
 		population = 250000,		
 		size = "LARGE_CITY",
 		agriculture    = "50%",
@@ -506,6 +511,7 @@ local CityData =
 	{
 		name = "HAN DAN",
 		coordinate = { x = 10, y = 4 },
+		level = 7,
 		population = 120000,
 		size = "LARGE_CITY",
 		agriculture    = "50%",
@@ -526,6 +532,7 @@ local CityData =
 	{
 		name = "JI",
 		coordinate = { x = 8, y = 0 },
+		level = 6,
 		population = 60000,		
 		size = "CITY",
 		agriculture    = "50%",
@@ -546,6 +553,7 @@ local CityData =
 	{
 		name = "XIN ZHENG",
 		coordinate = { x = 6, y = 5 },
+		level = 5,
 		population = 100000,	
 		size = "LARGE_CITY",		
 		agriculture    = "50%",
@@ -566,6 +574,7 @@ local CityData =
 	{
 		name = "LING SHOU",
 		coordinate = { x = 7, y = 3 },
+		level = 2,
 		population = 18000,		
 		size = "CITY",
 		agriculture    = "50%",
@@ -586,6 +595,7 @@ local CityData =
 	{
 		name = "LUO YI",
 		coordinate = { x = 4, y = 6 },
+		level = 2,
 		population = 25000,		
 		size = "CITY",
 		agriculture    = "50%",

@@ -82,6 +82,14 @@ list = list_c
 MathUtility_Dump( list )
 ]]
 
+--[[
+print( g_syncRandomizer:GetInt( 0.1, 0.5 ) )
+
+for i = 1, 20 do
+	print( i .. "->" .. i ^ 0.5 )
+end
+]]
+
 --[[]]
 
 game = Game()

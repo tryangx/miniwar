@@ -5,6 +5,8 @@ PlotType =
 	HILLS    = 2,
 	MOUNTAIN = 3,
 	WATER    = 4,
+	
+	LIVING   = 10,
 }
 
 PlotTerrainType =
@@ -22,6 +24,7 @@ PlotTerrainType =
 
 PlotFeatureType = 
 {
+	ALL         = -1,
 	NONE        = 0,
 	WOODS       = 1,
 	RAIN_FOREST = 2,
@@ -39,75 +42,53 @@ PlotAddition =
 	CLIFFS    = 2,
 }
 
-PlotTraitType =
+PlotResourceBonusType =
 {
 	NONE              = 0,
-	
+	LIVING_SPACE      = 1,	
 	AGRICULTURE       = 10,
-	ECONOMIC          = 11,
-	PRODUCTION        = 12,
-	
+	ECONOMY           = 11,
+	PRODUCTION        = 12,	
 	FOOD_OUTPUT       = 20,
 	PRODUCTION_OUTPUT = 21,
 	MONEY_OUTPUT      = 22,
 	SCIENCE_OUTPUT    = 23,
 	CULTURE_OUTPUT    = 24,
 	FAITH_OUTPUT      = 25,
-	
-	POPULATION_LIMIT  = 30,
-	POPULATION_INIT   = 31,
-	
+	SUPPLY_FOOD       = 30,
+	SUPPLY_MODULUS    = 31,
 	MOVE_PENALTY      = 50,
 }
 
 PlotTraits = 
 {
-	--LAND
-	[1] = { { type = "AGRICULTURE", value = 100 }, { type = "ECONOMIC", value = 0 }, { type = "PRODUCTION", value = 0 }, { type = "POPULATION_LIMIT", value = 5 }, { type = "POPULATION_INIT", value = 0 }, },
-	--HILLS
-	[2] = { { type = "AGRICULTURE", value = 0 }, { type = "ECONOMIC", value = 0 }, { type = "PRODUCTION", value = 100 }, { type = "POPULATION_LIMIT", value = 1 }, { type = "POPULATION_INIT", value = 0 }, },
-	--MOUNTAIN
-	[3] = { { type = "AGRICULTURE", value = 0 }, { type = "ECONOMIC", value = 0 }, { type = "PRODUCTION", value = 0 }, { type = "POPULATION_LIMIT", value = 0 }, { type = "POPULATION_INIT", value = 0 }, },
-	--WATER
-	[4] = { { type = "AGRICULTURE", value = 0 }, { type = "ECONOMIC", value = 0 }, { type = "PRODUCTION", value = 0 }, { type = "POPULATION_LIMIT", value = 0 }, { type = "POPULATION_INIT", value = 0 }, },
+	[1] = { { type = "AGRICULTURE", value = 200 }, { type = "ECONOMY", value = 0 }, { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 500 }, },--LAND	
+	[2] = { { type = "AGRICULTURE", value = 50 },  { type = "ECONOMY", value = 0 }, { type = "PRODUCTION", value = 100 }, { type = "LIVING_SPACE", value = 100 }, },--HILLS	
+	[3] = { { type = "AGRICULTURE", value = 0 },   { type = "ECONOMY", value = 0 }, { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 0 }, },--MOUNTAIN	
+	[4] = { { type = "AGRICULTURE", value = 0 },   { type = "ECONOMY", value = 0 }, { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 0 }, },--WATER
 }
 
 PlotTerrainTraits =
 {
-	--PLAINS
-	[1] = { { type = "AGRICULTURE", value = 100 }, { type = "ECONOMIC", value = 0 }, { type = "PRODUCTION", value = 100 }, { type = "POPULATION_LIMIT", value = 0 }, { type = "POPULATION_INIT", value = 0 }, },
-	--GRASSLAND
-	[2] = { { type = "AGRICULTURE", value = 200 }, { type = "ECONOMIC", value = 0 }, { type = "PRODUCTION", value = 0 }, { type = "POPULATION_LIMIT", value = 0 }, { type = "POPULATION_INIT", value = 0 }, },
-	--DESERT
-	[3] = { { type = "AGRICULTURE", value = 0 }, { type = "ECONOMIC", value = 0 }, { type = "PRODUCTION", value = 0 }, { type = "POPULATION_LIMIT", value = 0 }, { type = "POPULATION_INIT", value = 0 }, },
-	--TUNDRA
-	[4] = { { type = "AGRICULTURE", value = 50 }, { type = "ECONOMIC", value = 0 }, { type = "PRODUCTION", value = 100 }, { type = "POPULATION_LIMIT", value = 0 }, { type = "POPULATION_INIT", value = 0 }, },
-	--SNOW
-	[5] = { { type = "AGRICULTURE", value = 0 }, { type = "ECONOMIC", value = 0 }, { type = "PRODUCTION", value = 0 }, { type = "POPULATION_LIMIT", value = 0 }, { type = "POPULATION_INIT", value = 0 }, },
-	--LAKE
-	[6] = { { type = "AGRICULTURE", value = 100 }, { type = "ECONOMIC", value = 50 }, { type = "PRODUCTION", value = 0 }, { type = "POPULATION_LIMIT", value = 0 }, { type = "POPULATION_INIT", value = 0 }, },
-	--COAST
-	[7] = { { type = "AGRICULTURE", value = 100 }, { type = "ECONOMIC", value = 100 }, { type = "PRODUCTION", value = 0 }, { type = "POPULATION_LIMIT", value = 0 }, { type = "POPULATION_INIT", value = 0 }, },
-	--OCEAN
-	[8] = { { type = "AGRICULTURE", value = 100 }, { type = "ECONOMIC", value = 0 }, { type = "PRODUCTION", value = 0 }, { type = "POPULATION_LIMIT", value = 0 }, { type = "POPULATION_INIT", value = 0 }, },
+	[1] = { { type = "AGRICULTURE", value = 250 }, { type = "ECONOMY", value = 0 },   { type = "PRODUCTION", value = 100 }, { type = "LIVING_SPACE", value = 0 }, },--PLAINS
+	[2] = { { type = "AGRICULTURE", value = 150 }, { type = "ECONOMY", value = 0 },   { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 0 }, },--GRASSLAND	
+	[3] = { { type = "AGRICULTURE", value = 0 },   { type = "ECONOMY", value = 0 },   { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 0 }, },--DESERT	
+	[4] = { { type = "AGRICULTURE", value = 50 },  { type = "ECONOMY", value = 0 },   { type = "PRODUCTION", value = 100 }, { type = "LIVING_SPACE", value = 0 }, },--TUNDRA	
+	[5] = { { type = "AGRICULTURE", value = 0 },   { type = "ECONOMY", value = 0 },   { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 0 }, },--SNOW	
+	[6] = { { type = "AGRICULTURE", value = 100 }, { type = "ECONOMY", value = 50 },  { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 0 }, },--LAKE	
+	[7] = { { type = "AGRICULTURE", value = 150 }, { type = "ECONOMY", value = 100 }, { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 0 }, },--COAST	
+	[8] = { { type = "AGRICULTURE", value = 150 }, { type = "ECONOMY", value = 0 },   { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 0 }, },--OCEAN
 }
 
 PlotFeatureTratis = 
 {
-	--WOODS
-	[1] = { { type = "AGRICULTURE", value = 0 }, { type = "ECONOMIC", value = 0 }, { type = "PRODUCTION", value = 100 }, { type = "POPULATION_LIMIT", value = 0 }, { type = "POPULATION_INIT", value = 0 }, },
-	--RAIN_FOREST
-	[2] = { { type = "AGRICULTURE", value = 100 }, { type = "ECONOMIC", value = 0 }, { type = "PRODUCTION", value = 0 }, { type = "POPULATION_LIMIT", value = 0 }, { type = "POPULATION_INIT", value = 0 }, },
-	--MARSH
-	[3] = { { type = "AGRICULTURE", value = 100 }, { type = "ECONOMIC", value = 0 }, { type = "PRODUCTION", value = 0 }, { type = "POPULATION_LIMIT", value = 0 }, { type = "POPULATION_INIT", value = 0 }, },
-	--OASIS
-	[4] = { { type = "AGRICULTURE", value = 200 }, { type = "ECONOMIC", value = 100 }, { type = "PRODUCTION", value = 0 }, { type = "POPULATION_LIMIT", value = 0 }, { type = "POPULATION_INIT", value = 0 }, },
-	--FLOOD_PLAIN
-	[5] = { { type = "AGRICULTURE", value = 300 }, { type = "ECONOMIC", value = 0 }, { type = "PRODUCTION", value = 0 }, { type = "POPULATION_LIMIT", value = 0 }, { type = "POPULATION_INIT", value = 0 }, },
-	--ICE
-	[6] = { { type = "AGRICULTURE", value = 0 }, { type = "ECONOMIC", value = 0 }, { type = "PRODUCTION", value = 0 }, { type = "POPULATION_LIMIT", value = 0 }, { type = "POPULATION_INIT", value = 0 }, },
-	--FALLOUT
-	[7] = { { type = "AGRICULTURE", value = 0 }, { type = "ECONOMIC", value = 0 }, { type = "PRODUCTION", value = 0 }, { type = "POPULATION_LIMIT", value = 0 }, { type = "POPULATION_INIT", value = 0 }, },
+	[1] = { { type = "AGRICULTURE", value = 0 },   { type = "ECONOMY", value = 0 },   { type = "PRODUCTION", value = 100 }, { type = "LIVING_SPACE", value = 0 }, },--WOODS	
+	[2] = { { type = "AGRICULTURE", value = 100 }, { type = "ECONOMY", value = 0 },   { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 0 }, },--RAIN_FOREST	
+	[3] = { { type = "AGRICULTURE", value = 100 }, { type = "ECONOMY", value = 0 },   { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 0 }, },--MARSH	
+	[4] = { { type = "AGRICULTURE", value = 200 }, { type = "ECONOMY", value = 100 }, { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 0 }, },--OASIS	
+	[5] = { { type = "AGRICULTURE", value = 300 }, { type = "ECONOMY", value = 0 },   { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 0 }, },--FLOOD_PLAIN	
+	[6] = { { type = "AGRICULTURE", value = 0 },   { type = "ECONOMY", value = 0 },   { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 0 }, },--ICE	
+	[7] = { { type = "AGRICULTURE", value = 0 },   { type = "ECONOMY", value = 0 },   { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 0 }, },--FALLOUT
 }
 
 PlotTable = class()
@@ -119,7 +100,7 @@ function PlotTable:Load( data )
 	self.terrain  = PlotTerrainType[data.terrain] or PlotTerrainType.PLAINS	
 	self.feature  = PlotFeatureType[data.feature] or PlotFeatureType.NONE
 	
-	self.name     = ( data.feature or "" ) .. "_" .. ( data.terrain or "" ) .. "_" .. ( data.type or "" )
+	self.name     = ( data.type or "" ) .. "_" .. ( ( data.feature and data.feature ~= "NONE" ) and data.feature or "" ) .. "_" .. ( data.terrain or "" ) 
 	
 	self.traits = MathUtility_Copy( data.traits )
 	
@@ -132,12 +113,18 @@ function PlotTable:Load( data )
 	self.traits = MathUtility_Merge( self.traits, PlotFeatureTratis[self.feature], CheckTrait )
 end
 
-function PlotTable:GetTraitValue( plotTraitType )
-	local number = 0
-	for k, trait in ipairs( self.traits ) do
-		if PlotTraitType[trait.type] == plotTraitType then
-			number = number + trait.value
-		end
-	end
-	return number
+function PlotTable:GetBonusValue( bonusType )
+	return Helper_SumIf( self.traits, "type", bonusType, "value", PlotResourceBonusType )
+end
+
+function PlotTable:GetType()
+	return self.type
+end
+
+function PlotTable:GetTerrain()
+	return self.terrain
+end
+
+function PlotTable:GetFeature()
+	return self.feature
 end

@@ -5,7 +5,7 @@ function Warfare:__init()
 end
 
 --Add siege
-function Warfare:AddPlan( corps, city )
+function Warfare:AddWarfarePlan( corps, city )
 	local id = MathUtility_IndexOf( self.plans, city, "from" )
 	if id then
 		-- field combat
@@ -16,9 +16,9 @@ function Warfare:AddPlan( corps, city )
 		local defender = corps
 		self.plans[id] = nil
 		table.insert( self.plans, { from = from, to = to, attacker = attacker, defender = defender, siege = false } )
-		--InputUtility_Pause( "Add plan" )
+		InputUtility_Pause( "Add plan" )
 	else
-		--InputUtility_Pause( "Add siege plan" )		
+		InputUtility_Pause( "Add siege plan" )		
 		table.insert( self.plans, { from = corps.location, to = city, corps = corps, siege = true } )
 	end	
 end
@@ -96,6 +96,8 @@ function Warfare:AddSiegeCombat( corps, city )
 	combat:AddTroopToSide( CombatSide.DEFENDER, g_troopDataMng:GetData( 210 ) )
 	
 	combat:Preprocess()
+	
+	InputUtility_Pause( "combat occur" )
 end
 
 --Add skirmish

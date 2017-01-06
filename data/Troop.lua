@@ -42,7 +42,7 @@ function Troop:Load( data )
 	---------------------------------------
 	-- Combat Temporary Data	
 	self._combatSide   = CombatSide.NETRUAL	
-	self._combatAction = CombatAction.NONE	
+	self._combatAction = CombatAction and CombatAction.NONE	or 0
 	self._combatTarget = nil
 	self._combatCD     = 0
 	-- now only 1d, extension to 2d
@@ -256,7 +256,7 @@ function Troop:NextCombatTurn()
 	self._combatDefended = 0
 	self._combatParry    = false
 	self._combatTarget   = nil
-	self._combatAction   = CombatAction.NONE
+	self._combatAction   = CombatAction and CombatAction.NONE or 0
 end
 
 function Troop:Acted()
@@ -568,8 +568,16 @@ function Troop:QueryTrait( effect, params )
 	return self.leader:QueryTrait( effect, params )
 end
 
-function Troop:GetTag( tagType )
-	Helper_GetTag( self.tags, tagType )
+function Troop:GetAsset( tagType )
+	return Helper_GetVarb( self.tags, tagType )
+end
+
+function Troop:AppendAsset( tagType, value, range )
+	Helper_AppendVarb( self.tags, tagType, value, range )
+end
+
+function Troop:RemoveAsset( tagType, value )
+	Helper_RemoveVarb( self.tags, tagType, value )
 end
 
 ---------------------------

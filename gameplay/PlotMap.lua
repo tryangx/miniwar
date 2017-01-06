@@ -25,10 +25,10 @@ function PlotMap:Dump()
 		for x = 1, self.width do
 			local plot = self:GetPlot( x, y )
 			if plot then 
-				local plotTable = g_plotTableMng:GetData( plot.tableId )
-				content = content .. " " .. Helper_Abbreviate( plotTable.name, 3 ) .. " "
+				local plotTable = plot.table
+				content = content .. " " .. Helper_AbbreviateString( plotTable.name, 6 ) .. " "
 			else
-				content = content .. "     "
+				content = content .. "        "
 			end
 		end
 		print( "Y=".. y, content )
@@ -48,7 +48,10 @@ end
 
 function PlotMap:RandomMap( width, height )
 	self:Clear()
-		
+	
+	
+	----------------------------
+	--Initialize
 	self.width  = width
 	self.height = height
 	
@@ -56,43 +59,232 @@ function PlotMap:RandomMap( width, height )
 		for x = 1, width do
 			local plot = Plot()
 			--print( "init plot", x, y )
-			plot:Init( x, y, 4000 )
-			plot:ConvertID2Data()
+			plot:InitPlot( x, y, 4000 )
 			self.mng:SetData( plot.id, plot )
 		end
 	end
+		
 	
+	----------------------------
+	--Plot Type and Terrain
 	function SimpleRandomPlotType()
 		local plotTypeMaps = 
 		{
 			{ id = 1000, desc = "landPlain", prob = 3000 },
-			{ id = 1100, desc = "landGrass", prob = 4000 },
-			{ id = 2000, desc = "hillPlain", prob = 5500 },
-			{ id = 2100, desc = "hillGrass", prob = 6200 },
-			{ id = 3000, desc = "mountainPlain", prob = 200 },
-			{ id = 3100, desc = "mountainGrass", prob = 200 },
+			--[[
+			{ id = 1100, desc = "landGrass", prob = 3000 },
+			{ id = 1200, desc = "landDesert", prob = 800 },
+			{ id = 1300, desc = "landTundra", prob = 400 },
+			
+			{ id = 2000, desc = "hillPlain", prob = 3500 },
+			{ id = 2100, desc = "hillGrass", prob = 3500 },
+			{ id = 2200, desc = "hillDesert", prob = 600 },
+			{ id = 2300, desc = "hillTundra", prob = 300 },
+			
+			{ id = 3000, desc = "mountainPlain", prob = 1000 },
+			
+			{ id = 4000, desc = "lake", prob = 500 },
+			]]
 		}
-	
-		local rand = Random_LocalGetRange( 1, 10000 )
+		local totalProb = 0
+		for k, mapItem in ipairs( plotTypeMaps ) do
+			totalProb = totalProb + mapItem.prob
+		end
+		local rand = Random_SyncGetRange( 1, totalProb )
 		for k, mapItem in ipairs( plotTypeMaps ) do
 			if rand < mapItem.prob then return mapItem.id end
+			rand = rand - mapItem.prob
 		end
 		return plotTypeMaps[1].id
 	end
 	
 	function SetPlotType()
-		self:ForeachPlot( function ( plot ) 
-			plot.tableId = SimpleRandomPlotType()
-			plot:ConvertID2Data()
+		self:ForeachPlot( function ( plot )
+			plot:SetTable( SimpleRandomPlotType() )
 		end )	
 	end
 	
+	
+	----------------------------
+	--Initialize plot type
 	SetPlotType()
-	SetPlotType()
+	SetPlotType()	
+	
+	--Put strategic resource	
+	local strategicResourceItems =
+	{
+		{ id=100, percent=8, },--copper
+		{ id=101, percent=5, },--iron
+		{ id=120, percent=5, },--horse
+	}
+	local bonusResourceItems =
+	{
+		{ id=200, percent=10, },--rice
+		{ id=201, percent=8, },--wheat
+		{ id=205, percent=3, },--salt
+		{ id=206, percent=8, },--fertile
+		{ id=207, percent=3, },--infertile
+	}
+	local luxuryResourceItems = 
+	{
+		{ id=300, percent=5, },--silver
+		{ id=301, percent=2, },--gold
+	}
+	local artificialResourceItems = 
+	{
+		{ id=500, percent=20, }--settlement
+	}
+	function MatchCondition( plot, condition )
+		function CheckNearPlot( distance, fn )
+			distance = distance or 1
+			local matchCondition = false
+			for k, offset in ipairs( PlotAdjacentOffsets ) do
+				if offset.distance <= distance then
+					local adjaPlot = self:GetPlot( plot.x + offset.x, plot.y + offset.y )
+					if adjaPlot and fn( adjaPlot ) then matchCondition = true break end
+				end
+			end
+			if not matchCondition then return false end
+			return true
+		end
+		function CheckAwayFromPlot( distance, fn )
+			distance = distance or 1
+			local matchCondition = true
+			for k, offset in ipairs( PlotAdjacentOffsets ) do
+				if offset.distance <= distance then
+					local adjaPlot = self:GetPlot( plot.x + offset.x, plot.y + offset.y )
+					if adjaPlot and fn( adjaPlot ) then matchCondition = false break end
+				end
+			end
+			if not matchCondition then return false end
+			return true
+		end
+		if condition.type == ResourceGenerateCondition.CONDITION_BRANCH then
+			for k, subCond in ipairs( condition.value ) do
+				if not MatchCondition( plot, subCond ) then return false end
+			end
+		elseif condition.type == ResourceGenerateCondition.PROBABILITY then
+			if g_synRandomizer:GetInt( 1, 10000 ) > condition.value then return false end
+		elseif condition.type == ResourceGenerateCondition.PLOT_TYPE then
+			if condition.value == "LIVING" then				
+				if plot.table:GetType() ~= PlotType.HILLS and plot.table:GetType() ~= PlotType.LAND then					
+					return false
+				end
+			elseif plot.table:GetType() ~= PlotType[condition.value] then
+				return false
+			end
+		elseif condition.type == ResourceGenerateCondition.PLOT_TERRAIN_TYPE then
+			if plot.table:GetTerrain() ~= PlotTerrainType[condition.value] then return false end
+		elseif condition.type == ResourceGenerateCondition.PLOT_FEATURE_TYPE then
+			if plot.table:GetFeature() ~= PlotFeatureType[condition.value] then return false end
+		elseif condition.type == ResourceGenerateCondition.PLOT_TYPE_EXCEPT then
+			if condition.value == "LIVING" then				
+				if plot.table:GetType() == PlotType.HILLS or plot.table:GetType() == PlotType.LAND then
+					return false
+				end
+			elseif plot.table:GetType() == PlotType[condition.value] then
+				return false
+			end
+		elseif condition.type == ResourceGenerateCondition.PLOT_TERRAIN_TYPE_EXCEPT then
+			if plot.table:GetTerrain() == PlotTerrainType[condition.value] then return false end
+		elseif condition.type == ResourceGenerateCondition.PLOT_FEATURE_TYPE_EXCEPT then
+			if condition.value == "ALL" then
+				if plot.table:GetFeature() ~= PlotFeatureType.NONE then
+					return false
+				end
+			elseif plot.table:GetFeature() == PlotFeatureType[condition.value] then
+				return false
+			end
+		elseif condition.type == ResourceGenerateCondition.NEAR_PLOT_TYPE then
+			CheckNearPlot( 1, function( adjaPlot )
+				return adjaPlot.table:GetType() == PlotType[condition.value]
+			end )
+		elseif condition.type == ResourceGenerateCondition.NEAR_TERRAIN_TYPE then
+			return CheckNearPlot( 1, function( adjaPlot )
+				return adjaPlot.table:GetTerrain() == PlotTerrainType[condition.value]
+			end )
+		elseif condition.type == ResourceGenerateCondition.NEAR_FEATURE_TYPE then
+			return CheckNearPlot( 1, function( adjaPlot )
+				return adjaPlot.table:GetFeature() == PlotFeatureType[condition.value]
+			end )
+		elseif condition.type == ResourceGenerateCondition.AWAY_FROM_PLOT_TYPE then
+			return CheckAwayFromPlot( 1, function( adjaPlot )
+				return adjaPlot.table:GetType() == PlotType[condition.value]
+			end )
+		elseif condition.type == ResourceGenerateCondition.AWAY_FROM_TERRAIN_TYPE then
+			return CheckAwayFromPlot( 1, function( adjaPlot )
+				return adjaPlot.table:GetTerrain() == PlotTerrainType[condition.value]
+			end )
+		elseif condition.type == ResourceGenerateCondition.AWAY_FROM_FEATURE_TYPE then
+			return CheckAwayFromPlot( 1, function( adjaPlot )
+				return adjaPlot.table:GetFeature() == PlotFeatureType[condition.value]
+			end )
+		else
+			InputUtility_Pause( "not match" .. condition.type)
+			return false
+		end
+		--InputUtility_Pause( "match", condition.type, condition.value, plot.table.name )
+		return true
+	end	
+	function FindPlotSuitable( conditions )
+		local plotList = {}
+		self:ForeachPlot( function ( plot ) 					
+			if plot:GetResource() then return end				
+			local matchCondition = true
+			if conditions and #conditions > 0 then
+				--check conditions
+				matchCondition = false
+				for k, condition in pairs( conditions ) do
+					if MatchCondition( plot, condition ) then matchCondition = true end
+				end
+			end
+			if matchCondition then table.insert( plotList, plot ) end
+		end )
+		return plotList
+	end
+	function PutResource( items )
+		local plotNunmber = width * height
+		for k, item in pairs( items ) do
+			local percent = item.percent or 0
+			item.count = math.ceil( plotNunmber * percent * 0.01 )
+			local resource = g_resourceTableMng:GetData( item.id )
+			if resource then
+				local plotList = FindPlotSuitable( resource.conditions )
+				plotList = MathUtility_Shuffle( plotList, g_synRandomizer )
+				for number = 1, #plotList do
+					if number > item.count then break end
+					local plot = plotList[number]					
+					plot.resource = item.id
+					--InputUtility_Pause( "put ", resource.name, "on", plot.x, plot.y )
+				end
+			end
+		end
+	end
+	
+	PutResource( strategicResourceItems )
+	PutResource( bonusResourceItems )
+	PutResource( luxuryResourceItems )
+	PutResource( artificialResourceItems )
+	
+	--InputUtility_Pause( "finished put resource" )
+	
+	----------------------------
+	--Initialize asset data
+	self:ForeachPlot( function ( plot ) 		
+		plot:ConvertID2Data()
+		plot:InitPlotAssets()
+	end )	
 end
 
 function PlotMap:AllocateToCity()
 	print( "allocate plots to city" )
+	--[[
+	07 08 09
+   18 01 02 10
+  17 06 00 03 11
+   16 05 04 12
+	15 14 13
+	]]
 	g_cityDataMng:Foreach( function ( city )
 		local plots = {}
 		local pos = city:GetCoordinate()
@@ -101,15 +293,21 @@ function PlotMap:AllocateToCity()
 			if plot and  not plot:GetData() then
 				table.insert( list, plot )
 				--plot:SetData( city )
+				return 1
 			end
+			return 0
 		end
 		AddPlot( plots, pos.x, pos.y )
-		if city.size >= CitySize.CITY then
-			AddPlot( plots, pos.x - 1, pos.y )
-			AddPlot( plots, pos.x + 1, pos.y )
-			AddPlot( plots, pos.x, pos.y - 1 )
-			AddPlot( plots, pos.x, pos.y + 1 )
-		end
-		city:InitPlots( plots )
+		local left = city.level	- 1
+		local distance = 2
+		--print( city.name, x, y, left, #PlotAdjacentOffsets )
+		for k, offset in ipairs( PlotAdjacentOffsets ) do		
+			if left > 0 and offset.distance <= distance then
+				left = left - AddPlot( plots, pos.x + offset.x, pos.y + offset.y )
+			else
+				break
+			end
+		end		
+		city:SetPlots( plots )
 	end )
 end

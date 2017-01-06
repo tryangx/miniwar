@@ -91,12 +91,14 @@ function DataManager:NewData()
 end
 
 function DataManager:GetData( id )
+	if not id or id == 0 then return nil end
 	--print( "GetData()", self.name, id, self.datas[id], #self.datas )
 	if not self.datas then return nil end
 	return self.datas[id]
 end
 
 function DataManager:GetDataByIndex( index )
+	--if index < 0 or index > #self.datas then return nil end
 	for k, data in pairs( self.datas ) do
 		if k == index then return data end
 	end

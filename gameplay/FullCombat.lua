@@ -47,6 +47,28 @@
 --
 --
 
+
+CombatAction = 
+{
+    IDLE         = 0,
+	REST         = 1,
+	FIRE         = 2,
+	ATTACK       = 3,	
+	FORWARD      = 4,
+	DEFEND       = 5,	
+	-- trigger preparation skill
+	PREPARE      = 6,	
+	BACKWARD     = 8,
+	FLEE         = 9,	
+	HOLD         = 10,	
+	TOWARD       = 11,	
+	HEAL         = 12,	
+	REFORM       = 13,	
+	COOLDOWN     = 14,	
+	SURRENDER    = 15,	
+	RETREAT      = 16,
+}
+
 CombatPosition = 
 {	
 	ATTACKER_POS = 0,
@@ -506,7 +528,7 @@ function Combat:Preprocess()
 	
 	--combat events
 	combatEventTrigger:InitData()
-	combatEventTrigger:SetCombatEventEnviroment( CombatEventEnviroment.RANDOMIZER, g_globalRandomizer )
+	combatEventTrigger:SetCombatEventEnviroment( CombatEventEnviroment.RANDOMIZER, g_syncRandomizer )
 	combatEventTrigger:SetCombatEventEnviroment( CombatEventEnviroment.COMBAT_POINTER, self )
 	
 	--embattle
@@ -524,7 +546,7 @@ function Combat:Resume()
 
 	--combat events
 	combatEventTrigger:InitData()
-	combatEventTrigger:SetCombatEventEnviroment( CombatEventEnviroment.RANDOMIZER, g_globalRandomizer )
+	combatEventTrigger:SetCombatEventEnviroment( CombatEventEnviroment.RANDOMIZER, g_syncRandomizer )
 	combatEventTrigger:SetCombatEventEnviroment( CombatEventEnviroment.COMBAT_POINTER, self )
 end
 
@@ -1737,8 +1759,8 @@ function Combat:CalcDamage( troop, target, weapon, armor, isMelee, isMissile, is
 	-- training bonus ( melee combat )
 	local trainingRate = 1
 	if isMelee then
-		local traingTag1 = troop:GetTag( TroopTag.TRAINING )
-		local traingTag2 = target:GetTag( TroopTag.TRAINING )
+		local traingTag1 = troop:GetAsset( TroopTag.TRAINING )
+		local traingTag2 = target:GetAsset( TroopTag.TRAINING )
 		local t1 = traingTag1 and traingTag1.value or 0
 		local t2 = traingTag1 and traingTag1.value or 0
 		local trainingRate = self:RandomRange( 1, math.abs( t1 - t2 ), "Random Damage BonusRate" )	

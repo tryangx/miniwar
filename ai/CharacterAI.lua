@@ -111,7 +111,7 @@ local function QueryCityData( dataname )
 	elseif dataname == "NUMBER_TROOP" then
 		value = #_city.troops
 	elseif dataname == "MAX_CORPS_NUMBER" then
-		value = math.floor( _city.size / 2 )
+		value = math.max( math.ceil( ( _city.size + 1 ) / 5 ), 1 )		
 	elseif dataname == "NUMBER_IDLE_CORPS" then
 		value = _city:GetNumOfIdleCorps()
 	elseif dataname == "NUMBER_FREE_CHARA" then
@@ -125,7 +125,7 @@ local function QueryCityData( dataname )
 		
 	elseif dataname == "PREPAREDTOATTACK_CORPSLIST" then
 		value = _city:GetPreparedToAttackCorpsList()
-		print( "Prepared to attack corps=", #value )
+		--print( "Prepared to attack corps=", #value )
 
 	elseif dataname == "IDLE_CORPSLIST" then
 		value = _city:GetIdleCorpsList()
@@ -137,6 +137,9 @@ local function QueryCityData( dataname )
 	elseif dataname == "VACANCY_CORPSLIST" then
 		value = _city:GetVacancyCorpsList()
 		
+	elseif dataname == "UNTRAINED_CORPSLIST" then
+		value = _city:GetUnTrainedCorpsList()
+		
 	elseif dataname == "UNDERSTAFFSED_CROPSLIST" then
 		value = _city:GetUnderstaffedCorpsList()
 
@@ -144,7 +147,7 @@ local function QueryCityData( dataname )
 		value = _city:GetAdjacentHostileCityList()
 	elseif dataname == "ADJACENT_BELLIGERENT_CITYLIST" then
 		value = _city:GetAdjacentBelligerentCityList()
-		print( "Adjacent Belligerent Cities=", #value )
+		--print( "Adjacent Belligerent Cities=", #value )
 		
 	end
 	--print( dataname, value )
@@ -557,11 +560,11 @@ local function CheckInstruction( params )
 	if city.instruction == CityInstruction.NONE then return true end
 
 	if params.flow == "CITY_AFFAIRS" then
-		if city.instruction == CityInstruction.BUILD or city.instruction == CityInstruction.ECONOMIC then return true end
+		if city.instruction == CityInstruction.BUILD or city.instruction == CityInstruction.CITY_DEVELOP then return true end
 	elseif params.flow == "CITY_BUILD" then
 		if city.instruction == CityInstruction.BUILD then return true end
-	elseif params.flow == "CITY_ECONOMIC" then
-		if city.instruction == CityInstruction.ECONOMIC then return true end
+	elseif params.flow == "CITY_DEVELOP" then
+		if city.instruction == CityInstruction.CITY_DEVELOP then return true end
 	elseif params.flow == "WAR_PREPAREDNESS" then
 		--print( "check instruction=".. MathUtility_FindEnumName( CityInstruction, city.instruction ), params.flow )
 		if city.instruction == CityInstruction.WAR_PREPAREDNESS then return true end
@@ -586,13 +589,23 @@ local function BuildCity()
 
 	CityBuildConstruction( city, construction )
 end
+local function CanFarm()
+	local city = _blackboard.city
+	if g_taskMng:IsTaskConflict( TaskType.CITY_FARM, city ) then return false end	
+	if city:CanFarm() then return true
+	else
+		--InputUtility_Pause( "["..city.name.."] not need to invest?", city:IsInSiege(), city:GetGroup().money, QueryInvestNeedMoney( city ) )
+	end
+	return false
+end
 local function CanInvest()
 	local city = _blackboard.city
 	if g_taskMng:IsTaskConflict( TaskType.CITY_INVEST, city ) then return false end	
 	if city:CanInvest() then return true
 	else
-		InputUtility_Pause( "["..city.name.."] not need to invest?", city:IsInSiege(), city:GetGroup().money, QueryInvestNeedMoney( city ) )
+		--InputUtility_Pause( "["..city.name.."] not need to invest?", city:IsInSiege(), city:GetGroup().money, QueryInvestNeedMoney( city ) )
 	end
+	return false
 end
 local function CanLevyTax()
 	local city = _blackboard.city
@@ -601,6 +614,7 @@ local function CanLevyTax()
 	else
 		InputUtility_Pause( "["..city.name.."] not need levy tax?", city:IsInSiege() )
 	end
+	return false
 end
 
 local function InvestCity()
@@ -669,9 +683,12 @@ local function BuildCityProposal()
 	_chara:SubmitProposal( { type = CharacterProposal.CITY_BUILD, city = city, constr = constr, chara = _chara } )
 end
 
+local function FarmCityProposal()
+	_chara:SubmitProposal( { type = CharacterProposal.CITY_FARM, city = _blackboard.city, chara = _chara } )
+end
+
 local function InvestCityProposal()
-	local money = QueryInvestNeedMoney( _blackboard.city )
-	_chara:SubmitProposal( { type = CharacterProposal.CITY_INVEST, city = _blackboard.city, investMoney = money, chara = _chara } )
+	_chara:SubmitProposal( { type = CharacterProposal.CITY_INVEST, city = _blackboard.city, chara = _chara } )
 end
 
 local function LevyTaxCityProposal()
@@ -679,7 +696,7 @@ local function LevyTaxCityProposal()
 end
 
 local function CanInstruct()
-	local city = _blackboard.city	
+	local city = _blackboard.city
 	local list = {}
 	for k, otherCity in ipairs( city:GetGroup().cities ) do
 		if otherCity ~= city and #otherCity.charas > 0 then
@@ -708,28 +725,48 @@ local function InstructCityProposal()
 	_chara:SubmitProposal( { type = CharacterProposal.CITY_INSTRUCT, city = city, instruction = instruction, chara = _chara } )
 end
 
-local CharacterAI_CityAffaisConstructionProposal =
-{
-	type = "SEQUENCE", desc = "Construction", children =
-	{
-		{ type = "FILTER", desc = "status check", condition = CanBuild },
-		{ type = "ACTION", desc = "end", action = BuildCityProposal },
-	}
-}
+local function CanPatrol()
+	local city = _blackboard.city
+	if g_taskMng:IsTaskConflict( TaskType.CITY_PATROL, city ) then return false end	
+	if city:CanPatrol() then return true end
+	return false
+end
 
-local CharacterAI_CityAffaisEconomicProposal =
+local function PatrolCityProposal()
+	_chara:SubmitProposal( { type = CharacterProposal.CITY_PATROL, city = _blackboard.city, chara = _chara } )
+end
+
+local CharacterAI_CityAffaisDevelopProposal =
 {
-	type = "SELECTOR", desc = "Economic", children =
+	type = "SELECTOR", desc = "Develop", children =
 	{
-		{ type = "SEQUENCE", desc = "invest branch", children =
+		{ type = "SEQUENCE", children =
 			{
-				--{ type = "FILTER", desc = "money check", condition = CheckEnoughMoney, params = { money = 1000 } },
+				{ type = "FILTER", desc = "status check", condition = CanBuild },
+				{ type = "ACTION", desc = "end", action = BuildCityProposal },
+			}
+		},
+		{ type = "SEQUENCE", children =
+			{
+				{ type = "FILTER", condition = CheckMaintenanceMoney },
+				{ type = "FILTER", condition = CanFarm },
+				{ type = "ACTION", action = FarmCityProposal },
+			}
+		},
+		{ type = "SEQUENCE", children =
+			{
 				{ type = "FILTER", condition = CheckMaintenanceMoney },
 				{ type = "FILTER", condition = CanInvest },
 				{ type = "ACTION", action = InvestCityProposal },
 			}
 		},
-		{ type = "SEQUENCE", desc = "tax branch", children =
+		{ type = "SEQUENCE", children =
+			{
+				{ type = "FILTER", condition = CanPatrol },
+				{ type = "ACTION", action = PatrolCityProposal },
+			}
+		},
+		{ type = "SEQUENCE", children =
 			{
 				{ type = "NEGATE", children = 
 					{
@@ -742,6 +779,7 @@ local CharacterAI_CityAffaisEconomicProposal =
 		},
 	}
 }
+
 local CharacterAI_InstructProposal =
 {
 	type = "SEQUENCE", desc = "Instruct", children =
@@ -759,29 +797,17 @@ local CharacterAI_CityAffaisProposal =
 		{ type = "FILTER", condition = HaveJobPriviage, params = { affair = "CITY_AFFAIRS" } },	
 		{ type = "SELECTOR", desc = "START City Affairs proposal", children =
 			{
-				{ type = "SEQUENCE", desc = "Instruction branch", children =
+				{ type = "SEQUENCE", children =
 					{
-						{ type = "FILTER", condition = CheckInstruction, params = { flow = "CITY_BUILD" } },
-						CharacterAI_CityAffaisConstructionProposal,
+						{ type = "FILTER", condition = CheckInstruction, params = { flow = "CITY_DEVELOP" } },
+						CharacterAI_CityAffaisDevelopProposal,
 					}
 				},
-				{ type = "SEQUENCE", desc = "Instruction branch", children =
-					{
-						{ type = "FILTER", condition = CheckInstruction, params = { flow = "CITY_ECONOMIC" } },
-						CharacterAI_CityAffaisEconomicProposal,
-					}
-				},
-				{ type = "SEQUENCE", desc = "total branch", children =
+				{ type = "SEQUENCE", children =
 					{
 						{ type = "FILTER", condition = CheckInstruction, params = { flow = "CITY_AFFAIRS" } },
-						{ type = "RANDOM_SELECTOR", desc = "START Develop proposal", children =
-							{
-								CharacterAI_CityAffaisConstructionProposal,
-								CharacterAI_CityAffaisEconomicProposal,
-								CharacterAI_InstructProposal,
-							},
-						},
-					},
+						CharacterAI_InstructProposal,
+					}
 				},
 			},
 		}
@@ -960,18 +986,13 @@ local function CanRecruit( checkCity )
 end
 local function NeedRecruit( checkCity )
 	local city = checkCity or _blackboard.city
-	local reqPower
-	if city:IsInConflict() then
-		reqPower = city:GetBattlefrontMilitaryPower()
-	else
-		reqPower = city:GetSafetyMilitaryPower()
-	end
+	local reqPower = city:GetRequiredMilitaryPower()
 	local supply = city:GetSupply()
 	local power  = city:GetMilitaryPower()
 	local troopNumber = GlobalConst.DEFAULT_TROOP_NUMBER
 	local minPopulation = city:GetMinPopulation()
 	
-	print( "Popu=" .. city.population .. " min_popu=" .. minPopulation, " Pow=" .. power .. " req_pow=" .. reqPower, " sol=" .. troopNumber .. " sup=" .. supply )
+	--print( "Popu=" .. city.population .. " min_popu=" .. minPopulation, " Pow=" .. power .. " req_pow=" .. reqPower, " sol=" .. troopNumber .. " sup=" .. supply )
 	
 	--we need keep enough population
 	if city:GetMinPopulation() > city.population then 
@@ -1015,7 +1036,7 @@ local function NeedRecruit( checkCity )
 
 	--We always try to keep the number as we required
 	if power >= reqPower then
-		print( "Cann't recruit, Out of required power" )
+		print( "Cann't recruit, Out of required power=" .. power .. "/" .. reqPower )
 		return false
 	end
 	
@@ -1057,6 +1078,7 @@ local function RegroupCorpsProposal()
 
 	_chara:SubmitProposal( { type = CharacterProposal.REGROUP_CORPS, corps = corps, troops = troops, chara = _chara } )
 end
+
 local CharacterAI_RegroupCorpsProposal = 
 {
 	type = "SEQUENCE", children =
@@ -1068,6 +1090,29 @@ local CharacterAI_RegroupCorpsProposal =
 		{ type = "ACTION", action = RegroupCorpsProposal },
 	}
 }
+
+local function TrainCorpsProposal()
+	local corpsList = _register["CORPSLIST"]
+
+	local index
+
+	index = _ai:RandomRange( 1, #corpsList, "Regroup corps proposal" )
+	local corps = corpsList[index]
+
+	_chara:SubmitProposal( { type = CharacterProposal.TRAIN_CORPS, corps = corps, chara = _chara } )
+end
+
+
+local CharacterAI_TrainCorpsProposal = 
+{
+	type = "SEQUENCE", children =
+	{
+		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "UNTRAINED_CORPSLIST", memname = "CORPSLIST" } },
+		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "CORPSLIST", number = 0 } },
+		{ type = "ACTION", action = TrainCorpsProposal },
+	}
+}
+
 ------------------------------------------
 local function CanReinforceCorps()
 	local city = _blackboard.city
@@ -1120,10 +1165,11 @@ local CharacterAI_WarPreparednessProposal =
 		{ type = "SELECTOR", desc = "START War Preparedness proposal", children =
 			{
 				CharacterAI_ReinforceCorpsProposal,
-				CharacterAI_RegroupCorpsProposal,				
+				CharacterAI_RegroupCorpsProposal,
 				CharacterAI_RecruitTroopProposal,
-				CharacterAI_EstablishCorpsProposal,
+				CharacterAI_EstablishCorpsProposal,				
 				CharacterAI_LeadTroopProposal,
+				CharacterAI_TrainCorpsProposal,
 			}
 		},
 	}
@@ -1203,8 +1249,8 @@ local function SelectMeetingProposal()
 		return
 	end
 	--print( #_blackboard, _chara.stamina )
-	if _chara.stamina > CharacterParams.STAMINA["ACCEPT_PROPOSAL"] and #_blackboard > 0 then
-		for k, proposal in ipairs( _blackboard ) do
+	if _chara.stamina > CharacterParams.STAMINA["ACCEPT_PROPOSAL"] and _blackboard.proposals and #_blackboard.proposals > 0 then
+		for k, proposal in ipairs( _blackboard.proposals ) do
 			if proposal.type == CharacterProposal.RECRUIT_TROOP and not g_taskMng:IsTaskConflict( TaskType.RECRUIT_TROOP, proposal.city ) then
 				--InputUtility_Pause( "Pripority recruit" )
 				_chara:SubmitProposal( { type = CharacterProposal.AI_SELECT_PROPOSAL, proposal = proposal, chara = _chara } )
@@ -1214,10 +1260,12 @@ local function SelectMeetingProposal()
 		--select proposal
 		if  _ai:GetRandom( "Select meeting topic" ) <= RandomParams.MAX_PROBABILITY + ( _chara.stamina - CharacterParams.STAMINA["ACCEPT_PROPOSAL"] ) * RandomParams.PROBABILITY_UNIT then
 			local proposalList = {}
-			for k, proposal in ipairs( _blackboard ) do
+			for k, proposal in ipairs( _blackboard.proposals ) do
 				local taskType
 				if proposal.type == CharacterProposal.CITY_INVEST then
 					taskType = TaskType.CITY_INVEST
+				elseif proposal.type == CharacterProposal.CITY_FARM then
+					taskType = TaskType.CITY_FARM
 				elseif proposal.type == CharacterProposal.CITY_LEVY_TAX then
 					taskType = TaskType.CITY_LEVY_TAX
 				elseif proposal.type == CharacterProposal.CITY_BUILD then
