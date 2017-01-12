@@ -84,13 +84,14 @@ MeetingSubFlow =
 	SUB_EXILE_CHARA	     = 43,
 	SUB_PROMOTE_CHARA    = 44,
 	
-	SUB_RECRUIT_TROOP    = 51,	
-	SUB_LEAD_TROOP       = 52,
-	SUB_ESTABLISH_CORPS  = 53,	
-	SUB_REINFORCE_CORPS  = 54,
-	SUB_DISPATCH_CORPS   = 55,
-	SUB_REGROUP_CORPS    = 56,
-	SUB_TRAIN_CORPS      = 57,
+	SUB_RECRUIT_TROOP    = 50,
+	SUB_LEAD_TROOP       = 51,
+	SUB_ESTABLISH_CORPS  = 52,	
+	SUB_REINFORCE_CORPS  = 53,
+	SUB_DISPATCH_CORPS   = 54,
+	SUB_REGROUP_CORPS    = 55,
+	SUB_TRAIN_CORPS      = 56,
+	SUB_CONSCRIPT_TROOP  = 57,
 	
 	SUB_ATTACK_CITY      = 60,
 	SUB_EXPEDITION       = 61,
@@ -198,6 +199,22 @@ function Meeting:IsProposalFeasible( proposal )
 	if proposal.type == CharacterProposal.CITY_BUILD then
 	end
 	return true
+end
+
+function Meeting:ReselectProposal( chara )
+	if self._game:IsPlayer( chara ) then
+		self.collectProposals = {}
+		if self._leader:CanAcceptProposal() then
+			for k, chara in ipairs( self._participants ) do			
+				if chara:GetProposal() then
+					local proposal = chara:GetProposal()					
+					if self:IsProposalFeasible( proposal ) then
+						table.insert( self.collectProposals, proposal )
+					end
+				end
+			end
+		end		
+	end
 end
 
 function Meeting:SelectProposalFlow( chara )
@@ -333,12 +350,13 @@ function Meeting:CollectProposalFlow( chara )
 				g_charaAI:Run()
 				self:CreateProposalContent( chara:GetProposal() )
 				if chara:GetProposal() and not self._game:IsPlayer( self._leader ) then
-					print( "###", chara.name, chara:GetProposal().content )
+					print( "###" .. chara.name, chara:GetProposal().content )
 				end
 			end
 		end
 	end
 	
+	--InputUtility_Pause()
 	--print( "===Collect proposals", submitProposal )
 	if submitProposal then
 		self:UpdateStatus( MeetingStatus.SUBMIT_PROPOSAL )
@@ -525,12 +543,12 @@ function Meeting:ConfirmProposalFlow( proposal )
 			if self._leader ~= proposal.chara then
 				proposal.chara:ProposalAccepted()
 				self._leader:AcceptProposal()
-				--Debug_Normal( "["..self._leader.name.."] accept proposal by [".. proposal.chara.name .."] type=" .. MathUtility_FindEnumName( CharacterProposal, proposal.type ) .. " left st=" .. self._leader.stamina )
+				--InputUtility_Pause( "["..self._leader.name.."] accept proposal by [".. proposal.chara.name .."] type=" .. MathUtility_FindEnumName( CharacterProposal, proposal.type ) .. " left st=" .. self._leader.stamina )
 			else
 				self._leader:ProposalAccepted()
-				--Debug_Normal( "["..self._leader.name.."] made proposal type=" .. MathUtility_FindEnumName( CharacterProposal, proposal.type ) .. " left st=" .. self._leader.stamina )
+				--InputUtility_Pause( "["..self._leader.name.."] made proposal type=" .. MathUtility_FindEnumName( CharacterProposal, proposal.type ) .. " left st=" .. self._leader.stamina )
 			end
-			MathUtility_Remove( self.collectProposals, proposal )
+			if self.collectProposals then self:ReselectProposal( self._leader ) end
 		else
 			--print( "No proposal made", MathUtility_FindEnumName( CharacterProposal, proposal.type ) )
 		end
@@ -1066,7 +1084,7 @@ function Meeting:ProcessSubMenu()
 		--MathUtility_Dump( relation )
 		for method = DiplomacyMethod.FRIENDLY, DiplomacyMethod.SURRENDER do
 			if relation:IsMethodValid( method, group, target ) then
-				local prob = EvaluateDiplomacy( method, relation, group, target )
+				local prob = EvaluateDiplomacySuccessRate( method, relation, group, target )
 				table.insert( menus, { c = index, content = MathUtility_FindEnumName( DiplomacyMethod, method ) .. " Prob=" .. prob, fn = function()
 					sel = method
 				end } )
@@ -1244,7 +1262,7 @@ function Meeting:ProcessSubMenu()
 		if SelectTech then
 			_chara:SubmitProposal( { type = CharacterProposal.TECH_RESEARCH, tech = SelectTech, chara = _chara } )
 		else
-			InputUtility_Pause( "No tech can research" )
+			print( "No tech can research" )
 		end
 	
 	--Diplomacy SubMenu
@@ -1343,7 +1361,7 @@ function Meeting:StartTopic()
 	end
 	
 	if self._game:IsPlayer( self._leader ) then
-		InputUtility_Pause( "!!!!!!!!!!!!!!!!!!!!!!!!!!!" )
+		--InputUtility_Pause( "!!!!!!!!!!!!!!!!!!!!!!!!!!!" )
 		--leader
 		self.title = self.title .. " " .. self._leader.name .. " st= ".. self._leader.stamina
 		
@@ -1462,23 +1480,17 @@ function Meeting:HoldGroupMeeting( game, group )
 	end
 	self._participants = charaList	
 	MathUtility_Shuffle( charaList )
-	
 	group:Dump()
 	group:GetCapital():Dump()
-
-	print( "GroupMeeting Attend=", #charaList )
-	print( "++++++++++ Group Meeting Start ++++++++++++++++" )
-	
+	--print( "GroupMeeting Attend=", #charaList )
+	--print( "++++++++++ Group Meeting Start ++++++++++++++++" )	
 	self.flow = MeetingFlow.GROUP_DISCUSS_FLOW
-	self:UpdateStatus( MeetingStatus.START )	
-	
-	print( "++++++++++ Group Meeting End ++++++++++++++++" )
-	print( "" )
-	
+	self:UpdateStatus( MeetingStatus.START )		
+	--print( "++++++++++ Group Meeting End ++++++++++++++++" )
+	--print( "" )	
 	if not self._game:IsPlayer( self._leader ) and self._game.player and self._game.player:GetGroup() == group then
 		InputUtility_Pause()
 	end
-	
 	self.collectProposals = {}
 end
 
@@ -1511,17 +1523,13 @@ function Meeting:HoldCityMeeting( game, city )
 	self._participants = charaList
 	MathUtility_Shuffle( charaList )
 	
-	city:Dump()
-	
-	print( "CityMeeting Attend=", #charaList )
-	print( "++++++++++ City Meeting Start ++++++++++++++++" )
-	
+	city:Dump()	
+	--print( "CityMeeting Attend=", #charaList )
+	--print( "++++++++++ City Meeting Start ++++++++++++++++" )
 	self.flow = MeetingFlow.CITY_DISCUSS_FLOW
 	self:UpdateStatus( MeetingStatus.START )
-	
-	print( "++++++++++ City Meeting End ++++++++++++++++" )
-	print( "" )
-	
+	--print( "++++++++++ City Meeting End ++++++++++++++++" )
+	--print( "" )
 	if not self._game:IsPlayer( self._leader ) and self._game.player and city:GetGroup() == self._game.player:GetGroup() then
 		InputUtility_Pause()
 	end

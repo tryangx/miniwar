@@ -114,6 +114,7 @@ function Calendar:CreateDateDesc( year, month, day, beforeChrist, byDay, byMonth
 end
 
 function Calendar:CreateDateDescByValue( dateValue, byDay, byMonth )
+	if not dateValue then return "" end
 	local year, month, day, beforeChrist = self:ConvertFromDateValue( dateValue )
 	return self:CreateDateDesc( year, month, day, beforeChrist, byDay, byMonth )
 end
@@ -125,12 +126,18 @@ end
 -----------------------------
 -- Operation method
 
-function Calendar:PassAMonth()
-	self.hour  = 0
-	self.day   = 1
+function Calendar:ElapseDay( elapsedDay )
+	self.day = self.day + elapsedDay
+	while self.day > self:GetDayInMonth() do
+		self:ElapseAMonth()
+	end
+end
+
+function Calendar:ElapseAMonth()	
+	self.day   = self.day - self:GetDayInMonth()
 	self.month = self.month + 1
 	if self.month > MONTH_IN_YEAR then
-		self.month = 1
+		self.month = self.month - MONTH_IN_YEAR
 		if self.beforeChrist then
 			self.year  = self.year - 1
 			if self.year == 0 then
@@ -143,15 +150,15 @@ function Calendar:PassAMonth()
 	end
 end
 
-function Calendar:PassADay()
-	self.hour = 0
+function Calendar:ElapseADay()
+	self.hour = self.hour - HOUR_IN_DAY + 1
 	self.day  = self.day + 1
-	if self.day > self:GetDayInMonth() then	self:PassAMonth() end
+	if self.day > self:GetDayInMonth() then	self:ElapseAMonth() end
 end
 
-function Calendar:PassAHour()
+function Calendar:ElapseAHour()
 	self.hour = self.hour + 1
-	if self.hour > HOUR_IN_DAY - 1 then self:PassADay() end
+	if self.hour > HOUR_IN_DAY - 1 then self:ElapseADay() end
 end
 
 function Calendar:CalcDiffByYear( dateValue )

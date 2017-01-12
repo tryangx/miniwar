@@ -2,7 +2,7 @@
 -- Helper
 
 -- Randomizer
-function Random_SyncGetRange( min, max, desc )
+function Random_LocalGetRange( min, max, desc )
 	local value = g_asyncRandomizer:GetInt( min, max )
 	if desc then 
 		Debug_Log( "Gen Random ["..value.."] in ["..min..","..max.."] : " .. desc )
@@ -12,6 +12,14 @@ end
 
 function Random_SyncGetRange( min, max, desc )
 	local value = g_syncRandomizer:GetInt( min, max )
+	if desc then 
+		Debug_Log( "Gen Random ["..value.."] in ["..min..","..max.."] : " .. desc )
+	end
+	return value
+end
+
+function Random_SyncGetProb( desc )
+	local value = g_syncRandomizer:GetInt( 1, 10000 )
 	if desc then 
 		Debug_Log( "Gen Random ["..value.."] in ["..min..","..max.."] : " .. desc )
 	end
@@ -113,10 +121,8 @@ end
 function Helper_AppendRelation( relations, relationType, id, value, range )
 	for k, relation in ipairs( relations ) do
 		if relation.type == relationType and ( not id or relation.id == 0 or relation.id == id ) then
-			if value then
-				if not range or relation.value <= range - value then
-					relation.value = relation.value + value
-				end
+			if value and ( not range or relation.value <= range - value ) then
+				relation.value = relation.value + value
 			end
 			return
 		end
@@ -141,13 +147,13 @@ function Helper_GetRelation( relations, relationType, id1, id2 )
 	if not relations then return nil end
 	for k, relation in ipairs( relations ) do
 		if relation.type == relationType and ( relation.id == 0 or relation.id == id1 or relation.id == id2 ) then
-			return tag
+			return relation
 		end
 	end
 	return nil
 end
 
-function Helper_GetVarb( varbs, varbType )
+function Helper_GetVarb( varbs, varbType )	
 	if not varbs then return nil end
 	for k, varb in ipairs( varbs ) do		
 		if varb.type == varbType then
@@ -155,6 +161,15 @@ function Helper_GetVarb( varbs, varbType )
 		end
 	end
 	return nil
+end
+function Helper_SetVarb( varbs, varbType, value )
+	for k, varb in ipairs( varbs ) do
+		if varb.type == varbType then
+			varb.value = varb.value + value
+			return
+		end
+	end
+	table.insert( varbs, { type = varbType, value = value } )
 end
 function Helper_AppendVarb( varbs, varbType, value, maximum )
 	for k, varb in ipairs( varbs ) do
@@ -167,11 +182,14 @@ function Helper_AppendVarb( varbs, varbType, value, maximum )
 	end
 	table.insert( varbs, { type = varbType, value = value } )
 end
+--[[
+	@value when value is -1, means remove all
+]]
 function Helper_RemoveVarb( varbs, varbType, value, minimum )
 	minimum = minimum or 0
 	for k, varb in ipairs( varbs ) do
 		if varb.type == varbType then
-			if varb.value and varb.value > value + minimum then
+			if varb.value and varb.value ~= -1 and varb.value > value + minimum then
 				varb.value = varb.value - value
 			else
 				table.remove( varbs, k )

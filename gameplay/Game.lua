@@ -194,7 +194,7 @@ function Game:Init()
 	Debug_SetFileMode( false )
 
 	self.turn = 0
-	self.maxTurn = 80
+	self.maxTurn = 200
 	
 	local g_scenarioName = "Demo"
 	package.path = package.path .. ";asset/Scenario/" .. g_scenarioName .. "/?.lua"
@@ -265,7 +265,7 @@ function Game:PreprocessGameData()
 		data:ConvertID2Data()
 		table.insert( self._cityList, data )
 	end )	
-	g_plotMap:AllocateToCity()
+	g_plotMap:AllocateToCity()	
 	g_cityDataMng:Foreach( function ( data )
 		data:InitAdjacentCity()
 		if self.gameMode == GameMode.NEW_GAME then
@@ -360,8 +360,6 @@ end
 
 function Game:Run()
 	while self.turn < self.maxTurn do
-		--self:PopupSystemMenu()
-		
 		if self.gameMode == GameMode.NEW_GAME or self.gameMode == GameMode.LOAD_GAME then
 			self:NextTurn()
 		elseif self.gameMode == GameMode.COMBAT_GAME then
@@ -369,7 +367,8 @@ function Game:Run()
 		end
 		if self.winner then break end
 	end
-	if self.turn >= self.maxTurn then
+	--game finished
+	if self.turn >= self.maxTurn or self.winner then
 		for k, group in ipairs( self._groupList ) do
 			group:Dump()
 		end
@@ -379,6 +378,8 @@ function Game:Run()
 			end
 		end
 		g_taskMng:DumpResult()
+		g_diplomacy:Dump()
+		g_statistic:Dump()
 	end
 	if self.winner then
 		InputUtility_Wait( "winner="..self.winner.name, "end" )
@@ -424,27 +425,25 @@ function Game:NextTurn()
 	--]]
 	
 	-- Notice winner
-	if self.winner then
-		Debug_Normal( "Winner is " .. NameIDToString( self.winner ) )
-		return
-	end
+	if self.winner then Debug_Normal( "Winner is " .. NameIDToString( self.winner ) ) return end
 	
-	g_calendar:PassAMonth()
+	self.turn = self.turn + 1
+	print( "####################################" )
+	print( "############# Turn=" .. self.turn .. " ##############" )
+	
+	local elapsedTime = GlobalConst.ELPASED_TIME
+	g_statistic:ElapseTime( elapsedTime )	
+	g_calendar:ElapseDay( elapsedTime )	
+	g_calendar:DumpDate( false )
 	
 	-- Event Flow
 	-- ...
 	
+	-- Update Flow
+	self:Update( elapsedTime )
+	
 	-- Action Flow
 	self:ActionFlow()
-
-	self.turn = self.turn + 1
-	print( "" )
-	print( "####################################" )
-	print( "############# Turn=" .. self.turn .. " ##############" )
-	g_calendar:DumpDate( false )
-	
-	-- Update Flow
-	self:Update( GlobalConst.ELPASED_TIME )
 end
 
 function Game:DrawMap()
@@ -504,7 +503,7 @@ function Game:ActionFlow()
 			}
 			input:PopupMenu( cmds, "Please select your action" )
 		else
-			local action = g_syncRandomizer:GetInt( 1, 3 )		
+			local action = Random_SyncGetRange( 1, 3 )		
 			action = CharacterAction.ATTEND_MEETING
 			chara:ChoiceAction( action )
 		end
@@ -515,6 +514,7 @@ function Game:ActionFlow()
 	-- Hold Group Meeting
 	--[[]]
 	MathUtility_Shuffle( self._groupList )
+	local removeGroupNum = 0
 	local independences = {}
 	for k, group  in ipairs( self._groupList ) do
 		if not group:IsFallen() then
@@ -527,10 +527,12 @@ function Game:ActionFlow()
 				table.insert( independences, group )
 			end
 		else
-			print( "######################gropu is fallen=" .. group.name )
+			g_diplomacy:RemoveGroupRelation( group )
+			self._groupList[k] = nil
+			removeGroupNum = removeGroupNum + 1
 		end
 	end
-	--]]
+	if removeGroupNum > 0 then self._groupList = MathUtility_NewList( self._groupList ) end
 	
 	if #independences == 1 then
 		self.winner = independences[1]
@@ -542,7 +544,7 @@ function Game:ActionFlow()
 	for k, city in ipairs( self._cityList ) do
 		--print( city.name, city ~= city:GetGroup():GetCapital(), city:GetNumOfIdleChara() )
 		if city:GetGroup() and city ~= city:GetGroup():GetCapital() and city:GetNumOfIdleChara() > 0 then						
-			g_meeting:HoldCityMeeting( self, city )
+			--g_meeting:HoldCityMeeting( self, city )
 		end
 	end	
 
@@ -558,22 +560,25 @@ function Game:Update( elpasedTime )
 	print( "************** Update Flow ******************" )
 	
 	local passDay = elpasedTime
+
+	g_numOfIndependenceGroup = 0
 	
 	g_warfare:Update( elpasedTime )	
 	g_diplomacy:Update( elpasedTime )	
 	g_taskMng:Update( elpasedTime )	
 	g_movingActorMng:Update( elpasedTime )
-
-	g_numOfIndependenceGroup = 0
+	g_plotMap:Update( elpasedTime )
+	
 	for k, group in ipairs( self._groupList ) do
-		print( group.name .. " mi_pow=" .. group:GetPower() )
 		group:Update()
 		if group:IsIndependence() then
 			g_numOfIndependenceGroup = g_numOfIndependenceGroup + 1
 		end
-	end
-	for k, city in ipairs( self._cityList ) do	
+	end	
+	g_statistic:CalcPopulation()
+	for k, city in ipairs( self._cityList ) do		
 		city:Update()
+		g_statistic:CalcPopulation( city.population )
 	end
 	for k, corps in ipairs( self._corpsList ) do
 		corps:Update()
@@ -586,33 +591,6 @@ function Game:Update( elpasedTime )
 	end
 	
 	--ProfileResult()
-	--InputUtility_Pause( "" )
-end
-
-function Game:IssueGroupOrder( group )	
-	self:Hint( '[' .. group.name .. ']' .. ' is thinking'	)
 	
-	--Decide next command
-	g_groupAI:SetActor( group )
-	g_groupAI:Run()
-end
-
-function Game:ExecuteGroupOrder( group )	
-	Order_Execute( group )
-end
-
-function Game:ExecuteCityOrder( city )
-	Order_Execute( city )
-end
-
-function Game:ExecuteCorpsOrder( corps )
-	Order_Execute( corps )
-end
-
-function Game:ExecuteCharaOrder( chara )
-	Order_Execute( chara )
-end
-
-function Game:Hint( content )
-	Debug_Log( content )
+	--InputUtility_Pause( "" )
 end

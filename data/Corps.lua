@@ -1,8 +1,3 @@
-CorpsTag = 
-{
-	TEAMWORK    = 1,	
-}
-
 Corps = class()
 
 function Corps:__init()
@@ -249,20 +244,25 @@ end
 function Corps:Lead( chara )
 	self.leader = chara
 	
-	InputUtility_Pause( "Corps [".. self.name.. "] lead by [".. chara.name .. "]" )
+	--InputUtility_Pause( "Corps [".. self.name.. "] lead by [".. chara.name .. "]" )
 end
 
 function Corps:Reinforce( reinforcement )
 	local number, totalNumber = self:GetNumberStatus()
 	local leftSoldier = reinforcement
 	for k, troop in ipairs( self.troops ) do
-		local needSoldier = troop.maxNumber - troop.number
-		if needSoldier <= leftSoldier then
-			troop.number = troop.maxNumber
-			leftSoldier = leftSoldier - needSoldier
-		else
-			troop.number = troop.number + leftSoldier
+		if leftSoldier <= 0 then
 			break
+		else
+			local needSoldier = troop.maxNumber - troop.number
+			if needSoldier <= leftSoldier then
+				troop.number = troop.maxNumber
+				leftSoldier = leftSoldier - needSoldier
+			else
+				troop.number = troop.number + leftSoldier
+				leftSoldier = 0
+				InputUtility_Pause( "add " .. leftSoldier .. " to " .. troop.name .. "," .. troop.number )
+			end
 		end
 	end
 	local teamWorkTag = Helper_GetVarb( self.tags, CorpsTag.TEAMWORK )
@@ -271,6 +271,4 @@ function Corps:Reinforce( reinforcement )
 		print( "reduce teamwork", loseTeamwork, teamWork.value )
 		Helper_RemoveVarb( self.tags, CorpsTag.TEAMWORK, loseTeamwork )
 	end
-	
-	InputUtility_Pause( "" )
 end

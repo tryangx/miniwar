@@ -91,8 +91,6 @@ end
 -- Recruit
 --------------------------------
 local function NeedRecruit()
-	--print( "Need Recruit?" )
-	
 	--check battlefront
 	local cityList = {}
 	local idleCityList = {}

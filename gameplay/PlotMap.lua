@@ -220,7 +220,7 @@ function PlotMap:RandomMap( width, height )
 				return adjaPlot.table:GetFeature() == PlotFeatureType[condition.value]
 			end )
 		else
-			InputUtility_Pause( "not match" .. condition.type)
+			print( "not match" .. condition.type)
 			return false
 		end
 		--InputUtility_Pause( "match", condition.type, condition.value, plot.table.name )
@@ -309,5 +309,11 @@ function PlotMap:AllocateToCity()
 			end
 		end		
 		city:SetPlots( plots )
+	end )
+end
+
+function PlotMap:Update( elapsedTime )
+	self:ForeachPlot( function ( plot )
+		plot:Update( elapsedTime )
 	end )
 end

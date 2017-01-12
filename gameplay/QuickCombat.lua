@@ -129,7 +129,9 @@ CombatParams =
 	-----------------------
 	SCORE_GAP_WITH_BRILLIANTLY_VICTORY   = 150,
 	SCORE_GAP_WITH_STRATEGIC_VICTORY     = 80,
-	SCORE_GAP_WITH_TACTICAL_VICTORY      = 40,
+	SCORE_GAP_WITH_TACTICAL_VICTORY      = 40,	
+	SIEGE_COMBAT_SCORE_MODULUS           = 2.5,
+	SIEGE_CAPITAL_COMBAT_SCORE_MODULUS   = 4,
 	
 	DAMAGE_SCORE = 
 	{
@@ -211,7 +213,7 @@ function Combat:Dump()
 	local atkNumber, defNumber = 0, 0
 	function dumpTroop( troops )
 		for k, troop in ipairs( troops ) do
-			print( "	" .. troop.name .. " 	id=" .. troop.id .. " num=" .. troop.number .. " side=" .. MathUtility_FindEnumName( CombatSide, troop._combatSide ) .. " Line=" .. MathUtility_FindEnumName( TroopStartLine, troop._startLine ) .. " Mor=" .. troop.morale .. "/" .. troop.maxMorale .. " In="..(troop:IsInCombat() and "true" or "false" ) )
+			print( "	" .. troop.name .. " 	id=" .. troop.id .. "(".. ( troop.corps and troop.corps.id or "" )..") num=" .. troop.number .. " side=" .. MathUtility_FindEnumName( CombatSide, troop._combatSide ) .. " Line=" .. MathUtility_FindEnumName( TroopStartLine, troop._startLine ) .. " Mor=" .. troop.morale .. "/" .. troop.maxMorale .. " In="..(troop:IsInCombat() and "true" or "false" ) )
 			if troop:IsCombatUnit() then
 				if troop._combatSide == CombatSide.ATTACKER then
 					atkNumber = atkNumber + troop.number
@@ -286,6 +288,15 @@ end
 
 function Combat:SetType( combatType )
 	self.type = combatType
+	if self.type == CombatType.SIEGE_COMBAT then
+		if self.location and self.location:GetGroup():GetCapital() == self.location then
+			self.scoreModulus = CombatParams.SIEGE_CAPITAL_COMBAT_SCORE_MODULUS
+		else
+			self.scoreModulus = CombatParams.SIEGE_COMBAT_SCORE_MODULUS
+		end
+	elseif self.type == CombatType.FIELD_COMBAT then
+		self.scoreModulus = 1
+	end
 end
 
 function Combat:SetGroup( side, group )
@@ -297,7 +308,7 @@ function Combat:SetGroup( side, group )
 end
 
 function Combat:SetLocation( id )
-	combat.location = g_cityDataMng:GetData( id )
+	self.location = g_cityDataMng:GetData( id )
 	--print( "location", id, combat.location )
 end
 
@@ -320,7 +331,7 @@ function Combat:SetSide( side, data )
 	self.sideOptions[side] = data
 end
 
-function Combat:Preprocess()
+function Combat:Init()
 	if not self.battlefield then return end
 
 	--start time
@@ -466,11 +477,11 @@ end
 
 function Combat:GetResult()
 	local atkScore, defScore = self.atkScore, self.defScore
-	if math.abs( atkScore - defScore ) >= CombatParams.SCORE_GAP_WITH_BRILLIANTLY_VICTORY then
+	if math.abs( atkScore - defScore ) >= CombatParams.SCORE_GAP_WITH_BRILLIANTLY_VICTORY * self.scoreModulus then
 		return atkScore > defScore and CombatResult.BRILLIANT_VICTORY or CombatResult.DISASTROUS_LOSE
-	elseif math.abs( atkScore - defScore ) >= CombatParams.SCORE_GAP_WITH_STRATEGIC_VICTORY then		
+	elseif math.abs( atkScore - defScore ) >= CombatParams.SCORE_GAP_WITH_STRATEGIC_VICTORY * self.scoreModulus then
 		return atkScore > defScore and CombatResult.STRATEGIC_VICTORY or CombatResult.STRATEGIC_LOSE
-	elseif math.abs( atkScore - defScore ) >= CombatParams.SCORE_GAP_WITH_TACTICAL_VICTORY then
+	elseif math.abs( atkScore - defScore ) >= CombatParams.SCORE_GAP_WITH_TACTICAL_VICTORY * self.scoreModulus then
 		return atkScore > defScore and CombatResult.TACTICAL_VICTORY or CombatResult.TACTICAL_LOSE
 	end
 	return CombatResult.DRAW
@@ -509,9 +520,10 @@ function Combat:NextDay()
 	self.result = CombatResult.DRAW
 	
 	self:Embattle()
-	
-	if #self.defenders <= 0 then
-		self.atkScore = CombatParams.SCORE_GAP_WITH_STRATEGIC_VICTORY
+		
+	local defNum = self:GetSideStatus( CombatSide.DEFENDER )
+	if defNum <= 0 then
+		self.atkScore = CombatParams.SCORE_GAP_WITH_STRATEGIC_VICTORY * self.scoreModulus
 		self.defScore = 0		
 	end
 end
@@ -525,7 +537,7 @@ function Combat:RunOneDay()
 	self:Dump()
 	self:DumpResult()
 	
-	InputUtility_Pause( "Combat=", self.id, " Result=", MathUtility_FindEnumName( CombatResult, self.result ) )
+	--InputUtility_Pause( "Combat=", self.id, " Result=", MathUtility_FindEnumName( CombatResult, self.result ) )
 end
 
 function Combat:Run()
@@ -624,8 +636,8 @@ function Combat:NextTurn()
 	local atkNum, atkTroop, atkMorale, atkFatigue, atkStartNum, atkMaxNum = self:GetSideStatus( CombatSide.ATTACKER )
 	local defNum, defTroop, defMorale, defFatigue, defStartNum, defMaxNum = self:GetSideStatus( CombatSide.DEFENDER )
 	if atkNum <= 0 or defNum <= 0 then
-		self.atkScore = defNum == 0 and CombatParams.SCORE_GAP_WITH_BRILLIANTLY_VICTORY or 0
-		self.defScore = atkNum == 0 and CombatParams.SCORE_GAP_WITH_BRILLIANTLY_VICTORY or 0
+		self.atkScore = defNum == 0 and CombatParams.SCORE_GAP_WITH_BRILLIANTLY_VICTORY * self.scoreModulus or 0
+		self.defScore = atkNum == 0 and CombatParams.SCORE_GAP_WITH_BRILLIANTLY_VICTORY * self.scoreModulus or 0
 		self.round = CombatRound.END_ROUND
 		return
 	end
@@ -855,6 +867,8 @@ function Combat:Hit( troop, target, params )
 	end
 	local defArmor = target:GetDefendArmor( atkWeapon )
 	local damage = self:CalcDamage( troop, target, atkWeapon, defArmor, params )
+	--statistic
+	g_statistic:DieInCombat( damage )
 	
 	--weapon & armor
 	troop:UseWeapon( atkWeapon )

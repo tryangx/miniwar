@@ -394,6 +394,7 @@ local ResourceType =
 
 local ResourceTableData = 
 {
+	-------------------------------
 	--Strategic Resource
 	[100] = 
 	{
@@ -449,10 +450,12 @@ local ResourceTableData =
 	[141] = { name="Oil", category="STRATEGIC" },
 	[142] = { name="Gas", category="STRATEGIC" },
 	
+	
+	-------------------------------
 	--Bonus Resource
 	[200] = 
 	{
-		name="RICE", category="BONUS", bonuses={ { type="SUPPLY_FOOD", value=200 }, }, 
+		name="RICE", category="BONUS", bonuses={ { type="SUPPLY_FOOD", value=100 }, }, 
 		conditions={ 
 			{ type="CONDITION_BRANCH", value=
 				{
@@ -470,7 +473,7 @@ local ResourceTableData =
 	},
 	[201] = 
 	{
-		name="WHEAT", category="BONUS", bonuses={ { type="SUPPLY_FOOD", value=150 }, }, 
+		name="WHEAT", category="BONUS", bonuses={ { type="SUPPLY_FOOD", value=100 }, }, 
 		conditions={ 
 			{ type="CONDITION_BRANCH", value=
 				{
@@ -486,12 +489,12 @@ local ResourceTableData =
 			},			
 		}		
 	},
-	[202] = { name="CORN", category="BONUS", bonuses={ { type="SUPPLY_FOOD", value=200 } }, },
-	[203] = { name="POTATO", category="BONUS", bonuses={ { type="SUPPLY_FOOD", value=200 }, }, },
-	[204] = { name="FRUITS", category="BONUS", bonuses={ { type="SUPPLY_FOOD", value=50 }, { type="SUPPLY_MODULUS", value=1.2 }, }, },
+	[202] = { name="CORN", category="BONUS", bonuses={ { type="SUPPLY_FOOD", value=150 } }, },
+	[203] = { name="POTATO", category="BONUS", bonuses={ { type="SUPPLY_FOOD", value=150 }, }, },
+	[204] = { name="FRUITS", category="BONUS", bonuses={ { type="SUPPLY_FOOD", value=50 }, { type="SUPPLY_MODULUS", value=1.05 }, }, },
 	[205] =
 	{
-		name="SALT", category="BONUS", bonuses={ { type="SUPPLY_MODULUS", value=1.4 }, },
+		name="SALT", category="BONUS", bonuses={ { type="SUPPLY_MODULUS", value=1.02 }, },
 		conditions={
 			{ type="CONDITION_BRANCH", value=
 				{
@@ -527,7 +530,7 @@ local ResourceTableData =
 	},
 	[206] = 
 	{
-		name="FERTILE", category="BONUS", bonuses={ { type="SUPPLY_MODULUS", value=1.8 }, },
+		name="FERTILE", category="BONUS", bonuses={ { type="SUPPLY_MODULUS", value=1.2 }, },
 		conditions={ 
 			{ type="CONDITION_BRANCH", value=
 				{
@@ -549,7 +552,7 @@ local ResourceTableData =
 	},
 	[207] =
 	{
-		name="INFERTILE", category="BONUS", bonuses={ { type="SUPPLY_MODULUS", value=0.6 }, },
+		name="INFERTILE", category="BONUS", bonuses={ { type="SUPPLY_MODULUS", value=0.75 }, },
 		conditions={ 
 			{ type="CONDITION_BRANCH", value=
 				{

@@ -160,10 +160,11 @@ end
 local function CalcPowerProb( group, target )
 	local pow1 = group:GetPower()
 	local pow2 = target:GetPower()
-	local supply1 = group:GetMaxSupply()
-	local supply2 = target:GetMaxSupply()
-	local ret1 = ( pow1 + pow2 == 0 ) and 0 or ( pow1 - pow2 ) / ( pow1 + pow2 )
-	local ret2 = ( supply1 + supply2 == 0 ) and 0 or ( supply1 - supply2 ) / ( supply1 + supply2 )
+	local supply1 = group:GetSupply()
+	local supply2 = target:GetSupply()
+	local ret1 = ( pow1 + pow2 == 0 ) and 0 or ( pow1 - pow2 ) / ( pow1 + pow2 )	
+	local ret2 = 0--( supply1 + supply2 == 0 ) and 0 or ( supply1 - supply2 ) / ( supply1 + supply2 )
+	--print( group.name, target.name, ret1, ret2, pow1, pow2 )
 	return ( ret1 + ret2 ) * 0.5
 end
 
@@ -173,9 +174,9 @@ local function GetDiplomacyMethodValue( action, relationType )
 	return params[relationType] or 0 
 end
 
-local debugChange = nil
-local watchAction --= "DECLARE_WAR"
-local function watchProb( action, name, ... )
+local debugChange = nil--true
+local watchAction --= "SURRENDERER"
+local function watchProb( action, name, ... )	
 	if watchAction == action then print( name .. "=", ... ) end
 end
 
@@ -237,9 +238,9 @@ function GroupRelation:GetDiplomacyMethodProbMod( action, group, target )
 			local delta
 			if goal.type == GroupGoal.INDEPENDENT then
 				delta = params["INDEPENDENT"]
-			elseif goal.type >= GroupGoal.SURVIVAL_BEG and goal.type <= GroupGoal.SURVIVAL_END then
+			elseif goal.type >= GroupGoal.SURVIVAL_GOAL_BEG and goal.type <= GroupGoal.SURVIVAL_GOAL_END then
 				delta = params["SURVIVAL"]
-			elseif goal.type >= GroupGoal.DOMINATION_BEG and goal.type <= GroupGoal.DOMINATION_END then
+			elseif goal.type >= GroupGoal.DOMINATION_GOAL_BEG and goal.type <= GroupGoal.DOMINATION_GOAL_END then
 				delta = params["DOMINATION"]
 			elseif goal.type >= GroupGoal.LEADING_GOAL_BEG and goal.type <= GroupGoal.LEADING_GOAL_END then
 				delta = params["LEADING"]
@@ -327,43 +328,44 @@ function GroupRelation:GetDiplomacyMethodProbMod( action, group, target )
 end
 
 function GroupRelation:GetDipomacyMethodProb( action, group, target )
-	local value = GetDiplomacyMethodValue( action, self.type )
-	watchProb( action, "value1", value )
-	value = value + self:GetDiplomacyMethodProbMod( action, group, target )
-	watchProb( action, "value2", value )
-	local prob1 = math.max( 0, value * GroupRelationParam.EVALUATION_RANGE ) + self.evaluation
-	local prob2 = math.floor( CalcPowerProb( group, target ) * GroupRelationParam.METHOD_MOD[action].POWER_MODULUS )
-	watchProb( action, "prob1", prob1 )
-	watchProb( action, "prob2", prob2 )
-	watchProb( action, "prob1+2", prob1 + prob2 )
+	local value1 = GetDiplomacyMethodValue( action, self.type )
+	watchProb( action, "relation mod", value1 )
+	local value2 = self:GetDiplomacyMethodProbMod( action, group, target )
+	watchProb( action, "other mod", value2 )
+	local basePart = ( value1 + math.max( 0, value2 ) ) * GroupRelationParam.EVALUATION_RANGE + self.evaluation
+	local powerPart = math.floor( CalcPowerProb( group, target ) * GroupRelationParam.METHOD_MOD[action].POWER_MODULUS )
+	local total = basePart + powerPart
+	watchProb( action, "base prob", basePart )
+	watchProb( action, "power mod", powerPart )
+	watchProb( action, "total", total )
 	if action == watchAction then InputUtility_Pause( action ) end	
-	return prob1 + prob2
+	return total
 end
 
 function GroupRelation:EvalFriendlyProb( chara, group, target )
 	local totalNum, numOfFriend = group:GetBelligerentStatus( target )
-	if numOfFriend and numOfFriend > 0 then return 0 end
-	
+	if numOfFriend and numOfFriend > 0 then return 0 end	
 	local prob = self:GetDipomacyMethodProb( "FRIENDLY", group, target )	
 	return prob
 end
 
 function GroupRelation:EvalAllyProb( chara, group, target )
 	local totalNum, numOfFriend = group:GetBelligerentStatus( target )
-	if numOfFriend and numOfFriend > 0 then return 0 end
-	
+	if numOfFriend and numOfFriend > 0 then return 0 end	
 	local prob = self:GetDipomacyMethodProb( "ALLY", group, target )
 	return prob
 end
 
 function GroupRelation:EvalMakePeaceProb( chara, group, target )
 	local prob = self:GetDipomacyMethodProb( "MAKE_PEACE", group, target )	
-	prob = prob - GroupRelationParam.MAKE_PEACE_DAYS_STANDARD		
+	local mod = 0
 	local detail = self:GetDetail( GroupRelationDetail.BELLIGERENT_DURATION )	
 	if detail then
-		prob = prob + detail.value * GroupRelationParam.MAKE_PEACE_DAYS_POW_MODULUS
-	end	
-	return prob
+		mod = mod + detail.value * GroupRelationParam.MAKE_PEACE_DAYS_POW_MODULUS
+	end
+	mod = mod + GroupRelationParam.MAKE_PEACE_DAYS_PROB_MOD
+	watchProb( "MAKE_PEACE", "days mod", mod )
+	return prob + mod
 end
 
 function GroupRelation:EvalThreatenProb( chara, group, target )
@@ -429,11 +431,12 @@ function GroupRelation:IsMethodValid( method, group, target )
 		end
 	elseif method == DiplomacyMethod.MAKE_PEACE then
 		if self.type == GroupRelationType.BELLIGERENT then
-			local detail = self:GetDetail( GroupRelationDetail.BELLIGERENT_DURATION )	
-			if detail and detail >= GroupRelationParam.MAKE_PEACE_BELLIGERENT_TIME then
+			local detail = self:GetDetail( GroupRelationDetail.BELLIGERENT_DURATION )
+			--InputUtility_Pause( "bel " .. detail.value .. "+" .. GroupRelationParam.MAKE_PEACE_BELLIGERENT_TIME )
+			if detail and detail.value >= GroupRelationParam.MAKE_PEACE_BELLIGERENT_TIME then
 				return true
 			end
-		end
+		end		
 		return false
 	elseif method == DiplomacyMethod.BREAK_CONTRACT then
 		if self.type == GroupRelationType.BELLIGERENT
@@ -706,7 +709,7 @@ function GroupRelation:DeclareWar( group, chara )
 end
 
 function GroupRelation:ExecuteMethod( method, group, chara )
-	--print( "execute diplomacy method", MathUtility_FindEnumName( DiplomacyMethod, method ) )
+	--	 "execute diplomacy method", MathUtility_FindEnumName( DiplomacyMethod, method ) )
 	if method == DiplomacyMethod.NONE then
 		return self:Deteriorate( GroupRelationParam.LEAVE_DETERIORATE )
 	elseif method == DiplomacyMethod.FRIENDLY then	

@@ -81,9 +81,9 @@ function Plot:InitPlotAssets()
 	self:SetAsset( PlotAssetType.ECONOMY, math.floor( Random_SyncGetRange( minProp * self.maxEconomy, maxProb * self.maxEconomy ) ) )
 	self:SetAsset( PlotAssetType.PRODUCTION, math.floor( Random_SyncGetRange( minProp * self.maxProduction, maxProb * self.maxProduction ) ) )
 	--status evaluation
-	self:SetAsset( PlotAssetType.SECURITY, math.floor( Random_SyncGetRange( minProp * CityParams.PLOT.MAX_PLOT_SECURITY, maxProb * CityParams.PLOT.MAX_PLOT_SECURITY ) ) )
+	self:SetAsset( PlotAssetType.SECURITY, math.floor( Random_SyncGetRange( minProp * PlotParams.MAX_PLOT_SECURITY, maxProb * PlotParams.MAX_PLOT_SECURITY ) ) )
 	--population
-	minProp = 0.75
+	minProp = 0.6
 	maxProb = 1.1
 	local population = CalcPlotPopulation( self._livingSpace )
 	local supply = CalcPlotSupply( self:GetAsset( PlotAssetType.AGRICULTURE ) )
@@ -91,7 +91,7 @@ function Plot:InitPlotAssets()
 	local base = math.min( population, supply )
 	self:SetAsset( PlotAssetType.POPULATION, math.floor( Random_SyncGetRange( minProp * base, maxProb * base ) ) )
 	
-	print( "agr="..self:GetAsset( PlotAssetType.AGRICULTURE ), "popu=" .. self:GetAsset( PlotAssetType.POPULATION ), population )
+	--print( "agr="..self:GetAsset( PlotAssetType.AGRICULTURE ), "popu=" .. self:GetAsset( PlotAssetType.POPULATION ), population )
 end
 
 --------------------------------
@@ -137,4 +137,20 @@ end
 
 function Plot:Own( city )
 	self.city = city
+end
+
+function Plot:Update( elapsedTime )
+	local rate = elapsedTime / GlobalConst.TIME_PER_YEAR
+	
+	local population = self:GetAsset( PlotAssetType.POPULATION )
+	--population born
+	local birth = math.ceil( population * ( PlotParams.PLOT_POPULATION_GROWTH_RATE * rate ) )
+	--population die
+	local dead = math.ceil( population * ( PlotParams.PLOT_POPULATION_DEATH_RATE * rate ) )
+	population = population + birth + dead 
+	self:SetAsset( PlotAssetType.POPULATION, population )
+	--print( "Plot("..self.x..","..self.y..") born="..birth..",die="..dead..",now="..population )
+	
+	g_statistic:DieNatural( dead )
+	g_statistic:BornNatural( birth )
 end

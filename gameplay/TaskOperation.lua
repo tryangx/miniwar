@@ -96,8 +96,10 @@ function CityRecruitTroop( city, troop )
 		return
 	end
 	local troop = g_troopDataMng:GenerateData( troop.id, g_troopTableMng )
+	troop.name    = city:GetGroup().name .. "-" .. troop.name
 	troop.tableId = troop.id
 	troop.table   = tableData
+	troop.maxNumber = troop.maxNumber * GroupParams.RECRUIT.MAX_NUMBER_MODULUS
 	troop.number  = troop.maxNumber
 	city:RecruitTroop( troop )
 	
@@ -309,7 +311,7 @@ function CorpsReinforce( corps )
 		return
 	end	
 	local minPopulation = city:GetMinPopulation()
-	local reinforcement = needPeople + minPopulation >= city.population and city.population - minPopulation or needPeople
+	local reinforcement = needPeople
 	city.population = city.population - reinforcement
 	corps:Reinforce( reinforcement )	
 	Debug_Normal( "Reinforce ["..corps.name.."] with soldier ["..reinforcement.."] from " .. totalNumber .. " to " .. totalNumber + reinforcement )

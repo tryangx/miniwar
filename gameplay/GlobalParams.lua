@@ -24,6 +24,7 @@ GlobalConst =
 	--time
 	ELPASED_TIME  = 30,
 	UNIT_TIME     = 30,
+	TIME_PER_YEAR = 360,
 	MOVE_TIME     = 5,
 	
 	--assets
@@ -32,22 +33,30 @@ GlobalConst =
 	
 	--troop
 	DEFAULT_TROOP_NUMBER = 1000,
+}
 
-	----------------------------
-	--      plot growth	
-	--Population Limit
-	PLOT = 
-	{
-		--Population
-		PLOT_POPULATION_CONSTANT = 100,
-		
-		--Supply
-		PLOT_SUPPLY_OUTPUT_CONSTANT     = 110,
-		
-		--Income
-		PLOT_INCOME_CAPITATION_CONSTNAT = 1,
-		PLOT_INCOME_ECONOMY_CONSTANT    = 100,
-	}
+PlotParams =
+{
+	MAX_PLOT_SECURITY    = 100,
+	SAFETY_PLOT_SECURITY = 80,
+
+	--Population
+	PLOT_POPULATION_CONSTANT = 100,
+	PLOT_POPULATION_GROWTH_RATE = 0.035,
+	PLOT_POPULATION_DEATH_RATE  = 0.015,
+	
+	--Agriculture -> Supply
+	PLOT_SUPPLY_OUTPUT_CONSTANT      = 90,
+	
+	--Economy -> Income
+	PLOT_INCOME_CAPITATION_CONSTNAT = 1,
+	PLOT_INCOME_ECONOMY_CONSTANT    = 100,
+	
+	--Minimum population need
+	PLOT_NEED_POPULATION_MINMODULUS  = 0.5,
+	PLOT_AGRICULTURE_NEED_POPULATION = 100,
+	PLOT_ECONOMY_NEED_POPULATION     = 30,
+	PLOT_PRODUCTION_NEED_POPULATION  = 50,
 }
 
 RandomParams = 
@@ -190,12 +199,22 @@ TroopParams =
 
 -----------------------------------------
 -- Corps
+CorpsTag = 
+{
+	--
+	TEAMWORK      = 1,
+	
+	--
+	ORGANIAZATION = 2,
+}
+
 CorpsParams =
 {
-	NUMBER_OF_TROOP_TO_ESTALIBSH = 2,
-	NUMBER_OF_TROOP_MAXIMUM      = 6,
+	NUMBER_OF_TROOP_TO_ESTALIBSH = 5,
+	NUMBER_OF_TROOP_MAXIMUM      = 10,
 	
-	REINFORCE_TIME_MODULUS       = 5,
+	--
+	REINFORCE_NEED_TIME          = 5,
 }
 
 ----------------------------------------
@@ -319,10 +338,11 @@ CityParams =
 	
 	MILITARY = 
 	{
+		REQUIRE_MILITARYPOWER_LIMITATION_MODULUS   = 5,
 		SAFETY_MILITARYPOWER_PER_PLOT      = 500,
 		SECURITY_MILITARYPOWER_PER_PLOT    = 800,
 		FRONTIER_MILITARYPOWER_PER_PLOT    = 1200,
-		BATTLEFRONT_MILITARYPOWER_PER_PLOT = 2000,
+		BATTLEFRONT_MILITARYPOWER_PER_PLOT = 2000,		
 		SAFETY_ADJACENT_SINGLE_MILITARY_POWER_RATE = 0.5,
 		SAFETY_ADJACENT_TOTAL_MILITARY_POWER_RATE  = 0.35,
 	},
@@ -346,15 +366,8 @@ CityParams =
 	
 	-----------------------------
 	
-	PLOT = 
-	{
-		MAX_PLOT_SECURITY    = 100,
-		SAFETY_PLOT_SECURITY = 80,
-	},	
-	
 	FARM = 
 	{
-		NEED_FARM_LIMIT_RATE = 0.85,
 		STANDARD_MODULUS = 0.04,
 		MINIMUM_MODULUS  = 0.1,
 		MAXIMUM_MODULUS  = 0.2,
@@ -362,7 +375,6 @@ CityParams =
 	
 	INVEST = 
 	{
-		NEED_INVEST_LIMIT_RATE = 0.85,
 		MONEY_PER_PLOT   = 1000,
 		STANDARD_MODULUS = 0.04,
 		MINIMUM_MODULUS  = 0.1,
@@ -503,7 +515,10 @@ DamageBonusTable = {
 
 GroupParams = 
 {
-	
+	RECRUIT = 
+	{
+		MAX_NUMBER_MODULUS = 1.5,
+	},
 }
 
 GroupMeetingSlot =
@@ -610,6 +625,30 @@ GroupTag =
 
 	-- Peace Walker, Always try to avoid war
 	--PEACE_WALKER = 3,
+	
+	SITUATION = 
+	{
+		--Relation
+		MULTIPLE_FRONT = 100,
+		
+		--Growth
+		UNDEVELOPED = 110,
+		PROSPEROUS  = 111,		
+		
+		--Power
+		WEAK        = 120,
+		STRONG      = 121,		
+		
+		--Tech
+		PRIMITIVE   = 130,
+		ADVANCED    = 131,
+		
+		--HR_AFFAIRS
+		UNDERSTAFFED = 140,
+		
+		--Military
+		AGGRESSIVE   = 150,
+	},
 }
 
 GroupGoal = 
@@ -617,42 +656,31 @@ GroupGoal =
 	-- Never win
 	NONE          = 0,
 	
+	SURVIVAL_GOAL      = 10,	
+	DOMINATION_GOAL    = 20,	
+	LEADING_GOAL       = 30,
 	----------------------------------
 	-- Survival	
-	SURVIVAL_BEG  = 10,
-	SURVIVAL_GOAL = 10,
-	
+	SURVIVAL_GOAL_BEG  = 10,		
 	-- Survive for specific time.
-	SURVIVE       = 10,
-
+	SURVIVE            = 10,
 	-- Avoid becoming slave group for specific time
-	INDEPENDENT   = 11,
-	
-	SURVIVAL_END  = 19,
-	
+	INDEPENDENT        = 11,	
+	SURVIVAL_GOAL_END  = 19,	
 	----------------------------------
 	-- Domination	
-	DOMINATION_BEG  = 20,
-	DOMINATION_GOAL = 20,
-	
-	-- Occupy with special city
-	OCCUPY          = 20,
-	
-	-- Conquer percent of the territory in the continent which the capital stays
+	DOMINATION_GOAL_BEG  = 20,	
+	-- own special city
+	OCCUPY          = 20,	
+	-- conpercent of the territory in the continent which the capital stays
 	CONQUER         = 21,
-
-	DOMINATION_END  = 29,	
-	
+	DOMINATION_GOAL_END  = 29,		
 	----------------------------------
 	-- Leading
-	LEADING_GOAL_BEG = 30,
-	LEADING_GOAL     = 30,
-	
+	LEADING_GOAL_BEG = 30,	
 	-- Tech, Economic, Troops, Terriority at least rank [value]
 	MILITARY_POWER   = 31,
-	
-	LEADING_GOAL_END = 39,	
-	
+	LEADING_GOAL_END = 39,		
 	-- Extension maybe economic or anything else
 }
 
@@ -993,7 +1021,7 @@ GroupRelationParam =
 		SURRENDER =
 		{
 			POWER_MODULUS = -5000,
-			[1] = -2, 	--NEUTRAL		
+			[1] = -2, 	--NEUTRAL
 			[5] = -3,	--FRIEND			
 			[6] = -1,   --HOSTILITY			
 			[7] = 1, 	--ENEMY
@@ -1191,8 +1219,10 @@ GroupRelationParam =
 	--threaten
 	THREATEN_DETERIORATE_RATIO   = 0.35,
 	
+	---------------------------
 	--make peace
-	MAKE_PEACE_DAYS_STANDARD     = -3000,
+	MAKE_PEACE_DAYS_PROB_MOD     = -900,
+	
 	MAKE_PEACE_DAYS_POW_MODULUS  = 10,
 	MAKE_PEACE_BELLIGERENT_TIME  = 90,
 	
@@ -1382,6 +1412,7 @@ CharacterProposal =
 {
 	NONE             = 0,
 	
+	-- Personal
 	BACK_HOME        = 1,
 	BACK_ENCAMPMENT  = 2,
 	MOVETO           = 3,
@@ -1416,6 +1447,7 @@ CharacterProposal =
 	HR_HIRE          = 43,
 	HR_EXILE         = 44,
 	HR_PROMOTE       = 45,
+	HR_BONUS         = 46,--Need implement
     HR_AFFAIRS_END   = 49,	
 	
 	-- War preparedness	
@@ -1427,6 +1459,7 @@ CharacterProposal =
 	REINFORCE_CORPS  = 55,
 	REGROUP_CORPS    = 56,
 	TRAIN_CORPS      = 57,
+	CONSCRIPT_TROOP  = 58,--Need implement
 	WAR_PREPAREDNESS_AFFAIRS_END = 59,
 	
 	-- Military
@@ -1619,165 +1652,44 @@ CharacterParams =
 
 CharacterProposalTendency = 
 {
-	--Default
-	[0] = 
-	{
-		SUCCESS_CRITERIA = 
-		{
-			FRIENDLY       = 5000,		
-			THREATEN       = 5000,		
-			ALLY           = 5000,
-			DECLARE_WAR    = 5000,		
-			MAKE_PEACE     = 5000,		
-			BREAK_CONTRACT = 5000,
-			SURRENDER      = 5000,
-		},
-		PROPOSAL =
-		{
-			TECH           = 0,
-			
-			FRIENDLY       = 3500,
-			THREATEN       = 3500,
-			ALLY           = 3500,
-			DECLARE_WAR    = 3500,
-			MAKE_PEACE     = 3500,
-			BREAK_CONTRACT = 3500,
-			SURRENDER      = 3500,
-		},
-	},
 	
-	--OFFICER
-	[10] = 
+	JOB = 
 	{
-		SUCCESS_CRITERIA = 
+		--Default
+		[0] = 
 		{
-			FRIENDLY       = 5000,		
-			THREATEN       = 5000,		
-			ALLY           = 5000,
-			DECLARE_WAR    = 5000,		
-			MAKE_PEACE     = 5000,		
-			BREAK_CONTRACT = 5000,
-			SURRENDER      = 5000,
+			SUCCESS_CRITERIA = {FRIENDLY=5000, THREATEN=5000, ALLY=5000, DECLARE_WAR=5000, MAKE_PEACE=5000,BREAK_CONTRACT=5000,SURRENDER=5000,},
+			PROPOSAL = { TECH=3500,FRIENDLY=3500,THREATEN=3500,ALLY=3500,DECLARE_WAR=3500,MAKE_PEACE=3500,BREAK_CONTRACT=3500,SURRENDER=3500,},
+		},		
+		--OFFICER
+		[10] = 
+		{
+			SUCCESS_CRITERIA = { DEFAULT=5000, },
+			PROPOSAL = { TECH=3000,FRIENDLY=3000,THREATEN=3000,ALLY=4000,DECLARE_WAR=4000,MAKE_PEACE=3000,BREAK_CONTRACT=2000,SURRENDER=3000,},
+		},		
+		--General
+		[11] = 
+		{
+			SUCCESS_CRITERIA = { DEFAULT=5000, },
+			PROPOSAL = { TECH=0,FRIENDLY=2500,THREATEN=5000,ALLY=2500,DECLARE_WAR=5000,MAKE_PEACE=500,BREAK_CONTRACT=2000,SURRENDER=500,},
 		},
-		PROPOSAL =
+		--DIPLOMATIC
+		[100] = 
 		{
-			TECH           = 5000,
-			
-			FRIENDLY       = 3000,		
-			THREATEN       = 5000,		
-			ALLY           = 3000,		
-			DECLARE_WAR    = 4000,		
-			MAKE_PEACE     = 0,		
-			BREAK_CONTRACT = 2000,
-			SURRENDER      = 3000,
-		},
-	},
-	
-	--General
-	[11] = 
-	{
-		SUCCESS_CRITERIA = 
+			SUCCESS_CRITERIA = { DEFAULT=5000, },
+			PROPOSAL = { TECH=0,FRIENDLY=5000,THREATEN=3000,ALLY=4000,DECLARE_WAR=2500,MAKE_PEACE=3500,BREAK_CONTRACT=1500,SURRENDER=2500,},
+		},		
+		--CABINET_MINISTER
+		[101] = 
 		{
-			FRIENDLY       = 5000,		
-			THREATEN       = 5000,		
-			ALLY           = 5000,
-			DECLARE_WAR    = 5000,		
-			MAKE_PEACE     = 5000,		
-			BREAK_CONTRACT = 5000,
-			SURRENDER      = 5000,
-		},
-		PROPOSAL =
+			SUCCESS_CRITERIA = { DEFAULT=5000, },
+			PROPOSAL = { TECH=8000,FRIENDLY=5000,THREATEN=3000,ALLY=4000,DECLARE_WAR=1000,MAKE_PEACE=2000,BREAK_CONTRACT=1500,SURRENDER=1500,},
+		},		
+		--MARSHAL
+		[102] = 
 		{
-			TECH           = 0,
-			
-			FRIENDLY       = 2500,		
-			THREATEN       = 5000,		
-			ALLY           = 2500,		
-			DECLARE_WAR    = 5000,		
-			MAKE_PEACE     = 500,		
-			BREAK_CONTRACT = 2000,
-			SURRENDER      = 500,
-		},
-	},
-	
-	--DIPLOMATIC
-	[100] = 
-	{
-		SUCCESS_CRITERIA = 
-		{
-			FRIENDLY       = 5000,		
-			THREATEN       = 5000,		
-			ALLY           = 5000,
-			DECLARE_WAR    = 5000,		
-			MAKE_PEACE     = 5000,		
-			BREAK_CONTRACT = 5000,
-			SURRENDER      = 5000,
-		},
-		PROPOSAL =
-		{
-			TECH           = 4000,
-			
-			FRIENDLY       = 5000,		
-			THREATEN       = 3000,		
-			ALLY           = 4000,		
-			DECLARE_WAR    = 2500,		
-			MAKE_PEACE     = 3500,		
-			BREAK_CONTRACT = 1500,
-			SURRENDER      = 2500,
-		},
-	},
-	
-	--CABINET_MINISTER
-	[101] = 
-	{
-		SUCCESS_CRITERIA = 
-		{
-			FRIENDLY       = 5000,		
-			THREATEN       = 5000,		
-			ALLY           = 5000,
-			DECLARE_WAR    = 5000,		
-			MAKE_PEACE     = 5000,		
-			BREAK_CONTRACT = 5000,
-			SURRENDER      = 5000,
-		},
-		PROPOSAL =
-		{
-			TECH           = 8000,
-		
-			FRIENDLY       = 5000,		
-			THREATEN       = 3000,		
-			ALLY           = 4000,		
-			DECLARE_WAR    = 1000,		
-			MAKE_PEACE     = 0,		
-			BREAK_CONTRACT = 1000,
-			SURRENDER      = 1000,
-		},
-	},
-	
-	--MARSHAL
-	[102] = 
-	{
-		SUCCESS_CRITERIA = 
-		{
-			FRIENDLY       = 5000,		
-			THREATEN       = 5000,		
-			ALLY           = 6000,
-			DECLARE_WAR    = 4000,		
-			MAKE_PEACE     = 5000,		
-			BREAK_CONTRACT = 5000,
-			SURRENDER      = 5000,
-		},
-		PROPOSAL =
-		{
-			TECH           = 3500,
-			
-			FRIENDLY       = 3000,
-			THREATEN       = 6000,
-			ALLY           = 3000,
-			DECLARE_WAR    = 5000,
-			MAKE_PEACE     = 0,
-			BREAK_CONTRACT = 2500,
-			SURRENDER      = 0,
+			SUCCESS_CRITERIA = { DEFAULT=5000, },
+			PROPOSAL = { TECH=4000,FRIENDLY=3000,THREATEN=6000,ALLY=3000,DECLARE_WAR=5000,MAKE_PEACE=0,BREAK_CONTRACT=2500,SURRENDER=0,},			
 		},
 	},
 }

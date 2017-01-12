@@ -165,6 +165,13 @@ function MathUtility_Merge( left, right, condition )
 	return destination
 end
 
+function MathUtility_NewList( source )
+	local destination = {}
+	for field, value in pairs( source ) do
+		table.insert( destination, value )
+	end
+	return destination
+end
 
 --[[
 	Copy Table
@@ -176,12 +183,14 @@ function MathUtility_Copy(source, destination)
 	if not destination then destination = {} end
 	if source then
 		for field, value in pairs(source) do
-			if typeof(value) == "table" then
-				destination[field] = {}
-				MathUtility_Copy( value, destination[field] )
-			else
-				--print( "rawset", field, value )
-				rawset(destination, field, value)
+			if value then
+				if typeof(value) == "table" then
+					destination[field] = {}
+					MathUtility_Copy( value, destination[field] )
+				else
+					--print( "rawset", field, value )
+					rawset(destination, field, value)
+				end
 			end
 		end
 	end
@@ -324,7 +333,7 @@ end
 
 function MathUtility_Remove( list, target, name )
 	if not list then 
-		print( "List is invalid" )
+		print( "List is invalid", list, target, name )
 		return false
 	end
 	if not name then 

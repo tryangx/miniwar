@@ -27,35 +27,37 @@ function Diplomacy:Dump()
 end
 
 function Diplomacy:GetGroupGoal( group )
-	if group:HasGoal( GroupGoal.SURVIVAL_BEG, GroupGoal.SURVIVAL_END ) then return "SURVIVAL_GOAL" end
-	if group:HasGoal( GroupGoal.DOMINATION_BEG, GroupGoal.DOMINATION_END ) then return "DOMINATION_GOAL" end
+	if group:HasGoal( GroupGoal.SURVIVAL_GOAL_BEG, GroupGoal.SURVIVAL_GOAL_END ) then return "SURVIVAL_GOAL" end
+	if group:HasGoal( GroupGoal.DOMINATION_GOAL_BEG, GroupGoal.DOMINATION_GOAL_END ) then return "DOMINATION_GOAL" end
 	if group:HasGoal( GroupGoal.LEADING_GOAL_BEG, GroupGoal.LEADING_GOAL_END ) then return "LEADING_GOAL" end
 	return "NONE"
 end
 
-function Diplomacy:UpdateContract( relation )
+function Diplomacy:UpdateContract( elapsedTime, relation )
 	if relation.type == GroupRelationType.ALLIANCE then
-		local trait = relation:GetDetail( GroupRelationDetail.ALLIANCE_TIME_REMAINS )
-		if trait then				
-			if trait.value > passDay then
-				trait.value = trait.value - passDay
+		local detail = relation:GetDetail( GroupRelationDetail.ALLIANCE_TIME_REMAINS )
+		if detail then				
+			if detail.value > passDay then
+				detail.value = detail.value - passDay
 				return
 			end
 		end
 		relation:EndAlliance()
 	elseif relation.type == GroupRelationType.TRUCE then
-		local trait = relation:GetDetail( GroupRelationDetail.TRUCE_TIME_REMAINS )
-		if trait then				
-			if trait.value > passDay then
-				trait.value = trait.value - passDay
+		local detail = relation:GetDetail( GroupRelationDetail.TRUCE_TIME_REMAINS )
+		if detail then				
+			if detail.value > passDay then
+				detail.value = detail.value - passDay
 				return
 			end
 		end
 		relation:EndTruce()
-	end
+	elseif relation.type == GroupRelationType.BELLIGERENT then		
+		relation:AppendDetail( GroupRelationDetail.BELLIGERENT_DURATION, nil, elapsedTime )
+	end	
 end
 
-function Diplomacy:UpdateGoalAffect( relation )
+function Diplomacy:UpdateGoalAffect( elapsedTime, relation )
 	local source = relation._sourceGroup
 	local target = relation._targetGroup
 	if source and target then
@@ -69,11 +71,11 @@ function Diplomacy:UpdateGoalAffect( relation )
 			elseif value < 0 then
 				--in order to accelerate gamespeed
 				if g_numOfIndependenceGroup < 2 then
-					value = value * 4
+					value = value * 8
 				elseif g_numOfIndependenceGroup < 4 then
-					value = value * 2
+					value = value * 4
 				elseif g_numOfIndependenceGroup < 8 then
-					value = value * 1.5
+					value = value * 3
 				end
 				relation:Deteriorate( math.abs( value ) )
 				print( "deteriorate", source.name, target.name )
@@ -83,11 +85,11 @@ function Diplomacy:UpdateGoalAffect( relation )
 	end
 end
 
-function Diplomacy:Update()
+function Diplomacy:Update( elapsedTime )
 	self:Dump()
 	g_groupRelationDataMng:Foreach( function ( relation )
-		self:UpdateContract( relation )
-		self:UpdateGoalAffect( relation )
+		self:UpdateContract( elapsedTime, relation )
+		self:UpdateGoalAffect( elapsedTime, relation )
 	end )
 	--InputUtility_Pause()
 end
@@ -116,4 +118,11 @@ end
 
 function Diplomacy:UpdateEventAffect()
 
+end
+
+function Diplomacy:RemoveGroupRelation( group )
+	local removeList = {}
+	g_groupRelationDataMng:RemoveDataByCondition( function ( relation )
+		return relation.sid == group.id or relation.tid == group.id
+	end )
 end

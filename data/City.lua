@@ -72,19 +72,19 @@ function City:Load( data )
 	-----------------------------------
 	-- Dynamic Data
 	self._group         = nil
+		
+	self._militaryPower = -1	
+	self._canBuildConstructions = nil
+	self._canRecruitTroops = nil
 	
+	--[[
 	--Determines how many troop can supply
 	self._supplyIncome  = 0
 	self._supplyConsume = 0
 	
-	self._moneyIncome   = 0
-	
+	self._moneyIncome   = 0	
 	self._economyPower  = -1
-	self._militaryPower = -1
-	self._traitPower    = 0
-	
-	self._canBuildConstructions = nil
-	self._canRecruitTroops = nil
+	]]
 end
 
 function City:SaveData()
@@ -222,13 +222,15 @@ function City:UpdatePlots( allocate )
 	--use average evaluation
 	self.security = math.floor( self.security / #self.plots )
 	
-	print( self.name .. " plot="..#self.plots .. " lv=" .. self.level )
-	--print( plotDesc )
-	print( "population=" .. Helper_CreateNumberDesc( self.population ) .. "/" .. Helper_CreateNumberDesc( CalcPlotPopulation( self.livingspace ) ) .. "("..self.livingspace..")" )	
-	print( "agr="..self.agriculture.."/"..self.maxAgriculture.." Supply="..Helper_CreateNumberDesc( CalcPlotSupply( self.agriculture ) ) .. "/" .. Helper_CreateNumberDesc( CalcPlotSupply( self.maxAgriculture ) ) .. " Surplus="..Helper_CreateNumberDesc( CalcPlotSupply( self.agriculture ) - self.population ).."/"..Helper_CreateNumberDesc( CalcPlotSupply( self.maxAgriculture ) - CalcPlotPopulation( self.livingspace ) ) )
-	print( "eco="..self.economy.."/"..self.maxEconomy.. " pro="..self.production.."/"..self.maxProduction .. " sec=" ..self.security )	
-	print( "military=" .. self:GetMilitaryPower() .. "/" .. self:GetRequiredMilitaryPower() )
-	--InputUtility_Pause( "" )
+	if self:GetGroup() then 
+		print( self.name .. " plot="..#self.plots .. " lv=" .. self.level )
+		--print( plotDesc )
+		print( "population=" .. Helper_CreateNumberDesc( self.population ) .. "/" .. Helper_CreateNumberDesc( CalcPlotPopulation( self.livingspace ) ) .. "("..self.livingspace..")" )	
+		print( "agr="..self.agriculture.."/"..self.maxAgriculture.." Supply="..Helper_CreateNumberDesc( CalcPlotSupply( self.agriculture ) - self.population ) .. "/" .. Helper_CreateNumberDesc( CalcPlotSupply( self.maxAgriculture ) - self.population ) .. " Surplus="..Helper_CreateNumberDesc( CalcPlotSupply( self.agriculture ) - self.population ).."/"..Helper_CreateNumberDesc( CalcPlotSupply( self.maxAgriculture ) - CalcPlotPopulation( self.livingspace ) ) )
+		print( "eco="..self.economy.."/"..self.maxEconomy.. " pro="..self.production.."/"..self.maxProduction .. " sec=" ..self.security )	
+		print( "military=" .. self:GetMilitaryPower() .. "/" .. self:GetRequiredMilitaryPower() )	
+		--InputUtility_Pause( "" )
+	end
 	if allocate then
 		self.plots = plots
 	end	
@@ -355,10 +357,13 @@ function City:GetAdjacentBelligerentCityList()
 	end )
 end
 
+-----------------------------------------------------
+-- Below Getter mostly use in Task Manager
+
 -- character who can attend meeting
 function City:GetNumOfIdleChara()
 	return Helper_CountIf( self.charas, function( chara )
-		return chara:IsStayCity( self )
+		return chara:IsStayCity( self ) and not g_taskMng:GetTaskByActor( chara )
 	end )
 end
 
@@ -368,103 +373,95 @@ function City:GetNumOfFreeChara()
 	end )
 end
 
+function City:GetNumOfFreeChara()
+	return Helper_CountIf( self.charas, function( chara )
+		return chara:IsFree()
+	end )
+end
+function City:GetFreeCharaList()
+	return Helper_ListIf( self.charas, function( chara )
+		return chara:IsFree()
+	end )
+end
+
 function City:GetFreeMilitaryOfficerList()
 	return Helper_ListIf( self.charas, function( chara )
-		return not chara:IsLeadTroop() and chara:IsStayCity( self ) and not chara:IsImportant() and chara:IsMilitaryOfficer()
+		return not chara:IsLeadTroop() and chara:IsStayCity( self ) and not chara:IsImportant() and chara:IsMilitaryOfficer() and not g_taskMng:GetTaskByActor( chara )
 	end )
 end
 
 function City:GetIdleCorpsList()
 	return Helper_ListIf( self.corps, function( corps )
-		return corps:IsStayCity( self )
+		return corps:IsStayCity( self ) and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
 
 function City:GetPreparedToAttackCorpsList()
 	return Helper_ListIf( self.corps, function( corps )
-		return corps:IsStayCity( self ) and corps:IsPreparedToAttack() and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsStayCity( self ) and corps:IsPreparedToAttack() and not g_taskMng:GetTaskByActor( corps ) and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
 
 -- Idle corps means Staying in city
 function City:GetNumOfIdleCorps()
 	return Helper_CountIf( self.corps, function( corps )
-		return not corps:IsStayCity( self )
+		return not corps:IsStayCity( self ) and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
 
 function City:GetNumOfVacancyCorps()
 	return Helper_CountIf( self.corps, function ( corps )
-		return corps:IsStayCity( self ) and corps:GetVacancyNumber() > 0
+		return corps:IsStayCity( self ) and corps:GetVacancyNumber() > 0 and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
 function City:GetVacancyCorpsList()
 	return Helper_ListIf( self.corps, function ( corps )
-		return corps:IsStayCity( self ) and corps:GetVacancyNumber() > 0
-	end )
-end
-function City:GetUnTrainedCorpsList()
-	return Helper_ListIf( self.corps, function ( corps )
-		return corps:IsStayCity( self ) and corps:IsUntrained()
-	end )
-end
-function City:GetNumOfUnderstaffedCorps()
-	return Helper_CountIf( self.corps, function ( corps )
-		return corps:IsStayCity( self ) and corps:IsUnderstaffed()
+		return corps:IsStayCity( self ) and corps:GetVacancyNumber() > 0 and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
 function City:GetUnderstaffedCorpsList()
 	return Helper_ListIf( self.corps, function ( corps )
-		return corps:IsStayCity( self ) and corps:IsUnderstaffed()
+		return corps:IsStayCity( self ) and corps:IsUnderstaffed() and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
-function City:GetNumOfUnderstaffedCorpsList()
+function City:GetNumOfUnderstaffedCorps()
 	return Helper_CountIf( self.corps, function ( corps )
-		return corps:IsStayCity( self ) and corps:IsUnderstaffed()
+		return corps:IsStayCity( self ) and corps:IsUnderstaffed() and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
 function City:GetUntrainedCorpsList()
 	return Helper_ListIf( self.corps, function ( corps )
-		return corps:IsStayCity( self ) and corps:IsUntrained()
+		return corps:IsStayCity( self ) and corps:IsUntrained() and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
-function City:GetNumOfUntrainedCorpsList()
+function City:GetNumOfUntrainedCorps()
 	return Helper_CountIf( self.corps, function ( corps )
-		return corps:IsStayCity( self ) and corps:IsUntrained()
+		return corps:IsStayCity( self ) and corps:IsUntrained() and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
 function City:GetNumOfNonLeaderTroop()
 	return Helper_CountIf( self.troops, function ( troop )	
-		return ( not troop:GetCorps() or troop:GetCorps():IsStayCity( self ) ) and not troop:GetLeader()
+		return ( not troop:GetCorps() or troop:GetCorps():IsStayCity( self ) ) and not troop:GetLeader() and not g_taskMng:GetTaskByActor( troop )
 	end )
 end
 function City:GetNonLeaderTroopList()
 	return Helper_ListIf( self.troops, function( troop )
-		return ( not troop:GetCorps() or troop:GetCorps():IsStayCity( self ) ) and not troop:GetLeader()
+		return ( not troop:GetCorps() or troop:GetCorps():IsStayCity( self ) ) and not troop:GetLeader() and not g_taskMng:GetTaskByActor( troop )
 	end )
 end
 
 function City:GetNumOfNonCorpsTroop()
 	return Helper_CountIf( self.troops, function( troop )
-		return not troop:GetCorps()
+		return not troop:GetCorps() and not g_taskMng:GetTaskByActor( troop )
 	end )
 end
 function City:GetNonCorpsTroopList()
 	return Helper_ListIf( self.troops, function( troop )
-		return not troop:GetCorps()
+		return not troop:GetCorps() and not g_taskMng:GetTaskByActor( troop )
 	end )
 end
 
-function City:GetMaxTraitPower()
-	if self._traitPower > 0 then return self._traitPower end
-	
-	local power = 0
-	for k, v in ipairs( self.traits ) do
-		if power < v.value then power = v.value end
-	end	
-	self._traitPower = power
-	return self._traitPower
-end
+-------------------------------------------------
 
 function City:GetMilitaryPower()	
 	if self._militaryPower >= 0 then return self._militaryPower end
@@ -478,7 +475,11 @@ function City:GetMilitaryPower()
 end
 
 function City:GetMinPopulation()
-	return CalcPlotPopulation( self.level - 1 )
+	return CalcCityMinPopulation( self )
+end
+
+function City:GetMilitaryServicePopulation()
+	return math.max( 0, self.population - self:GetMinPopulation() )
 end
 
 function City:GetRequiredMilitaryPower()
@@ -518,9 +519,8 @@ function City:GetSupplyBonus()
 	else
 		modulus = modulus / modulusNum
 	end
+	--return 0, 1
 	return standard, modulus
-	--print( "supply=", standard, modulus, modulusNum )
-	--return math.floor( standard * modulus )
 end
 
 function City:GetHarvestFood()
@@ -532,7 +532,7 @@ function City:GetSupply()
 	local bonus, modulus = self:GetSupplyBonus()
 	local supply = CalcPlotSupply( ( self.agriculture + bonus ) * modulus )	
 	local ret = supply - self.population
-	--InputUtility_Pause( self.name, "output=" .. supply, "popu=".. self.population, " surplus="..ret)	
+	--InputUtility_Pause( self.name, "output=" .. supply, "popu=".. self.population, " surplus="..ret, bonus, modulus)
 	return ret
 end
 
@@ -602,6 +602,10 @@ function City:GetTag( tagType )
 	return Helper_GetVarb( self.tags, tagType )
 end
 
+function City:SetTag( tagType, value )
+	Helper_SetVarb( self.tags, tagType, value )
+end
+
 function City:AppendTag( tagType, value, range )
 	Helper_AppendVarb( self.tags, tagType, value, range )
 end
@@ -610,55 +614,46 @@ function City:RemoveTag( tagType, value )
 	Helper_RemoveVarb( self.tags, tagType, value )
 end
 
+function City:QueryAdajacentCityMilitaryPower() 
+	local maxPower, minPower, totalPower, number = 0, 99999999, 0, 0
+	local group = self:GetGroup()
+	for k, otherCity in ipairs( self.adjacentCities ) do 
+		local otherGroup = otherCity:GetGroup()
+		if otherGroup and otherGroup ~= group then
+			local otherPower = otherCity:GetMilitaryPower()
+			if otherPower > maxPower then maxPower = otherPower end
+			if otherPower < minPower then minPower = otherPower end
+			totalPower = totalPower + otherPower
+			number = number + 1
+		end
+	end
+	return totalPower, maxPower, minPower, number
+end
+
+function City:GetGrowthData()
+	return self.agriculture, self.maxAgriculture, self.economy, self.maxEconomy, self.production, self.maxProduction
+end
+
 ------------------------------------------
+
+function City:IsPopulationEnough()
+	return self:GetMinPopulation() < self.population
+end
 
 function City:CanDispatch()
 	return not self:IsInSiege()
 end
 
-function City:CanRecruit()
-	return self:GetRecruitList() and #self._canRecruitTroops > 0 and not self:IsInSiege() 
-end
-
 function City:CanBuild()
 	return self:GetBuildList() and #self._canBuildConstructions > 0 and not self:IsInSiege() 
 end
-
 -- Check city is not building any construction or recruit any troop
 function City:CanInvest()
-	return not self:IsInSiege() and self:GetGroup().money >= QueryInvestNeedMoney( self ) and self.economy < self.maxEconomy * CityParams.INVEST.NEED_INVEST_LIMIT_RATE
+	return self:IsPopulationEnough() and not self:IsInSiege() and self:GetGroup().money >= QueryInvestNeedMoney( self )
 end
-
 function City:CanFarm()
-	return not self:IsInSiege() and self:GetGroup().money >= QueryFarmNeedMoney( self ) and self.agriculture < self.maxAgriculture * CityParams.FARM.NEED_FARM_LIMIT_RATE
+	return self:IsPopulationEnough() and not self:IsInSiege() and self:GetGroup().money >= QueryFarmNeedMoney( self )
 end
-
-function City:CanPatrol()
-	return not self:IsInSiege() and self.security < CityParams.PLOT.SAFETY_PLOT_SECURITY
-end
-
-function City:CanLevyTax()
-	return not self:IsInSiege()
-end
-
-function City:CanRecruitTroop( troop )
-	if troop.prerequisites.constrs then
-		for k, constr in ipairs( troop.prerequisites.constrs ) do
-			if not MathUtility_IndexOf( self.constrs, constr, "id" ) then
-				return false
-			end
-		end
-	end
-	
-	if troop.prerequisites.money then
-		if self._group:GetMoney() < troop.prerequisites.money then
-			return false
-		end
-	end
-	
-	return true
-end
-
 function City:CanBuildConstruction( constr )
 	--require constrs
 	if constr.prerequisites.constrs then
@@ -677,26 +672,50 @@ function City:CanBuildConstruction( constr )
 	
 	return true
 end
-
+function City:CanLevyTax()
+	return not self:IsInSiege()
+end
+function City:CanPatrol()
+	return not self:IsInSiege() and self.security < PlotParams.SAFETY_PLOT_SECURITY
+end
+function City:CanInstruct()
+	return self.instruction == CityInstruction.NONE and not g_taskMng:IsTaskConflict( TaskType.CITY_INSTRUCT, self )
+end
+function City:CanRecruit()
+	return #self:GetRecruitList() > 0 and not self:IsInSiege() and self:IsPopulationEnough() 
+end
+function City:CanRecruitTroop( troop )
+	if troop.prerequisites.constrs then
+		for k, constr in ipairs( troop.prerequisites.constrs ) do
+			if not MathUtility_IndexOf( self.constrs, constr, "id" ) then
+				return false
+			end
+		end
+	end	
+	if troop.prerequisites.money and self._group:GetMoney() < troop.prerequisites.money then
+		return false
+	end	
+	return true
+end
 function City:CanEstablishCorps()
 	--number of corps is less than limit
-	if #self.corps >= math.floor( self.size / 2 ) then return false end
+	if #self.corps >= QueryCityCorpsSupport( self ) then 
+		print( NameIDToString( self ) .. " only support corps=" .. QueryCityCorpsSupport( self ) )
+		return false
+	end
 	
 	--has enough troop not in the crops
 	return self:GetNumOfNonCorpsTroop() >= CorpsParams.NUMBER_OF_TROOP_TO_ESTALIBSH
 end
-
 function City:CanRegroupCorps()
 	--print( "regroup", self.name, #self.corps, #self.troops, self:GetNumOfVacancyCorps(), self:GetNumOfNonCorpsTroop() )
-	return self:GetNumOfVacancyCorps() > 0 and self:GetNumOfNonCorpsTroop() > 0
+	return not self:IsInSiege() and self:GetNumOfVacancyCorps() > 0 and self:GetNumOfNonCorpsTroop() > 1
 end
-
 function City:CanReinforceCorps()
-	return self:GetNumOfUnderstaffedCorpsList() > 0
+	return not self:IsInSiege() and self:GetNumOfUnderstaffedCorps() > 0 and self.population > self:GetMinPopulation()
 end
-
 function City:CanTrainCorps()
-	return self:GetNumOfUntrainedCorpsList() > 0
+	return not self:IsInSiege() and self:GetNumOfUntrainedCorps() > 0
 end
 
 function City:CanDispatchCorps()
@@ -778,13 +797,14 @@ function City:DumpSimple( indent )
 end
 
 function City:Dump( indent )
+	if 1 then return end
 	if not indent then indent = "" end	
 	print( '>>>>>>>>>>>  City >>>>>>>>>>>>>>>>>' )
 	print( indent .. '[City] #' .. self.id .. ' Name=' .. self.name )
 	self:DumpAdjacentDetail( indent )
-	print( indent .. "Population", self.population )	
+	print( indent .. 'Popu/Mil Serv  ', self.population .. "/" .. self:GetMilitaryServicePopulation() )
 	print( indent .. 'Agri+Ecom+Prod ', self.agriculture .. "/" .. self.maxAgriculture .. " " .. self.economy .. "/" .. self.maxEconomy .. " " .. self.production .. "/" .. self.maxProduction )
-	print( indent .. 'Secu / Popu    ', self.security .. ' / ' .. self.population )
+	print( indent .. 'Secu/Min Popu  ', self.security .. "/" .. self:GetMinPopulation() )
 	print( indent .. 'Supply/Harvest ', self:GetSupply() .. ' / ' .. self:GetHarvestFood() )
 	print( indent .. 'Money / Food   ', self.money .. ' / ' .. self.food .. "+" .. ( self:GetConsumeFood() > 0 and math.floor( self.food / self:GetConsumeFood() ) or "*" ) )
 	print( indent .. 'Leader         ', ( self.leader and self.leader.name or "" ) )
@@ -797,7 +817,7 @@ function City:Dump( indent )
 	print( indent .. 'Construction   ', #self.constrs )
 	self:DumpConstructionDetail( indent )
 	print( indent .. 'Plots          ', #self.plots )	
-	self:DumpPlotsDetail( indent )
+	--self:DumpPlotsDetail( indent )
 	print( indent .. 'Tags           ', #self.tags )
 	self:DumpTagDetail( indent )
 	print( "<<<<<<<<<<<<<<< City <<<<<<<<<<<<<" )
@@ -861,8 +881,8 @@ function City:Patrol()
 	self.security = 0
 	for k, plot in ipairs( self.plots ) do
 		local current = plot:GetAsset( PlotAssetType.SECURITY )
-		local delta   = g_syncRandomizer:GetInt( CityParams.PATROL.MINIMUM_EFFECT, CityParams.PATROL.MAXIMUM_EFFECT )
-		local final   = MathUtility_Clamp( current + delta, 0, CityParams.PLOT.MAX_PLOT_SECURITY )
+		local delta   = Random_SyncGetRange( CityParams.PATROL.MINIMUM_EFFECT, CityParams.PATROL.MAXIMUM_EFFECT )
+		local final   = MathUtility_Clamp( current + delta, 0, PlotParams.MAX_PLOT_SECURITY )
 		plot:SetAsset( PlotAssetType.SECURITY, final )
 		self.security = self.security + final
 	end
@@ -1044,7 +1064,7 @@ function City:Update()
 	for k, otherCity in ipairs( self.adjacentCities ) do		
 		if self._group and otherCity._group ~= self._group then
 			self:AppendTag( CityTag.FRONTIER, 1, CityParams.MAX_TAG_VALUE["FRONTIER"] )
-			if otherCity._group and self._group:IsHostility( otherCity._group ) then
+			if otherCity._group and self._group:IsBelligerent( otherCity._group ) then
 				self:AppendTag( CityTag.BATTLEFRONT, 1, CityParams.MAX_TAG_VALUE["BATTLEFRONT"] )
 			end
 		end

@@ -23,6 +23,7 @@ require "DataManager"
 -- Helper
 require "Report"
 require "DataUtility"
+require "Statistic"
 
 ---------------------------------------
 -- Configure
@@ -108,6 +109,8 @@ g_climate  = Climate()
 g_season   = Season()
 g_calendar = Calendar()
 
+g_statistic = Statistic()
+
 ---------------------------
 -- Configure Table
 g_groupTableMng     = TableManager( "GROUP_TABLE", GroupTable )
@@ -166,8 +169,6 @@ g_menu = MenuUtility()
 
 ---------------------------
 -- Running Data
-g_numOfIndependenceGroup = 0
-
 g_activateCharaList  = {}
 g_outCharacterList   = {}
 g_otherCharacterList = {}

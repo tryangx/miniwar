@@ -510,7 +510,7 @@ function Combat:SetClimate( id )
 	g_climate:SetCurrentWeather( g_climate:GetCurrentWeather() )
 end
 
-function Combat:Preprocess()
+function Combat:Init()
 	if not self.battlefield then return end
 	
 	--init phase
@@ -1927,6 +1927,7 @@ function Combat:HitTarget( troop, target, weapon, armor, flags )
 	if target:IsCombatUnit() and not target:IsSiegeUnit() then
 		local wounded = math.floor( damage * self:RandomRange( CombatParams.MIN_WOUNDED_PERCENTAGE, CombatParams.MAX_WOUNDED_PERCENTAGE, "Random Wounded" ) * 0.01 )
 		target.wounded = target.wounded + wounded
+		g_statistic:DieInCombat
 	end
 	
 	-- Affect fatigue

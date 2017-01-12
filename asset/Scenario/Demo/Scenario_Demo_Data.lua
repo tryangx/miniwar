@@ -227,7 +227,7 @@ local TroopData =
 		tableId = 1000,
 		number=1000,
 		leader = 0,
-		corps = 0,
+		corps = 2,
 		traits = { 310 },
 	},
 	[3]=
@@ -266,7 +266,7 @@ local TroopData =
 	
 	[11]=
 	{
-		name = "Blue Archer",
+		name = "Archer",
 		tableId = 2000,
 		exp = 0,
 		level =8,
@@ -277,7 +277,7 @@ local TroopData =
 	},
 	[12]=
 	{
-		name = "Blue Archer",
+		name = "Archer",
 		tableId = 2000,
 		exp = 0,
 		level =8,
@@ -288,7 +288,7 @@ local TroopData =
 	},
 	[13]=
 	{
-		name = "Blue Cavalry",
+		name = "Cavalry",
 		tableId = 3000,
 		exp = 0,
 		level =16,		
@@ -299,7 +299,7 @@ local TroopData =
 	},
 	[14]=
 	{
-		name = "Blue Cavalry",
+		name = "Cavalry",
 		tableId = 3000,		
 		exp = 0,
 		level = 10,
@@ -310,7 +310,18 @@ local TroopData =
 	},
 	[15]=
 	{
-		name = "Blue Cavalry",
+		name = "Cavalry",
+		tableId = 3000,
+		exp = 0,
+		level =14,
+		number=500,
+		morale=90,
+		leader = 0,
+		corps = 0,
+	},
+	[20]=
+	{
+		name = "Cavalry",
 		tableId = 3000,
 		exp = 0,
 		level =14,
@@ -388,12 +399,23 @@ local CorpsData =
 	
 	[2] = {	
 		id=2,
-		name="Bandit",
-		encampment=21,
-		location=21,
+		name="Qin Jun2",
+		encampment=10,
+		location=10,
 		formation=1,
 		--troops={ 13 },
-		troops={ 13, 14, 15, 11, 12 },
+		troops={ 13 },--, 14, 15, 11, 12 },
+		leader = 0,
+	},
+	
+	[3] = {	
+		id=3,
+		name="Wei Jun2",
+		encampment=40,
+		location=40,
+		formation=1,
+		--troops={ 13 },
+		troops={ 20 },--, 14, 15, 11, 12 },
 		leader = 0,
 	},
 }
@@ -413,9 +435,9 @@ local CityData =
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},
-		charas = { 100, 102 },--101, 102, 105, 104 },
-		corps  = { 1 },	
-		troops = { 1, 2 },	
+		charas = { 100, 102, 101, 102, 105, 104 },
+		corps  = {},--{ 1, 2 },	
+		--troops = { 1, 2 },
 		constructions = {},		
 		resources = {},--{ 200, 201, 202, 203, 204, 205, 206 },
 		plots = { { x = 1, y = 1 }, { x = 2, y = 1 } },
@@ -627,13 +649,13 @@ local GroupData =
 		cities = { 10, 11 },		
 		charas = { 100, 101, 102, 103, 104, 105 },
 		troops = {},
-		corps = { 1 },
+		corps = {},--{ 1, 2 },
 		relations = { 10, 11, 12, 13, 14, 15, 16, 17 },
 		tags = {
 			{ type = "MILITANT", value = 6 },
 		}		
 	},
-	--[[
+	--[[]]
 	[2] =
 	{
 		name = "QI",
@@ -677,10 +699,10 @@ local GroupData =
 		cities = { 40 },
 		charas = { 400 },
 		troops = {},
-		corps = {},		
+		corps = { 3 },		
 		relations = { 12, 21, 30, 40, 41, 42, 43, 44 },
 	},
-	--[[
+	--[[]]
 	[5] =
 	{
 		name = "Zhao",
@@ -774,7 +796,7 @@ local GroupRelationData =
 	[12] = 
 	{
 		--QIN VS WEI
-		sid=1, tid=4, evaluation=0, type="NEUTRAL", traits = 
+		sid=1, tid=4, evaluation=0, type="BELLIGERENT", traits = 
 		{
 			{ type = "OLD_ENEMY", id = 0, value = 5 },
 		}
