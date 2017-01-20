@@ -60,7 +60,7 @@ function Climate:Update()
 	for weather = WeatherType.BEGIN, WeatherType.END do
 		local prob = g_climateTable:GetProb( weatherType, weather )
 		if prob then
-			--print( "value="..value.. " prob="..prob.. " w="..weather)
+			--ShowText( "value="..value.. " prob="..prob.. " w="..weather)
 			if value < prob then
 				nextWeather = weather
 				break

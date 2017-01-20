@@ -14,7 +14,7 @@ end
 
 function DataManager:AllocateId()
 	self.alloateId = self.alloateId + 1
-	--print( "Allocate id", self.alloateId )
+	--ShowText( "Allocate id", self.alloateId )
 	return self.alloateId
 end
 
@@ -23,7 +23,7 @@ function DataManager:GetCount()
 end
 
 function DataManager:Clear()
-	--print( "clear" )
+	--ShowText( "clear" )
 	self.datas     = {}	
 	self.count     = 0
 	self.alloateId = 0
@@ -37,18 +37,18 @@ function DataManager:LoadFromData( datas )
 	for k, data in pairs( datas ) do		
 		local newData = self.clz()
 		if data.id == nil then
-			--print( "Key=" .. k )
+			--ShowText( "Key=" .. k )
 			data.id = k
 		end
 		--MathUtility_Dump( data )
 		newData:Load( data )
-		--print( "LoadDataFromTable", data.id, " in ", self.name )	
+		--ShowText( "LoadDataFromTable", data.id, " in ", self.name )	
 		self:SetData( newData.id, newData )
 		if self.alloateId <= data.id then
 			self.alloateId = data.id
 		end
 	end
-	print( "Load Data=", self.name, self.count, datas )
+	ShowText( "Load Data=", self.name, self.count, datas )
 end
 
 function DataManager:LoadFromFile( fileName )
@@ -61,12 +61,12 @@ function DataManager:LoadFromFile( fileName )
 end
 
 function DataManager:LoadFromTable( tableMng )
-	--print( self.name, self.clz )
+	--ShowText( self.name, self.clz )
 	self:Clear()
 	tableMng:Foreach( function ( data )
 		local newData = self.clz()
 		newData:Load( data )
-		--print( "LoadDataFromTable", data.id, " in ", self.name )
+		--ShowText( "LoadDataFromTable", data.id, " in ", self.name )
 		self:SetData( newData.id, newData )
 	end )
 end
@@ -92,7 +92,7 @@ end
 
 function DataManager:GetData( id )
 	if not id or id == 0 then return nil end
-	--print( "GetData()", self.name, id, self.datas[id], #self.datas )
+	--ShowText( "GetData()", self.name, id, self.datas[id], #self.datas )
 	if not self.datas then return nil end
 	return self.datas[id]
 end
@@ -111,7 +111,7 @@ function DataManager:SetData( id, data )
 		self.count = self.count + 1
 	end	
 	self.datas[id] = data
-	--print( "setdata", self.name, id, self.datas[id], #self.datas )
+	--ShowText( "setdata", self.name, id, self.datas[id], #self.datas )
 end
 
 function DataManager:RemoveData( id )
@@ -119,7 +119,7 @@ function DataManager:RemoveData( id )
 		self.datas[id] = nil
 		self.count = self.count - 1
 	else
-		print( "Cann't remove data,  id is invalid" )
+		ShowText( "Cann't remove data,  id is invalid" )
 	end
 end
 

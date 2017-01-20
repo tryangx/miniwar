@@ -1,6 +1,14 @@
 ---------------------------
 -- Helper
 
+quickSimulate = false
+debugMeeting = false
+
+function ShowText( ... )
+	if quickSimulate and not g_game:IsGameEnd() then  return end
+	print( ... )
+end
+
 -- Randomizer
 function Random_LocalGetRange( min, max, desc )
 	local value = g_asyncRandomizer:GetInt( min, max )

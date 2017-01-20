@@ -53,7 +53,7 @@ function MovingActor:Init( type )
 		self.status = MovingActorStatus.SUSPENDED
 		return
 	end
-	--print( MathUtility_FindEnumName( MovingActorType, type ) .. " " .. self.remainTime, "next" )	
+	--ShowText( MathUtility_FindEnumName( MovingActorType, type ) .. " " .. self.remainTime, "next" )	
 end
 	
 function MovingActor:Update( type, elapsedTime )
@@ -123,18 +123,18 @@ function MovingActorManager:AddMovingActor( actorType, data )
 	end
 	list[actor.id] = actor
 	
-	print( "new moving actor=".. actor.id, MathUtility_FindEnumName( MovingActorType, actorType ), actor.location and actor.location.name or "", actor.destination and actor.destination.name or "" )
+	ShowText( "new moving actor=".. actor.id, MathUtility_FindEnumName( MovingActorType, actorType ), actor.location and actor.location.name or "", actor.destination and actor.destination.name or "" )
 end
 
 function MovingActorManager:Dump()
-	print( ">>>>>>>>>>>>>>>>>MovingActor Statistic" )
+	ShowText( ">>>>>>>>>>>>>>>>>MovingActor Statistic" )
 	for actorType, list in pairs( self.lists ) do
 		local len = MathUtility_CountLength( list )
 		--if len > 0 then
-			print( MathUtility_FindEnumName( MovingActorType, actorType ) .. "=" .. len )
+			ShowText( MathUtility_FindEnumName( MovingActorType, actorType ) .. "=" .. len )
 		--end
 	end
-	print( "<<<<<<<<<<<<<<<<" )
+	ShowText( "<<<<<<<<<<<<<<<<" )
 end
 
 function MovingActorManager:Update( elapsedTime )
@@ -147,7 +147,7 @@ function MovingActorManager:Update( elapsedTime )
 			end
 		end
 		for k, actor in ipairs( removeList ) do
-			print( MathUtility_FindEnumName( MovingActorType, actorType ) .. " id=" .. actor.id .. " finished" )
+			ShowText( MathUtility_FindEnumName( MovingActorType, actorType ) .. " id=" .. actor.id .. " finished" )
 			MathUtility_RemoveAndReserved( list, actor )
 		end		
 		removeList = nil

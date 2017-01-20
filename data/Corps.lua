@@ -54,21 +54,21 @@ end
 
 
 function Corps:ConvertID2Data()
-	--print( "Convert corps", self.name, #self.troops )
+	--ShowText( "Convert corps", self.name, #self.troops )
 	local troops = {}
 	for k, id in ipairs( self.troops ) do
 		local troop = g_troopDataMng:GetData( id )
 		table.insert( troops, troop )
 		if troop.corps == 0 then
-			--print( "!!! Fix troop corps error" )
+			--ShowText( "!!! Fix troop corps error" )
 			troop.corps = self.id
 		end
 		if troop.corps ~= self and troop.corps ~= self.id then
-			--print( "!!! Fix troop corps error 2" )
+			--ShowText( "!!! Fix troop corps error 2" )
 			troop.corps = self.id
 		end
 		if troop.encampment == 0 then
-			--print( "!!! Fix troop corps encampment error" )
+			--ShowText( "!!! Fix troop corps encampment error" )
 			troop.encampment = self.encampment
 		end
 	end
@@ -83,11 +83,11 @@ end
 
 function Corps:Dump( indent )
 	if not indent then indent = "" end
-	local content = indent .. "Corps=".. self.name .." Stay=".. self.location.name .. " LD=" .. ( self.leader and self.leader.name or "" ) .. "# "
+	local content = indent .. "Corps=".. NameIDToString( self ).." Stay=".. self.location.name .. " LD=" .. ( self.leader and self.leader.name or "" ) .. " num=" .. #self.troops .. ">>>"
 	for k2, troop in ipairs( self.troops ) do
-		content = content .. troop.name .. "+"..troop.number..","
+		content = content .. NameIDToString( troop ) .. "+"..troop.number..","
 	end
-	print( content )
+	ShowText( content )
 end
 
 ------------------------------------------
@@ -98,7 +98,7 @@ function Corps:AddTroop( troop )
 	troop:AddToCorps( self )
 	
 	if not self.name then 
-		self.name = troop.name
+		self.name = troop.name or ""		
 	end
 end
 
@@ -160,6 +160,10 @@ function Corps:GetPower()
 	return self._power
 end
 
+function Corps:GetNumOfTroop()
+	return #self.troops
+end
+
 function Corps:GetNumberStatus()
 	local number, totalNumber = 0, 0
 	for k, troop in ipairs( self.troops ) do
@@ -171,12 +175,12 @@ end
 
 function Corps:GetMedianFatigue()
 	local midFatigue = MathUtility_FindMedian( self.troops, "fatigue" )
-	print( "midFatigue=", midFatigue )
+	ShowText( "midFatigue=", midFatigue )
 	return midFatigue
 end
 
 function Corps:GetVacancyNumber()
-	--print( "check vacancy", CorpsParams.NUMBER_OF_TROOP_MAXIMUM, #self.troops )
+	--ShowText( "check vacancy", CorpsParams.NUMBER_OF_TROOP_MAXIMUM, #self.troops )
 	return math.max( 0, CorpsParams.NUMBER_OF_TROOP_MAXIMUM - #self.troops )
 end
 
@@ -191,7 +195,7 @@ function Corps:GetTrainingEval()
 end
 
 function Corps:IsStayCity( city )
-	--print( "check stay", self.location.name, city.name )
+	--ShowText( "check stay", self.location.name, city.name )
 	return self.location == city
 end
 
@@ -210,9 +214,8 @@ function Corps:IsPreparedToAttack()
 end
 
 function Corps:IsUnderstaffed()
-	local rate = 0.8
 	for k, troop in ipairs( self.troops ) do
-		if troop.number < troop.maxNumber * 0.8 then
+		if troop.number < troop.maxNumber * TroopParams.REINFORCE_UNDER_PROPORTION then
 			return true
 		end
 	end
@@ -227,7 +230,7 @@ end
 -- Operation
 
 function Corps:MoveToLocation( location )
-	--print( "move to location", location.name )
+	--ShowText( "move to location", location.name )
 	self.location = location	
 	for k, troop in ipairs( self.troops ) do
 		local leader = troop:GetLeader()
@@ -268,7 +271,7 @@ function Corps:Reinforce( reinforcement )
 	local teamWorkTag = Helper_GetVarb( self.tags, CorpsTag.TEAMWORK )
 	if teamWorkTag then
 		local loseTeamwork = math.ceil( teamWork.value * reinforcement / ( reinforcement + totalNumber ) )
-		print( "reduce teamwork", loseTeamwork, teamWork.value )
+		ShowText( "reduce teamwork", loseTeamwork, teamWork.value )
 		Helper_RemoveVarb( self.tags, CorpsTag.TEAMWORK, loseTeamwork )
 	end
 end

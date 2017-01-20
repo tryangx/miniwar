@@ -9,11 +9,12 @@ end
 function Troop:Load( data )
 	self.id = data.id or 0	
 	self.name = data.name or ""	
-	self.tableId  = data.tableId or 0	
+	self.tableId  = data.tableId or 0
 	---------------------------------------
 	-- Growth
-	self.level     = data.level or 0	
-	self.exp       = data.exp or 0	
+	self.maxLevel  = data.maxLevel or 0
+	self.level     = data.level or 0
+	self.exp       = data.exp or 0
 	-- Potential Ability
 	-- Determined by birthplace, it limits maximum level of troop
 	self.pa        = data.pa or 0			
@@ -25,11 +26,11 @@ function Troop:Load( data )
 	self.encampment = data.encampment or 0	
 	---------------------------------------
 	-- Attributes	
-	self.wounded   = data.wounded or 0	
-	self.number    = data.number or 0
 	self.maxNumber = data.maxNumber or 0	
 	self.maxMorale = data.maxMorale or 0
-	self.morale    = data.morale or 0			
+	self.wounded   = data.wounded or 0	
+	self.number    = data.number or 0	
+	self.morale    = data.morale or 0
 	---------------------------------------
 	-- Data
 	self.movement  = data.movement or 0	
@@ -124,7 +125,7 @@ function Troop:Dump( indent )
 	if self:GetEncampment() then
 		content = content .. " Loc=[" .. self:GetEncampment().name .. "]"
 	end
-	print( content )
+	ShowText( content )
 end
 
 -----------------------------------
@@ -146,12 +147,16 @@ function Troop:GetEncampment()
 	return self.encampment
 end
 
+function Troop:GetLevel()
+	return self.level
+end
+
 -----------------------------------
 -- Operation
 
 function Troop:AddToCorps( corps )	
 	self.corps = corps
-	--print( "Add to corps", self.name, corps.name )
+	--ShowText( "Add to corps", self.name, corps.name )
 end
 
 function Troop:Lead( chara )
@@ -271,7 +276,7 @@ function Troop:MoveTo( xPos, yPos )
 	self._combatMoved = true
 	self._combatPosX = xPos or self._combatPosX
 	self._combatPosY = yPos or self._combatPosY
-	--print( self.name .. " move to " .. self._combatPosX )
+	--ShowText( self.name .. " move to " .. self._combatPosX )
 end
 
 function Troop:IsActed()
@@ -346,7 +351,7 @@ function Troop:GetWeapon( condition )
 	for k, weapon in ipairs( self.table.weapons ) do
 		if condition( weapon ) then	selWeapon = weapon end
 	end
-	--if selWeapon then print( "Find weapon", self.name, selWeapon.name ) end
+	--if selWeapon then ShowText( "Find weapon", self.name, selWeapon.name ) end
 	return selWeapon
 end
 
@@ -477,12 +482,12 @@ end
 
 function Troop:RecoverMorale( value, desc, max )
 	self.morale = MathUtility_Clamp( self.morale + value, 0, limit or self.maxMorale )
-	--if desc then print( self.name .. " recover morale " .. value .. " for=" .. desc ) end
+	--if desc then ShowText( self.name .. " recover morale " .. value .. " for=" .. desc ) end
 end
 
 function Troop:LoseMorale( value, desc, min )
 	self.morale = MathUtility_Clamp( self.morale - value, limit or 0, self.maxMorale )
-	--if desc then print( self.name .. " lose morale " .. value .. " for=" .. desc ) end
+	--if desc then ShowText( self.name .. " lose morale " .. value .. " for=" .. desc ) end
 end
 
 function Troop:DealDamage( damage )
@@ -508,18 +513,39 @@ function Troop:Parry()
 	self._combatParry = true
 end
 
-function Troop:Kill( enemy )
+function Troop:Kill( enemy, damage, neutralized )	
 	table.insert( self._combatKillList, enemy )
+	
+	local rate = ( enemy:GetLevel() - self:GetLevel() ) / ( enemy:GetLevel() + self:GetLevel() )
+	local exp = math.ceil( damage * ( 1 + ( enemy:GetLevel() - self:GetLevel() ) / ( enemy:GetLevel() + self:GetLevel() ) ) )
+	if neutralized then exp = exp * 2 end
+	self:GainExp( exp )
+	--InputUtility_Pause( "lv=" .. self:GetLevel() .. " gain exp=" .. exp .. "/" .. self.exp, rate, damage, neutralized )
 end
 
 function Troop:Flee()
 	self._combatFled = true
-	print( NameIDToString( self ) .. " flee", self._combatFled )
+	ShowText( NameIDToString( self ) .. " flee", self._combatFled )
 end
 
 function Troop:Surrender()
 	self._combatSurrendered = true
-	print( NameIDToString( self ) .. " surrender" )
+	ShowText( NameIDToString( self ) .. " surrender" )
+end
+
+function Troop:GainSkill()
+	
+end
+
+function Troop:GainExp( exp )
+	if self:IsCombatUnit() and self.level < self.maxLevel then
+		self.exp = self.exp + exp
+		if self.exp > TroopParams.LEVEL_UP_EXP then
+			self.exp = self.exp - TroopParams.LEVEL_UP_EXP
+			self.level = self.level + 1
+			self:GainSkill()
+		end
+	end
 end
 
 --------------------------------
@@ -536,7 +562,7 @@ end
 
 function Troop:RemoveBuff( buffId )
 	MathUtility_Remove( self.buffs, buffId, "id" )
-	--print( "remove buff", buffId )
+	--ShowText( "remove buff", buffId )
 end
 
 function Troop:RemoveAllBuff()
@@ -545,7 +571,7 @@ end
 
 function Troop:UpdateBuff( elapsedTime )
 	for k, buff in pairs( self.buffs ) do
-		--print( "update buff", buff.id )
+		--ShowText( "update buff", buff.id )
 		if buff.duration > 0 then
 			if buff.duration > elapsedTime then
 				buff.duration = buff.duration - elapsedTime
@@ -557,7 +583,7 @@ function Troop:UpdateBuff( elapsedTime )
 end
 
 function Troop:QueryTrait( effect, params )
-	--print( "query trait", effect, #self.traits )
+	--ShowText( "query trait", effect, #self.traits )
 	for k, trait in ipairs( self.traits ) do		
 		local data = trait:GetEffect( effect, params )
 		if data then
@@ -582,11 +608,24 @@ end
 
 ---------------------------
 
-function Troop:Update()
-	if self:IsCombatUnit() and self.morale < self.maxMorale then
-		local recoverRate = 0.6
-		if not self:GetCorps() then recoverRate = 0.3 end
-		local recover = recoverRate * self.maxMorale
-		self:RecoverMorale( recover, "update" )
+function Troop:Update()	
+	if self:IsCombatUnit() then
+		--restore organization
+		local trainging = self:GetAsset( TroopTag.TRAINIG )
+		if training then
+			local restoreRate = 0.3
+			if not self:GetCorps() then restoreRate = restoreRate * 0.5 end
+			local restore = restoreRate * training.value
+			self:AppendAsset( TroopTag.ORGANIZATION, restore, training.value )
+		end
+		
+		--recover morale		
+		if self.morale < self.maxMorale then
+			local recoverRate = 0.6
+			if not self:GetCorps() then recoverRate = recoverRate * 0.5 end
+			local recover = recoverRate * self.maxMorale
+			self:RecoverMorale( recover, "update" )
+		end
 	end
+	
 end

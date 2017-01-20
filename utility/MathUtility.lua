@@ -22,7 +22,8 @@ MathCompareMethod =
 		print( MathUtility_Clamp( 1, 2, 80 ) )   -- 2
 
 ]]
-function MathUtility_Clamp( value, min, max )
+function MathUtility_Clamp( value, min, max, default )
+	if not value then return default end
 	if value < min then value = min
 	elseif value > max then value = max end
 	return value
@@ -100,6 +101,11 @@ function MathUtility_DumpWithTab( content, indent )
 	--print( str )
 end
 
+function MathUtility_DumpName( table )
+	for k, item in pairs( table ) do
+		print( item.name )
+	end
+end
 
 function MathUtility_Dump( table, indent )
 	if not indent then indent = 0 end

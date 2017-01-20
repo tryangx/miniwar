@@ -82,7 +82,7 @@ function LogUtility:WriteLog( content, level )
 	end
 	if self.printerMode == LogPrinterMode.ON then
 		if self.logLevel and self.logLevel <= level then
-			print( content )
+			ShowText( content )
 		end
 	end
 	if self.fileMode == LogFileMode.WRITE_IMMEDIATELY then

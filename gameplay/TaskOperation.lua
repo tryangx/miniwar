@@ -1,5 +1,5 @@
 function GroupResearch( group, tech )
-	if not tech then print( "tech is invalid" ) return end
+	if not tech then ShowText( "tech is invalid" ) return end
 	group.researchTechId = tech.id
 	group.researchPoints = tech.points
 	
@@ -89,24 +89,26 @@ end
 -- 
 --
 --------------------------
-function CityRecruitTroop( city, troop )
+function CityRecruitTroop( city, troopData )
+	--[[
 	local tableData = g_troopTableMng:GetData( troop.id )
 	if not tableData then
 		InputUtility_Wait( "Wrong troop table id=" .. troop.id )
 		return
 	end
-	local troop = g_troopDataMng:GenerateData( troop.id, g_troopTableMng )
-	troop.name    = city:GetGroup().name .. "-" .. troop.name
-	troop.tableId = troop.id
-	troop.table   = tableData
+	]]
+	local troop = g_troopDataMng:GenerateData( troopData.id, g_troopTableMng )
+	troop.name    = ( city:GetGroup() and city:GetGroup().name .. "-" or "" ) .. troop.name
+	troop.tableId = troopData.id
+	troop.table   = troopData
 	troop.maxNumber = troop.maxNumber * GroupParams.RECRUIT.MAX_NUMBER_MODULUS
-	troop.number  = troop.maxNumber
+	troop.number  = troop.maxNumber * 0.5
 	city:RecruitTroop( troop )
 	
 	--maybe decrease at first
 	city.population = city.population - troop.number
 	
-	Debug_Normal( "Recruit troop [" .. troop.name .."] in city [" .. city.name .. "]" )
+	Debug_Normal( "Recruit troop [" .. NameIDToString( troop ) .."] in city [" .. city.name .. "]" )
 end
 
 function CityRecruit( city )
@@ -132,7 +134,7 @@ function CityRecruit( city )
 		else
 			proportion = soldierNum[cate] * 100 / totalSoldier
 		end
-		--print( Parameter.DEFAULT_TROOP_PROPORTION[cate], proportion, cate )
+		--ShowText( Parameter.DEFAULT_TROOP_PROPORTION[cate], proportion, cate )
 		local diff = Parameter.DEFAULT_TROOP_PROPORTION[cate] - proportion
 		--descending
 		MathUtility_Insert( priorityList, { cate = cate, diff = diff }, "diff", true )
@@ -143,7 +145,7 @@ function CityRecruit( city )
 	for k, v in ipairs( city._group._canRecruitTroops ) do
 		local enable = true
 		
-		--print( "!!!!!!!!!!!!!", v.prerequisites.points )
+		--ShowText( "!!!!!!!!!!!!!", v.prerequisites.points )
 		
 		--check points validation
 		if not v.prerequisites.points then enable = false end	
@@ -164,7 +166,7 @@ function CityRecruit( city )
 	
 	for k1, prior in ipairs( priorityList ) do			
 		for k2, troop in ipairs( canRecruitTroops ) do	
-			--print( troop.category, prior.cate, k1, k2 )
+			--ShowText( troop.category, prior.cate, k1, k2 )
 			if troop.category == prior.cate then
 				CityRecruitTroop( city, troop )
 				return
@@ -184,12 +186,12 @@ end
 function CharaEstablishCorpsByTroop( city, idleTroopList )
 	local corps = Corps()
 	corps.id = g_corpsDataMng:AllocateId()
-
+	
 	local idleTroopNum = #idleTroopList
 	local troopNum = {}
 	local movement = nil
 	for k, troop in ipairs( idleTroopList ) do
-		print( "Add troop ["..troop.name.."] to corps" )
+		ShowText( "Add troop [".. NameIDToString( troop ) .."] to corps" )
 		corps:AddTroop( troop )
 		if not movement or movement > troop.movement then
 			movement = troop.movement
@@ -207,7 +209,7 @@ function CharaEstablishCorpsByTroop( city, idleTroopList )
 	g_corpsDataMng:SetData( corps.id, corps )
 	
 	--put corps into city
-	city:EstablishCorps( corps )	
+	city:EstablishCorps( corps )
 end
 
 function CharaEstablishCorps( city )
@@ -229,7 +231,9 @@ function CharaEstablishCorps( city )
 
 	local idleTroopList = {}
 	for k, troop in ipairs( city.troops ) do
+		print( troop.name, troop:GetCorps() )
 		if not troop:GetCorps() then
+			ShowText( NameIDToString( troop ) )
 			table.insert( idleTroopList, troop )
 		end
 	end
@@ -240,9 +244,10 @@ function CharaEstablishCorps( city )
 	end
 	local movement = nil
 	for k, troop in ipairs( idleTroopList ) do
-		if #corps.troops >= CorpsParams.NUMBER_OF_TROOP_MAXIMUM then break end		
+		if #corps.troops >= CorpsParams.NUMBER_OF_TROOP_MAXIMUM then break end
 		corps:AddTroop( troop )
 	end
+	
 	--[[
 	local leftSlot = formation.maxTroop
 	if leftSlot >= idleTroopNum then
@@ -257,7 +262,7 @@ function CharaEstablishCorps( city )
 		end
 	else
 		for k, troop in ipairs( idleTroopList ) do
-			--print( troopNum[troop.table.category], idleTroopNum, formation.troopProps[troop.table.category] )
+			--ShowText( troopNum[troop.table.category], idleTroopNum, formation.troopProps[troop.table.category] )
 			if troopNum[troop.table.category] < idleTroopNum * formation.troopProps[troop.table.category] then			
 				corps:AddTroop( troop )
 				troopNum[troop.table.category] = troopNum[troop.table.category] + 1
@@ -293,7 +298,7 @@ function CorpsRegroup( corps, troops )
 	local content = ""
 	for k, troop in ipairs( troops ) do
 		corps:AddTroop( troop )
-		content = content .. troop.name .. " "
+		content = content .. NameIDToString( troop ) .. " "
 	end
 	
 	Debug_Normal( "Regroup ["..corps.name.."] with ["..content .."]" )
@@ -301,13 +306,13 @@ end
 function CorpsReinforce( corps )
 	local city = corps:GetLocation()
 	if not city then
-		print( a.b )
+		ShowText( a.b )
 		return
 	end	
 	local number, totalNumber = corps:GetNumberStatus()
 	local needPeople = totalNumber - number
 	if city.population < needPeople then 
-		print( "Reinforce ["..corps.name.."] failed, not enough ["..needPeople .."/"..city.population.."]" )
+		ShowText( "Reinforce ["..corps.name.."] failed, not enough ["..needPeople .."/"..city.population.."]" )
 		return
 	end	
 	local minPopulation = city:GetMinPopulation()
@@ -324,9 +329,9 @@ function CorpsTrain( corps )
 		local tag = troop:GetAsset( TroopTag.TRAINING )
 		local current = tag and tag.value or 0
 		oldValue = oldValue + current
-		local delta = MathUtility_Clamp( ( TroopParams.MAX_ASSET_VALUE[TroopTag.TRAINING] - current ) * TroopParams.TRAINING.TRAIN_DIFF_MODULUS + TroopParams.TRAINING.TRAIN_STANDARD_VALUE, 0, TroopParams.MAX_ASSET_VALUE[TroopTag.TRAINING] )
+		local delta = MathUtility_Clamp( ( TroopTag.MAX_VALUE[TroopTag.TRAINING] - current ) * TroopParams.TRAINING.TRAIN_DIFF_MODULUS + TroopParams.TRAINING.TRAIN_STANDARD_VALUE, 0, TroopTag.MAX_VALUE[TroopTag.TRAINING] )
 		training = training + current + delta
-		troop:AppendAsset( TroopTag.TRAINING, delta, TroopParams.MAX_ASSET_VALUE[TroopTag.TRAINING] )
+		troop:AppendAsset( TroopTag.TRAINING, delta, TroopTag.MAX_VALUE[TroopTag.TRAINING] )
 	end
 	oldValue = math.floor( oldValue / #corps.troops )
 	training = math.floor( training / #corps.troops )
@@ -368,17 +373,46 @@ function CharaPromote( chara, city )
 end
 
 function CharaHire( chara, city )
+	if chara:GetGroup() then
+		InputUtility_Pause( NameIDToString( chara )  .. " already in group=" .. chara:GetGroup().name )
+		return false
+	end
 	city:GetGroup():CharaJoin( chara )
 	city:CharaLive( chara )
 	chara:JoinGroup( city:GetGroup() )
 	chara.job = CharacterJob.OFFICER
 	
-	MathUtility_Remove( g_outCharacterList, chara.id, "id" )
-	table.insert( g_activateCharaList, chara )
-	
-	Debug_Normal( "Hire " .. chara.name .. " in [" .. city.name .. "]" )
-	
+	g_statistic:RemoveOutChara( chara )
+	g_statistic:AddActivateChara( chara )
+	Debug_Normal( "Hire " .. chara.name .. " in [" .. city.name .. "]" )	
+	--g_statistic:DumpCharaDetail()
+	--InputUtility_Pause( "hire")
 	return true
+end
+
+function CharaDie( chara )
+	local group = chara:GetGroup()
+	local isLeader = chara:IsGroupLeader()
+
+	local city = chara:GetHome()
+	city:GetGroup():CharaLeave( chara )
+	city:CharaLeave( chara )
+	chara:Die()
+	
+	g_statistic:RemoveActivateChara( chara )
+	g_statistic:AddOtherChara( chara )
+	
+	Debug_Normal( chara.name .. " died" )
+	
+	if not isLeader then return end
+	if #group.charas == 0 then
+		--group fallen
+		group:Fall()
+		return
+	end
+	local index = Random_SyncGetRange( 1, #group.charas )
+	group.leader = group.charas[index]
+	--InputUtility_Pause( "Find new heri", group.leader.name )
 end
 
 function CharaExile( chara, city )
@@ -386,8 +420,8 @@ function CharaExile( chara, city )
 	city:CharaLeave( chara )
 	chara:Out( city:GetGroup() )
 	
-	MathUtility_Remove( g_activateCharaList, chara.id, "id" )
-	table.insert( g_outCharacterList, chara )
+	g_statistic:RemoveActivateChara( chara )
+	g_statistic:AddOutChara( chara )
 	
 	--Should the character hate who exile him, to do
 	

@@ -1,6 +1,7 @@
 Group = class()
 
 function Group:__init()
+	self.proposals = {}
 end
 
 function Group:Generate( data )
@@ -95,11 +96,6 @@ function Group:Load( data )
 	
 	--------------------------------------
 	-- Running Data
-		
-	--Every Turn
-	--Max order number simply equals 1 + sqrt( politicalPower )	
-	self._orderNumber    = 0
-	self._maxOrderNumber = 0
 	
 	self._politicalPower = -1
 	
@@ -186,7 +182,7 @@ function Group:ConvertID2Data()
 	end
 
 	self.capital = g_cityDataMng:GetData( self.capital )
-	--print( "Set Capital", self.capital, self.capital.name )
+	--ShowText( "Set Capital", self.capital, self.capital.name )
 	
 	local relations = {}
 	for k, id in ipairs( self.relations ) do
@@ -205,7 +201,7 @@ function Group:ConvertID2Data()
 	local cities = {}
 	for k, id in ipairs( self.cities ) do	
 		local city = g_cityDataMng:GetData( id )
-		--print( "set city group", city.id, city.name )
+		--ShowText( "set city group", city.id, city.name )
 		if not city then Debug_Error( "Invalid city" .. id ) end		
 		city._group = self		
 		table.insert( cities, city )
@@ -216,14 +212,14 @@ function Group:ConvertID2Data()
 	for k, id in ipairs( self.corps ) do
 		local corps = g_corpsDataMng:GetData( id )
 		if not corps:GetEncampment() then
-			print( "!!! No corps encampment data" )
+			ShowText( "!!! No corps encampment data" )
 		else
 			local encampment = corps:GetEncampment()
 			if typeof( encampment ) == "number" then
 				encampment = g_cityDataMng:GetData( encampment )
 			end
 			if not encampment or not MathUtility_IndexOf( encampment.corps, corps.id ) then
-				print( "!!! Invalid corps encampment data", encampment.name, corps.id )
+				ShowText( "!!! Invalid corps encampment data", encampment.name, corps.id )
 			end
 		end
 		corps._group = self
@@ -234,7 +230,7 @@ function Group:ConvertID2Data()
 	local troops = {}
 	for k, id in ipairs( self.troops ) do		
 		table.insert( troops, g_troopDataMng:GetData( id ) )
-		--print( g_troopDataMng:GetData( id ).name, g_troopDataMng:GetData( id ).number )
+		--ShowText( g_troopDataMng:GetData( id ).name, g_troopDataMng:GetData( id ).number )
 	end
 	self.troops = troops
 	
@@ -242,7 +238,7 @@ function Group:ConvertID2Data()
 	for k, corps in ipairs( self.corps ) do
 		for k, id in ipairs( corps.troops ) do
 			if not MathUtility_IndexOf( self.troops, id, "id" ) then
-				--print( g_troopDataMng:GetData( id ), g_troopDataMng:GetData( id ).name, g_troopDataMng:GetData( id ).number )				
+				--ShowText( g_troopDataMng:GetData( id ), g_troopDataMng:GetData( id ).name, g_troopDataMng:GetData( id ).number )				
 				table.insert( self.troops, g_troopDataMng:GetData( id ) )
 			end
 		end
@@ -344,12 +340,14 @@ function Group:GetTerritoryRate()
 				if target then
 					cityCount = cityCount + #target.cities
 				end
-				elseif relation.type == GroupRelationType.DEPENDENCE then
+			--[[
+			elseif relation.type == GroupRelationType.DEPENDENCE then
 				local target = g_groupDataMng:GetData( relation.tid )
 				if target then
 					cityCount = cityCount + #target.cities
 				end
-			end
+			]]
+			end			
 		end
 	end
 	return cityCount, math.floor( cityCount * 100 / g_cityDataMng:GetCount() )
@@ -358,7 +356,6 @@ function Group:GetDominationRate()
 	local totalPower = 0
 	g_groupDataMng:Foreach( function ( data ) 
 		if not data:IsFallen() then
-			print( "total plus", data.name, data:GetPower() )
 			totalPower = totalPower + data:GetPower()
 		end
 	end )
@@ -371,11 +368,13 @@ function Group:GetDominationRate()
 				if target then
 					power = power + target:GetPower()
 				end
+			--[[
 			elseif relation.type == GroupRelationType.DEPENDENCE then
 				local target = g_groupDataMng:GetData( relation.tid )
 				if target then
 					power = power + target:GetPower()
 				end
+			]]
 			end
 		end
 	end
@@ -395,12 +394,20 @@ function Group:GetMilitaryPower()
 	for k, troop in ipairs( self.troops ) do
 		self._militaryPower = self._militaryPower + troop.number
 	end
-	--print( self.name .." Getpower=",self._militaryPower)
+	--ShowText( self.name .." Getpower=",self._militaryPower)
 	return self._militaryPower
 end
 
 function Group:GetPower()
 	return self:GetMilitaryPower()
+end
+
+function Group:GetPopulation()
+	local population = 0
+	for k, city in ipairs( self.cities ) do
+		population = population + city.population
+	end
+	return population
 end
 
 function Group:GetSupply()
@@ -438,7 +445,7 @@ end
 
 function Group:GetGroupRelation( id )
 	if id == self.id then
-		print( "None relation to self", id )
+		ShowText( "None relation to self", id )
 		return nil
 	end
 	for k, relation in ipairs( self.relations ) do
@@ -481,10 +488,10 @@ function Group:GetAdjacentGroups()
 	return self._adjacentGroups
 end
 
-function Group:IsAdjacentGroup( groupId )
+function Group:IsAdjacentGroup( group )
 	local list = self:GetAdjacentGroups()
 	for k, group in ipairs( list ) do
-		if group.id == groupId then
+		if group.id == group.id then
 			return true
 		end
 	end
@@ -576,6 +583,12 @@ function Group:GetBelligerentGroupPower()
 	return totalPower, maxPower, minPower, number
 end
 
+function Group:GetUnderstaffedCityList()
+	return Helper_ListIf( self.cities, function ( city )
+		return city:IsUnderstaffed()
+	end )
+end
+
 ---------------------------
 
 function Group:IsFallen()
@@ -645,19 +658,17 @@ end
 
 function Group:IsHostility( target )
 	local relation = self:GetGroupRelation( target.id )
-	if relation then return relation:IsHostility() end
-	return false
+	return relation and relation:IsHostility() or false
 end
 
 function Group:IsBelligerent( group )
 	local relation = self:GetGroupRelation( group.id )
-	return relation:IsBelligerent()
+	return relation and relation:IsBelligerent() or false
 end
 
 function Group:IsEnemy( target )
 	local relation = self:GetGroupRelation( target.id )
-	if relation then return relation:IsEnemy() end
-	return false
+	return relation and relation:IsEnemy() or false
 end
 
 function Group:GetBelligerentStatus( friend )
@@ -677,7 +688,7 @@ function Group:GetBelligerentStatus( friend )
 			end
 		end
 	end
-	--print( "ret", #enemyRelations, numOfFriend )
+	--ShowText( "ret", #enemyRelations, numOfFriend )
 	return enemyRelations, numOfFriend
 end
 
@@ -702,53 +713,13 @@ function Group:HasGoal( goalType, goalEndType )
 	return false
 end
 
-function Group:IsAchieveGoal()
-	--print( "\nCheck Goals")
-	if #self.goals == 0 then
-		--default winner condition
-		return #self.cities == g_cityDataMng:GetCount()
-	end	
-	for k, goal in ipairs( self.goals ) do
-		--Survival
-		if goal.type == GroupGoal.SURVIVE then
-			if not goal.startTime then
-				goal.startTime = g_calendar:GetDateValue()
-				return false
-			elseif not goal.value or g_calendar:CalcDiffByMonth( goal.startTime ) < goal.value then
-				return false
-			end
-		elseif goal.type == GroupGoal.INDEPENDENT then
-			if not goal.startTime or self:IsDependence() then
-				goal.startTime = g_calendar:GetDateValue()
-				return false
-			elseif not goal.value or g_calendar:CalcDiffByMonth( goal.startTime ) < goal.value then
-				return false
-			end
-			
-		--Domination
-		elseif goal.type == GroupGoal.OCCUPY then
-			if not goal.value or not self:IsOwnCity( goal.value ) then return false end			
-		elseif goal.type == GroupGoal.CONQUER then
-			local number, rate = self:GetTerritoryRate()
-			print( self.name .. " conquer=" .. number .. "+" .. rate .. "%", " Goal=" .. ( goal.value or 0 ) .. "+" .. ( goal.rate or 0 ) .. "%" )
-			if not goal.value or not goal.rate or number < goal.value or rate < goal.rate then return false end
-		
-		--Leading
-		elseif goal.type == GroupGoal.MILITARY_POWER then
-			local power, rate = self:GetDominationRate()
-			print( self.name .. " domination=" .. power .. "+" .. rate .. "%" .. " Goal=" .. ( goal.value or 0 ) .. "+" .. ( goal.rate or 0 ) .. "%" )
-			if not goal.value or not goal.rate or power < goal.value or rate < goal.rate then return false end
-		end
-	end
-	Debug_Normal( "Group " .. NameIDToString( self ) .. " reach goal" )
-	return true	
-end
-
 function Group:CanResearch()
 	if self.researchTechId ~= 0 then return false end
 	if g_taskMng:IsTaskConflict( TaskType.TECH_RESEARCH, nil ) then return false end	
 	return #self._canResearchTechs > 0
 end
+
+
 
 ----------------------------------------------
 -- Iteration Method
@@ -760,31 +731,12 @@ function Group:ForeachChara( fn )
 end
 
 ----------------------------------------------
--- Order Relative
+-- Proposal Relative
 ----------------------------------------------
 
---[[
-function Group:Attack( target )
-	if target ~= nil then
-		self.militaryTargetId = target.id
-		self.militaryMoved    = self.military
-		self.military         = 0
-	end
-	self.lastActionName = 'Attack'
+function Group:ExecuteProposal( desc )
+	table.insert( self.proposals, desc )
 end
-
-function Group:Defend()
-	if self.militaryTargetId == self.id then
-		self.militaryMoved    = self.militaryMoved + self.military
-	else
-		self.militaryTargetId = self.id
-		self.militaryMoved    = self.military		
-	end
-	self.military         = 0
-	
-	self.lastActionName = 'Defend'
-end
-]]
 
 function Group:StartDiplomacy( target, method )
 	self.diplomaticTargetId = target.id
@@ -900,8 +852,13 @@ function Group:CaptureCity( combat )
 		end
 	else
 		for k, corps in ipairs( city.corps ) do
-			local city = cities[k % numberOfCity]
-			CorpsDispatchToCity( corps, city )
+			local index = Random_SyncGetRange( 1, numberOfCity )
+			local city = cities[index]
+			if city then
+				CorpsDispatchToCity( corps, city )
+			else
+				--no city
+			end
 		end
 	end
 	
@@ -958,7 +915,7 @@ function Group:Fall()
 	--remove group
 	g_groupDataMng:RemoveData( self.id )
 	
-	print( "group fall=" .. self.name, "next" )
+	ShowText( "group fall=" .. self.name, "next" )
 end
 
 function Group:CharaJoin( chara )
@@ -967,13 +924,13 @@ end
 
 function Group:CharaLeave( chara )
 	if not MathUtility_Remove( self.charas, chara.id, "id" ) then
-		print( "Remove chara ["..chara.name.."] failed!" )
+		ShowText( "Remove chara ["..chara.name.."] failed!" )
 	end
 end
 
 function Group:ReceiveTax( tax, city )
 	self.money = self.money + tax
-	print( "Receive tax=" .. tax .. " from=" .. city.name )
+	ShowText( "Receive tax=" .. tax .. " from=" .. city.name )
 end
 
 ----------------------------------------------
@@ -1003,9 +960,9 @@ function Group:DumpRelationDetail()
 		local target = relation:GetOppGroup( self.id )
 		if target and target ~= self then
 			if ( relation.type == GroupRelationType.DEPENDENCE or relation.type == GroupRelationType.VASSAL ) and relation.sid == self.id then
-				print( "    " .. target.name .. " Pow=" .. target:GetPower() .. " +".. MathUtility_FindEnumName( GroupRelationType, relation.type ) .. " ev=" .. relation.evaluation )
+				ShowText( "    " .. target.name .. " Pow=" .. target:GetPower() .. " +".. MathUtility_FindEnumName( GroupRelationType, relation.type ) .. " ev=" .. relation.evaluation )
 			else
-				print( "    " .. target.name .. " Pow=" .. target:GetPower() .. " ".. MathUtility_FindEnumName( GroupRelationType, relation.type ) .. " ev=" .. relation.evaluation )
+				ShowText( "    " .. target.name .. " Pow=" .. target:GetPower() .. " ".. MathUtility_FindEnumName( GroupRelationType, relation.type ) .. " ev=" .. relation.evaluation )
 			end
 		end
 	end
@@ -1018,9 +975,9 @@ function Group:DumpCharaDetail()
 end
 
 function Group:DumpDiplomacyMethod()
-	print( '' )
-	print( "--------" .. self.name .. " pow=" .. self:GetPower() )
-	for method = DiplomacyMethod.FRIENDLY, DiplomacyMethod.SURRENDER do
+	ShowText( '' )
+	ShowText( "--------" .. self.name .. " pow=" .. self:GetPower() )
+	for method = DiplomacyMethod.FRIENDLY, DiplomacyMethod.METHOD_END - 1 do
 		local content = nil
 		for k, relation in ipairs( self.relations ) do
 			local target = relation:GetOppGroup( self.id )			
@@ -1031,35 +988,35 @@ function Group:DumpDiplomacyMethod()
 			end
 		end
 		if content then 
-			print( MathUtility_FindEnumName( DiplomacyMethod, method ) )
-			print( "  " .. content )
+			ShowText( MathUtility_FindEnumName( DiplomacyMethod, method ) )
+			ShowText( "  " .. content )
 		end
 	end
 end
 
 function Group:Dump()
 	if 1 then return end
-	print( '>>>>>>>>>>>  Group >>>>>>>>>>>>>>>>>' )
-	print( '[Group] #' .. self.id .. ' Name=' .. self.name )
-	print( "Govement     =" .. MathUtility_FindEnumName( GroupGovernment, self.government ) )
-	print( "PoliticalPow =" .. self._politicalPower )
-	print( "MilitaryPow  =" .. self._militaryPower )
-	print( "Pow          =" .. self:GetPower() )
-	print( "Money        =" .. self.money )
-	print( "Order        =" .. self._orderNumber )
-	print( "City Num     =" .. #self.cities )
+	ShowText( '>>>>>>>>>>>  Group >>>>>>>>>>>>>>>>>' )
+	ShowText( '[Group] #' .. self.id .. ' Name=' .. self.name )
+	ShowText( "Govement     =" .. MathUtility_FindEnumName( GroupGovernment, self.government ) )
+	ShowText( "PoliticalPow =" .. self._politicalPower )
+	ShowText( "Population   =" .. self:GetPopulation() )
+	ShowText( "MilitaryPow  =" .. self._militaryPower )
+	ShowText( "Pow          =" .. self:GetPower() )
+	ShowText( "Money        =" .. self.money )
+	ShowText( "City Num     =" .. #self.cities )
 	self:DumpCityDetail()
-	print( "Corps Num    =" .. #self.corps )
+	ShowText( "Corps Num    =" .. #self.corps )
 	self:DumpCorpsDetail()
-	print( "Troop Num    =" .. #self.troops )
+	ShowText( "Troop Num    =" .. #self.troops )
 	self:DumpTroopDetail()
-	print( "Chara Num    =" .. #self.charas )
+	ShowText( "Chara Num    =" .. #self.charas )
 	self:DumpCharaDetail()
-	print( "Tech Num     =" .. #self.techs )
-	print( "Relation     =" .. #self.relations )
+	ShowText( "Tech Num     =" .. #self.techs )
+	ShowText( "Relation     =" .. #self.relations )
 	self:DumpRelationDetail()
 	self:DumpDiplomacyMethod()
-	print( "<<<<<<<<<<< Group <<<<<<<<<<<<<<<<<<" )
+	ShowText( "<<<<<<<<<<< Group <<<<<<<<<<<<<<<<<<" )
 end
 
 ---------------------------------------------

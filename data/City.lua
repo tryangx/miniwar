@@ -148,7 +148,7 @@ function City:ConvertID2Data()
 			end
 			
 			--helper check
-			--print( "check data", self.id, self.name, chara.name )
+			--ShowText( "check data", self.id, self.name, chara.name )
 			if self._group and not self._group:HasChara( chara ) then
 				self._group:CharaJoin( chara )
 				chara:JoinGroup( self._group )				
@@ -162,7 +162,7 @@ function City:ConvertID2Data()
 	for k, id in ipairs( self.troops ) do
 		local troop = g_troopDataMng:GetData( id )
 		if troop.encampment == 0 then
-			--print( "Add missing encampment data for troop" )
+			--ShowText( "Add missing encampment data for troop" )
 			troop.location   = self.id
 			troop.encampment = self.id
 		end
@@ -179,13 +179,13 @@ function City:ConvertID2Data()
 	for k, corps in ipairs( self.corps ) do
 		for k2, troop in ipairs( corps.troops ) do
 			if not MathUtility_IndexOf( self.troops, troop, "id" ) then
-				print( "Add missing troop ["..troop.."] of corp in city ["..self.name.."]" )
+				ShowText( "Add missing troop ["..troop.."] of corp in city ["..self.name.."]" )
 				table.insert( self.troops, g_troopDataMng:GetData( troop ) )
 			end
 		end
 	end
 
-	self:SetPlots( self.plots, true )
+	self:UpdatePlots( true )
 end
 
 function City:UpdatePlots( allocate )
@@ -202,9 +202,7 @@ function City:UpdatePlots( allocate )
 	local plots = {}
 	for k, pos in pairs( self.plots ) do
 		local plot = g_plotMap:GetPlot( pos.x, pos.y )
-		if allocate then
-			table.insert( plots, plot )
-		end
+		if allocate then table.insert( plots, plot ) end
 		if plot then
 			plotDesc = plotDesc .. ( plot.table and plot.table.name or "--" ) .. ","
 			self.maxAgriculture = self.maxAgriculture + plot:GetBonusValue( PlotResourceBonusType.AGRICULTURE )
@@ -223,25 +221,20 @@ function City:UpdatePlots( allocate )
 	self.security = math.floor( self.security / #self.plots )
 	
 	if self:GetGroup() then 
-		print( self.name .. " plot="..#self.plots .. " lv=" .. self.level )
-		--print( plotDesc )
-		print( "population=" .. Helper_CreateNumberDesc( self.population ) .. "/" .. Helper_CreateNumberDesc( CalcPlotPopulation( self.livingspace ) ) .. "("..self.livingspace..")" )	
-		print( "agr="..self.agriculture.."/"..self.maxAgriculture.." Supply="..Helper_CreateNumberDesc( CalcPlotSupply( self.agriculture ) - self.population ) .. "/" .. Helper_CreateNumberDesc( CalcPlotSupply( self.maxAgriculture ) - self.population ) .. " Surplus="..Helper_CreateNumberDesc( CalcPlotSupply( self.agriculture ) - self.population ).."/"..Helper_CreateNumberDesc( CalcPlotSupply( self.maxAgriculture ) - CalcPlotPopulation( self.livingspace ) ) )
-		print( "eco="..self.economy.."/"..self.maxEconomy.. " pro="..self.production.."/"..self.maxProduction .. " sec=" ..self.security )	
-		print( "military=" .. self:GetMilitaryPower() .. "/" .. self:GetRequiredMilitaryPower() )	
-		--InputUtility_Pause( "" )
+		ShowText( self.name .. " plot="..#self.plots .. " lv=" .. self.level )
+		--ShowText( plotDesc )
+		ShowText( "population=" .. Helper_CreateNumberDesc( self.population ) .. "/" .. Helper_CreateNumberDesc( CalcPlotPopulation( self.livingspace ) ) .. "("..self.livingspace..")" )	
+		ShowText( "agr="..self.agriculture.."/"..self.maxAgriculture.." Supply="..Helper_CreateNumberDesc( CalcPlotSupply( self.agriculture ) - self.population ) .. "/" .. Helper_CreateNumberDesc( CalcPlotSupply( self.maxAgriculture ) - self.population ) .. " Surplus="..Helper_CreateNumberDesc( CalcPlotSupply( self.agriculture ) - self.population ).."/"..Helper_CreateNumberDesc( CalcPlotSupply( self.maxAgriculture ) - CalcPlotPopulation( self.livingspace ) ) )
+		ShowText( "eco="..self.economy.."/"..self.maxEconomy.. " pro="..self.production.."/"..self.maxProduction .. " sec=" ..self.security )	
+		ShowText( "military=" .. self:GetMilitaryPower() .. "/" .. self:GetRequiredMilitaryPower() )	
+		--InputUtility_Pause()
 	end
-	if allocate then
-		self.plots = plots
-	end	
+	if allocate then self.plots = plots end
 end
 
 function City:SetPlots( plotDatas, reset )
 	self.plots = plotDatas
-	
-	if reset then
-		self:UpdatePlots( true )
-	end
+	if reset then self:UpdatePlots( true ) end
 end
 
 function City:InitAdjacentCity()
@@ -257,6 +250,10 @@ end
 
 ----------------------------------
 -- Getter 
+
+function City:IsCapital()
+	return self:GetGroup() and self:GetGroup():GetCapital() == self
+end
 
 function City:IsCharaStayCity( chara )
 	--if not MathUtility_IndexOf( self.charas, chara.id, "id" )  then return false end
@@ -278,6 +275,10 @@ end
 
 function City:IsFrontier()
 	return self:GetTag( CityTag.FRONTIER ) ~= nil
+end
+
+function City:IsUnderstaffed()
+	return #self.charas < QueryCityNeedChara( self )
 end
 
 function City:HasChara( chara )
@@ -386,7 +387,7 @@ end
 
 function City:GetFreeMilitaryOfficerList()
 	return Helper_ListIf( self.charas, function( chara )
-		return not chara:IsLeadTroop() and chara:IsStayCity( self ) and not chara:IsImportant() and chara:IsMilitaryOfficer() and not g_taskMng:GetTaskByActor( chara )
+		return not chara:IsLeadTroop() and chara:IsStayCity( self ) and chara:IsMilitaryOfficer() and not g_taskMng:GetTaskByActor( chara )
 	end )
 end
 
@@ -699,8 +700,8 @@ function City:CanRecruitTroop( troop )
 end
 function City:CanEstablishCorps()
 	--number of corps is less than limit
-	if #self.corps >= QueryCityCorpsSupport( self ) then 
-		print( NameIDToString( self ) .. " only support corps=" .. QueryCityCorpsSupport( self ) )
+	if #self.corps >= QueryCityCorpsSupport( self ) then
+		ShowText( NameIDToString( self ) .. " only support corps=" .. QueryCityCorpsSupport( self ) )
 		return false
 	end
 	
@@ -708,7 +709,7 @@ function City:CanEstablishCorps()
 	return self:GetNumOfNonCorpsTroop() >= CorpsParams.NUMBER_OF_TROOP_TO_ESTALIBSH
 end
 function City:CanRegroupCorps()
-	--print( "regroup", self.name, #self.corps, #self.troops, self:GetNumOfVacancyCorps(), self:GetNumOfNonCorpsTroop() )
+	--ShowText( "regroup", self.name, #self.corps, #self.troops, self:GetNumOfVacancyCorps(), self:GetNumOfNonCorpsTroop() )
 	return not self:IsInSiege() and self:GetNumOfVacancyCorps() > 0 and self:GetNumOfNonCorpsTroop() > 1
 end
 function City:CanReinforceCorps()
@@ -734,16 +735,27 @@ function City:DumpCharaDetail( indent )
 	for k, chara in ipairs( self.charas ) do
 		content = content .. ( k > 1 and ", " or "" ) .. chara.name
 	end
-	print( content )
+	ShowText( content )
 end
 
 function City:DumpTroopDetail( indent )
 	if #self.troops == 0 then return end
-	local content = indent .. "    "
+	local inCorps, nonCorps = 0, 0
+	local contentInCorps = indent .. "    "
+	local contentNonCorps = indent .. "    "
 	for k, troop in ipairs( self.troops ) do
-		content = content .. ( k > 1 and "," or "" ) .. troop.name .. "(".. troop.number..")"
+		if troop:GetCorps() then
+			inCorps = inCorps + 1
+			contentInCorps = contentInCorps .. NameIDToString( troop ).. "(".. troop.number..") "
+		else
+			nonCorps = nonCorps + 1
+			contentNonCorps = contentNonCorps .. NameIDToString( troop ).. "(".. troop.number..") "
+		end		
 	end
-	print( content )
+	ShowText( indent .. "    " .. "InGroup=" .. inCorps )
+	ShowText( contentInCorps )
+	ShowText( indent .. "    " .. "NoneGroup" .. nonCorps )
+	ShowText( contentNonCorps )
 end
 
 function City:DumpCorpsDetail( indent )
@@ -761,7 +773,7 @@ function City:DumpConstructionDetail( indent )
 	for k, constr in ipairs( self.constrs ) do
 		content = content .. ( k > 1 and "," or "" ) .. constr.name
 	end
-	print( content )
+	ShowText( content )
 end
 
 function City:DumpAdjacentDetail( indent )
@@ -770,7 +782,7 @@ function City:DumpAdjacentDetail( indent )
 	for k, city in ipairs( self.adjacentCities ) do
 		content = content .. ( k > 1 and "," or "" ) .. city.name .. "(" .. (city:GetGroup() and city:GetGroup().name or "" ) .. ")"
 	end
-	print( content )
+	ShowText( content )
 end
 
 function City:DumpPlotsDetail( indent )
@@ -779,7 +791,7 @@ function City:DumpPlotsDetail( indent )
 	for k, plot in ipairs( self.plots ) do
 		content = content .. ( k > 1 and "," or "" ) .. plot.table.name
 	end
-	print( content )
+	ShowText( content )
 end
 
 function City:DumpTagDetail( indent )
@@ -788,39 +800,39 @@ function City:DumpTagDetail( indent )
 	for k, tag in ipairs( self.tags ) do
 		content = content .. ( k > 1 and "," or "" ) .. MathUtility_FindEnumName( CityTag, tag.type )
 	end
-	print( content )
+	ShowText( content )
 end
 
 function City:DumpSimple( indent )
 	if not indent then indent = "" end
-	print( indent .. '[City] #' .. self.id .. ' Name=' .. self.name )
+	ShowText( indent .. '[City] #' .. self.id .. ' Name=' .. self.name )
 end
 
 function City:Dump( indent )
 	if 1 then return end
 	if not indent then indent = "" end	
-	print( '>>>>>>>>>>>  City >>>>>>>>>>>>>>>>>' )
-	print( indent .. '[City] #' .. self.id .. ' Name=' .. self.name )
+	ShowText( '>>>>>>>>>>>  City >>>>>>>>>>>>>>>>>' )
+	ShowText( indent .. '[City] #' .. self.id .. ' Name=' .. self.name )
 	self:DumpAdjacentDetail( indent )
-	print( indent .. 'Popu/Mil Serv  ', self.population .. "/" .. self:GetMilitaryServicePopulation() )
-	print( indent .. 'Agri+Ecom+Prod ', self.agriculture .. "/" .. self.maxAgriculture .. " " .. self.economy .. "/" .. self.maxEconomy .. " " .. self.production .. "/" .. self.maxProduction )
-	print( indent .. 'Secu/Min Popu  ', self.security .. "/" .. self:GetMinPopulation() )
-	print( indent .. 'Supply/Harvest ', self:GetSupply() .. ' / ' .. self:GetHarvestFood() )
-	print( indent .. 'Money / Food   ', self.money .. ' / ' .. self.food .. "+" .. ( self:GetConsumeFood() > 0 and math.floor( self.food / self:GetConsumeFood() ) or "*" ) )
-	print( indent .. 'Leader         ', ( self.leader and self.leader.name or "" ) )
-	print( indent .. 'Charas         ', #self.charas )
-	print( indent .. 'Power/Req Pow  ', self:GetMilitaryPower() .. "/" .. self:GetRequiredMilitaryPower() )
+	ShowText( indent .. 'Popu/Mil Serv  ', self.population .. "/" .. self:GetMilitaryServicePopulation() )
+	ShowText( indent .. 'Agri+Ecom+Prod ', self.agriculture .. "/" .. self.maxAgriculture .. " " .. self.economy .. "/" .. self.maxEconomy .. " " .. self.production .. "/" .. self.maxProduction )
+	ShowText( indent .. 'Secu/Min Popu  ', self.security .. "/" .. self:GetMinPopulation() )
+	ShowText( indent .. 'Supply/Harvest ', self:GetSupply() .. ' / ' .. self:GetHarvestFood() )
+	ShowText( indent .. 'Money / Food   ', self.money .. ' / ' .. self.food .. "+" .. ( self:GetConsumeFood() > 0 and math.floor( self.food / self:GetConsumeFood() ) or "*" ) )
+	ShowText( indent .. 'Leader         ', ( self.leader and self.leader.name or "" ) )
+	ShowText( indent .. 'Charas         ', #self.charas )
+	ShowText( indent .. 'Power/Req Pow  ', self:GetMilitaryPower() .. "/" .. self:GetRequiredMilitaryPower() )
 	self:DumpCharaDetail( indent )
-	print( indent .. 'Troops+Corps   ', #self.troops .. '+' .. #self.corps )
+	ShowText( indent .. 'Troops+Corps   ', #self.troops .. '+' .. #self.corps )
 	self:DumpTroopDetail( indent )
 	self:DumpCorpsDetail( indent )
-	print( indent .. 'Construction   ', #self.constrs )
+	ShowText( indent .. 'Construction   ', #self.constrs )
 	self:DumpConstructionDetail( indent )
-	print( indent .. 'Plots          ', #self.plots )	
+	ShowText( indent .. 'Plots          ', #self.plots )	
 	--self:DumpPlotsDetail( indent )
-	print( indent .. 'Tags           ', #self.tags )
+	ShowText( indent .. 'Tags           ', #self.tags )
 	self:DumpTagDetail( indent )
-	print( "<<<<<<<<<<<<<<< City <<<<<<<<<<<<<" )
+	ShowText( "<<<<<<<<<<<<<<< City <<<<<<<<<<<<<" )
 end
 
 ----------------------------------
@@ -831,7 +843,7 @@ function City:AddCorps( corps )
 	table.insert( self.corps, corps )
 	for k, troop in ipairs( corps.troops ) do
 		if typeof( troop ) == "number" then
-			print( "!!! troop data is number" )
+			ShowText( "!!! troop data is number" )
 			troop = g_troopDataMng:GetData( troop )
 		end
 		table.insert( self.troops, troop )
@@ -932,7 +944,7 @@ function City:Harvest()
 	if not self:GetGroup() then
 		self.food = MathUtility_Clamp( self.food, 0, self.population * CityParams.FOOD.NONGROUP_CITY_FOODRESERVE_TIMES )
 	end
-	--print( self.name, "Harvest food", oldValue .. "+" .. harvest .. "->" .. self.food )
+	--ShowText( self.name, "Harvest food", oldValue .. "+" .. harvest .. "->" .. self.food )
 end
 
 function City:GetConsumeFood()
@@ -942,17 +954,17 @@ end
 function City:ConsumeFood()
 	--Consume
 	local consume = self:GetConsumeFood()
-	--print( self.name, "Consume food", self.food .. "-" .. consume .. "->" .. ( self.food - consume ) )
+	--ShowText( self.name, "Consume food", self.food .. "-" .. consume .. "->" .. ( self.food - consume ) )
 	self.food = self.food - consume	
 	if self.food < 0 then
-		self:AppendTag( CityTag.STARVATION, 1, CityParams.MAX_TAG_VALUE["STARVATION"] )
+		self:AppendTag( CityTag.STARVATION, 1, CityTag.MAX_VALUE["STARVATION"] )
 	else
-		self:RemoveTag( CityTag.STARVATION, CityParams.MAX_TAG_VALUE["STARVATION"] )
+		self:RemoveTag( CityTag.STARVATION, CityTag.MAX_VALUE["STARVATION"] )
 	end
 	--Corrupt
 	if self.food > 0 then
 		local corruption = math.ceil( self.food * CityParams.FOOD.FOOD_CORRUPTION_MODULUS )		
-		--print( self.name, "Food Corrupt", self.food .."-" .. corruption .."->"..( self.food - corruption) )
+		--ShowText( self.name, "Food Corrupt", self.food .."-" .. corruption .."->"..( self.food - corruption) )
 		self.food = self.food - corruption
 	end
 end
@@ -987,7 +999,9 @@ function City:RecruitTroop( troop )
 	table.insert( self.troops, troop )
 	troop.location   = self
 	troop.encampment = self
-	self._group:RecruitTroop( troop )
+	if self:GetGroup() then
+		self:GetGroup():RecruitTroop( troop )
+	end
 	self._militaryPower = self._militaryPower + troop.number
 end
 
@@ -1042,7 +1056,7 @@ function City:Update()
 		local refugee = people - dead
 		g_movingActorMng:AddMovingActor( MovingActorType.REFUGEE, { number = refugee, location = self } )
 		
-		print( NameIDToString( self ) .. " in starvation, "..dead.." people die, " .. refugee .. " become refugee, left " .. self.population )
+		ShowText( NameIDToString( self ) .. " in starvation, "..dead.." people die, " .. refugee .. " become refugee, left " .. self.population )
 	end
 
 	--Harvest
@@ -1063,9 +1077,9 @@ function City:Update()
 	--Adjacent	
 	for k, otherCity in ipairs( self.adjacentCities ) do		
 		if self._group and otherCity._group ~= self._group then
-			self:AppendTag( CityTag.FRONTIER, 1, CityParams.MAX_TAG_VALUE["FRONTIER"] )
+			self:AppendTag( CityTag.FRONTIER, 1, CityTag.MAX_VALUE["FRONTIER"] )
 			if otherCity._group and self._group:IsBelligerent( otherCity._group ) then
-				self:AppendTag( CityTag.BATTLEFRONT, 1, CityParams.MAX_TAG_VALUE["BATTLEFRONT"] )
+				self:AppendTag( CityTag.BATTLEFRONT, 1, CityTag.MAX_VALUE["BATTLEFRONT"] )
 			end
 		end
 	end

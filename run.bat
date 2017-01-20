@@ -1,0 +1,2 @@
+cls
+lua test.lua

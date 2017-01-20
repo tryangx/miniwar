@@ -17,17 +17,11 @@ CharacterTable = class()
 
 function CharacterTable:Load( data )
 	self.id   = data.id or 0
-
 	self.name = data.name or ""
-
+	self.birth       = data.year or 1
 	self.ca          = data.ca or 0
-
 	self.pa          = data.pa or 0
-
-	self.purpose     = data.purpose or 0
-
-	self.traits      = data.traits or {}
-	
+	self.traits      = data.traits or {}	
 	self.status      = data.status or CharacterStatus.NORMAL
 end
 

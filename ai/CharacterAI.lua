@@ -29,23 +29,23 @@ local _states = {}
 
 local defaultSwitch = 
 {
-	TECH_AFFAIRS             = 1,
+	TECH_AFFAIRS             = 0,
 	WAR_PREPAREDNESS_AFFAIRS = 1,
 	MILITARY_AFFAIRS         = 1,
 	DIPLOMACY_AFFAIRS        = 1,
-	CITY_AFFAIRS             = 1,
-	HR_AFFAIRS               = 1,
+	CITY_AFFAIRS             = 0,
+	HR_AFFAIRS               = 0,
 }
 local currentSwitch = defaultSwitch
 
 local function CheckSwitchMode( params )
 	local mode = params.mode
-	--print( mode .. "=", (currentSwitch and currentSwitch[mode] ~= 0) )
+	--ShowText( mode .. "=", (currentSwitch and currentSwitch[mode] ~= 0) )
 	return currentSwitch and currentSwitch[mode] ~= 0
 end
 
 local debugProposal = { type = "FILTER", condition = function ()
-	--InputUtility_Pause( "turn to " .. _chara.name, "n" )
+	InputUtility_Pause( "turn to " .. _chara.name, "n" )
 	return true
 end }
 
@@ -79,18 +79,18 @@ local function QueryGroupData( dataname )
 				end
 			end
 		end
-		--print( "max free", value )
+		--ShowText( "max free", value )
 	]]
 	if dataname == "FREE_CHARA_IN_CAPITAL" then
 		value = group:GetCapital():GetFreeCharaList()
 	elseif dataname == "NUMBER_FREE_CHARA_IN_CAPITAL" then
 		value = group:GetCapital():GetNumOfFreeChara()
-		--print( "free chara in cap", value )
+		ShowText( "free chara in cap", value )
 	elseif dataname == "FREECHARA_NONCAPITAL_LIST" then
 		value = {}
 		local capital = group:GetCapital()
 		for k, city in ipairs( group.cities ) do
-			if capital ~= city and #city.charas > QueryCityNeedChara( city ) then
+			if capital ~= city and not city:IsUnderstaffed() then
 				local charaList = city:GetFreeCharaList()
 				for k2, chara in ipairs( charaList ) do
 					table.insert( value, chara )
@@ -111,16 +111,18 @@ local function QueryGroupData( dataname )
 			end
 		end
 		value = { targetCity }
-	elseif dataname == "EMPTY_CITYLIST" then
+	elseif dataname == "UNDERSTAFFED_NONCAPITAL_CITYLIST" then
 		value = {}
 		for k, city in ipairs( group.cities ) do
-			if #city.charas == 0 then
+			if not city:IsCapital() and city:IsUnderstaffed() then
 				table.insert( value, city )
 			end
 		end
+		--InputUtility_Pause( "emptycity="..#value .. "," .. #group.cities )
+		
 	elseif dataname == "HIRETARGET_CHARALIST" then
 		value = {}
-		for k, chara in ipairs( g_outCharacterList ) do
+		for k, chara in ipairs( g_statistic.outCharacterList ) do
 			if chara:GetLocation() and chara:GetLocation():GetGroup() == group then
 				if not g_taskMng:GetTaskByTarget( chara ) then
 					table.insert( value, chara )
@@ -148,15 +150,15 @@ local function QueryCityData( dataname )
 	elseif dataname == "MAX_CORPS_NUMBER" then
 		value = math.max( math.ceil( ( _city.size + 1 ) / 5 ), 1 )				
 	elseif dataname == "NUMBER_IDLE_CORPS" then
-		value = _city:GetNumOfIdleCorps()
-	elseif dataname == "NONLEADER_TROOPLIST" then
-		value = _city:GetNonLeaderTroopList()		
+		value = _city:GetNumOfIdleCorps()	
 	elseif dataname == "IDLE_CORPSLIST" then
 		value = _city:GetIdleCorpsList()
-		--print( "!!!!has idle corps", #value )
+		--ShowText( "!!!!has idle corps", #value )
 		]]	
 	elseif dataname == "FREEMILITARYOFFICER_CHARALIST" then
-		value = _city:GetFreeMilitaryOfficerList()	
+		value = _city:GetFreeMilitaryOfficerList()
+	elseif dataname == "NONLEADER_TROOPLIST" then
+		value = _city:GetNonLeaderTroopList()		
 	elseif dataname == "PREPAREDTOATTACK_CORPSLIST" then
 		value = _city:GetPreparedToAttackCorpsList()
 		--if #value > 0 then InputUtility_Pause( "Prepared to attack corps=", #value ) end
@@ -166,7 +168,7 @@ local function QueryCityData( dataname )
 		value = _city:GetVacancyCorpsList()		
 	elseif dataname == "UNTRAINED_CORPSLIST" then
 		value = _city:GetUntrainedCorpsList()
-	elseif dataname == "UNDERSTAFFSED_CROPSLIST" then
+	elseif dataname == "UNDERSTAFFED_CROPSLIST" then
 		value = _city:GetUnderstaffedCorpsList()
 		
 	elseif dataname == "ADJACENT_HOSTILE_CITYLIST" then
@@ -176,27 +178,27 @@ local function QueryCityData( dataname )
 		--if #value >= 0 then InputUtility_Pause( "Adjacent Belligerent Cities=", #value ) end
 		
 	end
-	--print( dataname, value )
+	--ShowText( dataname, value )
 	return value
 end
 
 local function MemoryGroupData( params )
 	if not params.dataname or not params.memname then
-		print( "Missing memory params" )
+		ShowText( "Missing memory params" )
 		return false
 	end
 	_register[params.memname] = QueryGroupData( params.dataname )
-	--print( "memory group", params.memname, #_register[params.memname] )
+	--ShowText( "memory group", params.memname, #_register[params.memname] )
 	return true
 end
 
 local function MemoryCityData( params )
 	if not params.dataname or not params.memname then
-		print( "Missing memory params" )
+		ShowText( "Missing memory params" )
 		return false
 	end
 	_register[params.memname] = QueryCityData( params.dataname )
-	--print( "memory city", params.memname, _register[params.memname] )
+	--ShowText( "memory city", params.memname, _register[params.memname] )
 	return true
 end
 
@@ -219,7 +221,7 @@ local function QueryComparisonValue( params )
 	local compareValue = params.number
 	if not compareValue then
 		if not params.memname then
-			print( "No memory name" )
+			ShowText( "No memory name" )
 			return false
 		end
 		compareValue = _register[params.memname]
@@ -229,7 +231,7 @@ end
 
 local function CompareData( params, dataFunction )
 	if ( not params.dataname and not params.datamem ) or not params.number or not params.compare then
-		print( "Missing compare params" )
+		ShowText( "Missing compare params" )
 		MathUtility_Dump( params )
 		return false
 	end
@@ -246,14 +248,14 @@ local function CompareData( params, dataFunction )
 	--destination
 	local compareValue = QueryComparisonValue( params )
 	if typeof( value ) == "table" then
-		print( "convert list to length" )
+		ShowText( "convert list to length" )
 		value = #value
 	end
 	if type( compareValue ) == "table" then
-		print( "convert list to length" )
+		ShowText( "convert list to length" )
 		compareValue = #compareValue
 	end
-	--print( "Compare", value, compareValue, params.dataname, params.datamem )
+	--ShowText( "Compare", value, compareValue, params.dataname, params.datamem )
 	return CompareValue( params.compare, value, compareValue )
 end
 
@@ -273,13 +275,7 @@ end
 
 
 local function HaveJobPriviage( params )
-	local priviage = CharacterParams.PRIVIAGE[_chara:GetJob()]
-	if not priviage then return false end
-	--if #_chara:GetLocation().charas <= 2 then return true end
-	--if params.affair == "MILITARY_AFFAIRS" then InputUtility_Pause( _chara.name .. " job=" .. MathUtility_FindEnumName( CharacterJob, _chara:GetJob() ) .. " have priviage " .. params.affair, priviage[params.affair] ) end
-	if priviage["ALL"] or priviage[params.affair] then return true end
-	--print( _chara.name .. " job=" .. MathUtility_FindEnumName( CharacterJob, _chara:GetJob() ) .. " don't have priviage " .. params.affair, priviage[params.affair] )
-	return false
+	return _chara:HasPriviage( params.affair )
 end
 
 local function IsJobMatch( params )
@@ -290,8 +286,8 @@ local function IsCharaMilitaryOfficer( params )
 	return _chara:IsMilitaryOfficer()
 end
 
-local function IsCharaOfficer( params )
-	return _chara:IsOfficer()
+local function IsCharaCivialOfficial( params )
+	return _chara:IsCivialOfficial()
 end
 
 -----------------------------------------------------
@@ -330,12 +326,6 @@ local function CheckProbaility( params )
 	return _ai:GetRandom( "Check probability" ) <= prob
 end
 
-local function CanBuild()
-	local city = _blackboard.city
-	if g_taskMng:IsTaskConflict( TaskType.CITY_BUILD, city ) then return false end	
-	return city:CanBuild()
-end
-
 ---------------------------------------------
 -- Character Technological
 
@@ -357,7 +347,7 @@ local function CanResearchTech()
 	if number == 0 then return false end
 		
 	local tech = _chara:GetGroup()._canResearchTechs[_ai:RandomRange( 1, number, "Character choice tech" )]
-	_target = { type = CharacterProposal.TECH_RESEARCH, tech = tech, chara = _chara }
+	_target = { type = CharacterProposal.TECH_RESEARCH, target = tech, proposer = _chara }
 
 	return true
 end
@@ -382,8 +372,8 @@ local CharacterAI_TechProposal =
 ---------------------------------------------
 
 local function SubmitDiplomacyProposal( params )
-	--print( "submit proposal" )
-	_chara:SubmitProposal( { type = CharacterProposal[params.proposal], group = _target, chara = _chara, prob = _blackboard.targetProb } )
+	--ShowText( "submit proposal" )
+	_chara:SubmitProposal( { type = CharacterProposal[params.proposal], target = _target, proposer = _chara, prob = _blackboard.targetProb } )
 end
 
 local function GetDiplomacyTarget( params )
@@ -405,7 +395,7 @@ local function GetDiplomacyTarget( params )
 			value = value - relation.prob
 		end
 	end
-	--print( "target=", _target.id, _target.name )
+	ShowText( "target=", _target.id, _target.name )
 	return _target ~= nil
 end
 
@@ -428,11 +418,11 @@ local function SelectDiplomacyTarget( params )
 		local prob = math.floor( EvaluateDiplomacySuccessRate( method, relation, _group, target ) )
 		local success = tendency.SUCCESS_CRITERIA[params.method]
 		if not success then success = tendency.SUCCESS_CRITERIA["DEFAULT"] or 0 end
-		--if target then print( MathUtility_FindEnumName( DiplomacyMethod, method ), "tar="..( target and target.name or "" ), "prob=" .. prob .."/".. success ) end
+		--if target then ShowText( MathUtility_FindEnumName( DiplomacyMethod, method ), "tar="..( target and target.name or "" ), "prob=" .. prob .."/".. success ) end
 		if target and prob >= success then
 			totalProb = totalProb + prob
 			table.insert( relations, { group = target, prob = prob } )
-			--print( "Append " .. MathUtility_FindEnumName( DiplomacyMethod, method )  .. "=" .. target.name .. " relation=" .. MathUtility_FindEnumName( GroupRelationType, relation.type ) .. " prob=" .. prob )
+			--ShowText( "Append " .. MathUtility_FindEnumName( DiplomacyMethod, method )  .. "=" .. target.name .. " relation=" .. MathUtility_FindEnumName( GroupRelationType, relation.type ) .. " prob=" .. prob )
 		end
 	end
 
@@ -520,7 +510,7 @@ local CharacterAI_SurrenderProposal =
 ----------------------------------------
 
 local function CheckDiplomacyTendency( params )
-	print( "method=", params.method )
+	ShowText( "method=", params.method )
 	return true
 end
 
@@ -562,7 +552,7 @@ local function CheckInstruction( params )
 	elseif params.flow == "CITY_DEVELOP" then
 		if city.instruction == CityInstruction.CITY_DEVELOP then return true end
 	elseif params.flow == "WAR_PREPAREDNESS" then
-		--print( "check instruction=".. MathUtility_FindEnumName( CityInstruction, city.instruction ), params.flow )
+		--ShowText( "check instruction=".. MathUtility_FindEnumName( CityInstruction, city.instruction ), params.flow )
 		if city.instruction == CityInstruction.WAR_PREPAREDNESS then return true end
 	elseif params.flow == "MILITARY" then
 		if city.instruction == CityInstruction.MILITARY then return true end
@@ -575,15 +565,10 @@ end
 
 ---------------------------------------------
 
-local function BuildCity()
+local function CanBuild()
 	local city = _blackboard.city
-	local constructionList = city:GetBuildList()
-	if #constructionList <= 0 then return end
-
-	local index = _ai:RandomRange( 1, #constructionList, "Select Construction" )
-	local construction = constructionList[index]
-
-	CityBuildConstruction( city, construction )
+	if g_taskMng:IsTaskConflict( TaskType.CITY_BUILD, city ) then return false end	
+	return city:CanBuild()
 end
 local function CanFarm()
 	local city = _blackboard.city
@@ -611,6 +596,18 @@ local function CanLevyTax()
 		InputUtility_Pause( "["..city.name.."] not need levy tax?", city:IsInSiege() )
 	end
 	return false
+end
+
+--[[
+local function BuildCity()
+	local city = _blackboard.city
+	local constructionList = city:GetBuildList()
+	if #constructionList <= 0 then return end
+
+	local index = _ai:RandomRange( 1, #constructionList, "Select Construction" )
+	local construction = constructionList[index]
+
+	CityBuildConstruction( city, construction )
 end
 
 local function InvestCity()
@@ -670,29 +667,32 @@ local CharacterAI_Develop =
 		},
 	},
 }
+]]
 
 local function BuildCityProposal()
 	local city = _blackboard.city
 	local list = city:GetBuildList()
 	local index = _ai:RandomRange( 1, #list, "Build construction proposal" )
 	local constr = list[index]
-	_chara:SubmitProposal( { type = CharacterProposal.CITY_BUILD, city = city, constr = constr, chara = _chara } )
+	_chara:SubmitProposal( { type = CharacterProposal.CITY_BUILD, target = city, data = constr, proposer = _chara } )
 end
 
 local function FarmCityProposal()
-	_chara:SubmitProposal( { type = CharacterProposal.CITY_FARM, city = _blackboard.city, chara = _chara } )
+	_chara:SubmitProposal( { type = CharacterProposal.CITY_FARM, target = _blackboard.city, proposer = _chara } )
 end
 
 local function InvestCityProposal()
-	_chara:SubmitProposal( { type = CharacterProposal.CITY_INVEST, city = _blackboard.city, chara = _chara } )
+	_chara:SubmitProposal( { type = CharacterProposal.CITY_INVEST, target = _blackboard.city, proposer = _chara } )
 end
 
 local function LevyTaxCityProposal()
-	_chara:SubmitProposal( { type = CharacterProposal.CITY_LEVY_TAX, city = _blackboard.city, chara = _chara } )
+	_chara:SubmitProposal( { type = CharacterProposal.CITY_LEVY_TAX, target = _blackboard.city, proposer = _chara } )
 end
 
 local function CanInstruct()
 	local city = _blackboard.city
+	if g_taskMng:IsTaskConflict( TaskType.CITY_INSTRUCT, city ) then return false end	
+	
 	local list = {}
 	for k, otherCity in ipairs( city:GetGroup().cities ) do
 		if otherCity ~= city and #otherCity.charas > 0 and otherCity:CanInstruct() then
@@ -718,7 +718,7 @@ local function InstructCityProposal()
 	index = _ai:RandomRange( 1, #cityList, "City Instruct Random" )
 	local city = cityList[index]
 	
-	_chara:SubmitProposal( { type = CharacterProposal.CITY_INSTRUCT, city = city, instruction = instruction, chara = _chara } )
+	_chara:SubmitProposal( { type = CharacterProposal.CITY_INSTRUCT, target = city, data = instruction, proposer = _chara } )
 end
 
 local function CanPatrol()
@@ -729,7 +729,7 @@ local function CanPatrol()
 end
 
 local function PatrolCityProposal()
-	_chara:SubmitProposal( { type = CharacterProposal.CITY_PATROL, city = _blackboard.city, chara = _chara } )
+	_chara:SubmitProposal( { type = CharacterProposal.CITY_PATROL, target = _blackboard.city, proposer = _chara } )
 end
 
 local CharacterAI_CityAffaisDevelopProposal =
@@ -793,7 +793,7 @@ local CharacterAI_CityAffaisProposal =
 		{ type = "SEQUENCE", children = 
 		{
 			{ type = "FILTER", condition = HaveJobPriviage, params = { affair = "CITY_AFFAIRS" } },	
-			{ type = "SELECTOR", desc = "START City Affairs proposal", children =
+			{ type = "SELECTOR", children =
 				{
 					{ type = "SEQUENCE", children =
 						{
@@ -824,15 +824,15 @@ local function DispatchCharaProposal()
 
 	local charas = {}
 	for k, chara in ipairs( _city.charas ) do
-		if chara:IsFree() then
+		if chara:IsFree() and not g_taskMng:GetTaskByActor( chara ) then
 			table.insert( charas, chara )
 		end
 	end
 
 	index = _ai:RandomRange( 1, #cityList, "Dispatch Chara Proposal character" )
 	local chara = charas[index]
-
-	_chara:SubmitProposal( { type = CharacterProposal.HR_DISPATCH, targetCity = city, targetChara = chara, chara = _chara } )
+	
+	_chara:SubmitProposal( { type = CharacterProposal.HR_DISPATCH, data = city, target = chara, proposer = _chara } )
 end
 
 local function CallCharaProposal()
@@ -854,7 +854,7 @@ local function CallCharaProposal()
 	local charaList = _register["CHARALIST"]
 	local index = _ai:RandomRange( 1, #charaList, "Dispatch Chara Proposal character" )
 	local chara = charaList[index]
-	_chara:SubmitProposal( { type = CharacterProposal.HR_CALL, targetCity = city, targetChara = chara, chara = _chara } )
+	_chara:SubmitProposal( { type = CharacterProposal.HR_CALL, data = city, target = chara, proposer = _chara } )
 end
 
 local function LeadTroopProposal()
@@ -869,25 +869,21 @@ local function LeadTroopProposal()
 	index = _ai:RandomRange( 1, #troopList, "Lead Troop Proposal troop" )
 	local troop = troopList[index]
 
-	_chara:SubmitProposal( { type = CharacterProposal.LEAD_TROOP, targetTroop = troop, targetChara = chara, chara = _chara } )
+	_chara:SubmitProposal( { type = CharacterProposal.LEAD_TROOP, target = troop, data = chara, proposer = _chara } )
 end
 
 local function IsCapital()
 	local city = _blackboard.city
-	return city == city:GetGroup():GetCapital()
+	return city:IsCapital()
 end
 
 local function CanHireChara()	
 	local city = _blackboard.city
 	local group = city:GetGroup()
-	local leader = group:GetLeader()
-	local params = CharacterParams.SUBORDINATE_LIMIT[leader:GetJob()]
-	return params and params < #group.charas or 0
-end
-
-local function NeedExileChara()
-	--never
-	return false
+	if QueryGroupCharaLimit( group ) <= #group.charas then return false end
+	local need = QueryCityCharaLimit( city )
+	local has = #city.charas
+	return has < need
 end
 
 local function HireCharaProposal()
@@ -898,16 +894,17 @@ local function HireCharaProposal()
 	index = _ai:RandomRange( 1, #charaList, "Hire Chara" )
 	local chara = charaList[index]
 
-	_chara:SubmitProposal( { type = CharacterProposal.HR_HIRE, targetChara = chara, targetCity = chara:GetLocation(), chara = _chara } )
+	_chara:SubmitProposal( { type = CharacterProposal.HR_HIRE, target = chara, data = chara:GetLocation(), proposer = _chara } )
 end
 
 local CharacterAI_HireCharaProposal =
 {
 	type = "SEQUENCE", desc = "HIRE", children =
 	{
-		{ type = "FILTER", condition = CanHireChara },						
+		{ type = "FILTER", condition = CanHireChara },
 		{ type = "FILTER", condition = MemoryGroupData, params = { dataname = "HIRETARGET_CHARALIST", memname = "CHARALIST" } },
 		{ type = "FILTER", condition = CompareGroupData, params = { compare = "MORE_THAN", datamem = "CHARALIST", number = 0 } },
+		--{ type = "FILTER", condition = CheckHireCharaTask },
 		{ type = "ACTION", action = HireCharaProposal },
 	}
 }
@@ -918,11 +915,6 @@ local CharacterAI_CallCharaProposal =
 		{ type = "FILTER", condition = IsCapital },
 		{ type = "FILTER", condition = MemoryGroupData, params = { dataname = "FREECHARA_NONCAPITAL_LIST", memname = "CHARALIST" } },
 		{ type = "FILTER", condition = CompareGroupData, params = { compare = "MORE_THAN", datamem = "CHARALIST", number = 0 } },
-		--[[
-		{ type = "FILTER", condition = MemoryGroupData, params = { dataname = "MAX_FREE_CHARA_NONCAPITAL_CITYLIST", memname = "CITYLIST" } },
-		{ type = "FILTER", condition = CompareGroupData, params = { compare = "MORE_THAN", datamem = "CITYLIST", number = 0 } },
-		{ type = "FILTER", condition = CompareGroupData, params = { compare = "LESS_THAN", dataname = "NUMBER_FREE_CHARA_IN_CAPITAL", number = 2 } },
-		]]
 		{ type = "ACTION", action = CallCharaProposal },
 	}
 }
@@ -931,17 +923,40 @@ local CharacterAI_DispatchCharaProposal =
 	type = "SEQUENCE", desc = "Dispatch to Empty City", children =
 	{
 		{ type = "FILTER", condition = IsCapital },
-		{ type = "FILTER", condition = MemoryGroupData, params = { dataname = "EMPTY_CITYLIST", memname = "CITYLIST" } },
+		{ type = "FILTER", condition = MemoryGroupData, params = { dataname = "UNDERSTAFFED_NONCAPITAL_CITYLIST", memname = "CITYLIST" } },
 		{ type = "FILTER", condition = CompareGroupData, params = { compare = "MORE_THAN", datamem = "CITYLIST", number = 0 } },
+		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "NUMBER_FREE_CHARA_IN_CAPITAL", memname = "NUMBER_FREE_CHARA" } },		
 		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", dataname = "NUMBER_FREE_CHARA", number = 1 } },
 		{ type = "ACTION", action = DispatchCharaProposal },
 	}
 }
+
+local function NeedExileChara()
+	local city = _blackboard.city
+	local group = city:GetGroup()
+	return QueryGroupCharaLimit( group ) < #group.charas	
+end
+
+local function ExileCharaProposal()
+	local charaList = _register["CHARALIST"]
+	
+	local index
+
+	index = _ai:RandomRange( 1, #charaList, "Exile Chara" )
+	local chara = charaList[index]
+
+	_chara:SubmitProposal( { type = CharacterProposal.HR_EXILE, target = chara, data = chara:GetLocation(), proposer = _chara } )
+end
+
 local CharacterAI_ExileCharaProposal =
 {
 	type = "SEQUENCE", desc = "EXILE", children =
 	{
+		{ type = "FILTER", condition = IsCapital },
 		{ type = "FILTER", condition = NeedExileChara },
+		{ type = "FILTER", condition = MemoryGroupData, params = { dataname = "REDUNTANT_CHARALIST", memname = "CHARALIST" } },
+		{ type = "FILTER", condition = CompareGroupData, params = { compare = "MORE_THAN", datamem = "CHARALIST", number = 0 } },
+		{ type = "ACTION", condition = ExileCharaProposal },
 	}
 }
 
@@ -973,7 +988,15 @@ local function CanEstablishCorps()
 end
 
 local function EstablishProposal()
-	_chara:SubmitProposal( { type = CharacterProposal.ESTABLISH_CORPS, city = _blackboard.city, chara = _chara } )
+	local troopList = _register["TROOPLIST"]
+	--[[
+	for k, troop in ipairs( troopList ) do
+		print( NameIDToString( troop ) )
+	end
+	]]
+	--InputUtility_Pause( "establish=" .. #troopList )
+	troopList = nil
+	_chara:SubmitProposal( { type = CharacterProposal.ESTABLISH_CORPS, data = _blackboard.city, target = troopList, proposer = _chara } )
 end
 
 local CharacterAI_EstablishCorpsProposal = 
@@ -981,6 +1004,8 @@ local CharacterAI_EstablishCorpsProposal =
 	type = "SEQUENCE", desc = "Establish Corps", children =
 	{
 		{ type = "FILTER", condition = CanEstablishCorps },
+		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "NONCORPS_TROOPLIST", memname = "TROOPLIST" } },
+		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "TROOPLIST", number = 0 } },
 		{ type = "ACTION", action = EstablishProposal },
 	}
 }
@@ -1004,13 +1029,13 @@ local function NeedRecruit( checkCity )
 	
 	--Make supply enough to evoid starvation
 	if power + troopNumber > supply then
-		print( "Cann't recruit, out of supply" )
+		ShowText( "Cann't recruit, out of supply" )
 		return false
 	end
 
 	--Limit by the food consume
 	if ( power + troopNumber ) * CityParams.SAFETY_FOOD_CONSUME_TIME / GlobalConst.UNIT_TIME > city.food then
-		print( "Cann't recruit, out of food" )
+		ShowText( "Cann't recruit, out of food" )
 		return false
 	end
 	
@@ -1034,7 +1059,7 @@ local function NeedRecruit( checkCity )
 		return false
 	end
 	
-	--print( "need recruit=" .. reqPower - power )
+	--ShowText( "need recruit=" .. reqPower - power )
 	
 	return true
 end
@@ -1043,7 +1068,7 @@ local function RecruitCityProposal( checkCity )
 	local list = city:GetRecruitList()
 	local index = _ai:RandomRange( 1, #list, "Recruit troop proposal" )
 	local troop = list[index]
-	_chara:SubmitProposal( { type = CharacterProposal.RECRUIT_TROOP, city = city, troop = troop, chara = _chara } )
+	_chara:SubmitProposal( { type = CharacterProposal.RECRUIT_TROOP, data = city, target = troop, proposer = _chara } )
 end
 local CharacterAI_RecruitTroopProposal = 
 {
@@ -1054,7 +1079,6 @@ local CharacterAI_RecruitTroopProposal =
 		{ type = "ACTION", action = RecruitCityProposal },
 	}
 }
-------------------------------------------
 
 local function RegroupCorpsProposal()
 	local corpsList = _register["CORPSLIST"]
@@ -1068,10 +1092,13 @@ local function RegroupCorpsProposal()
 	local troops = {}
 	MathUtility_Shuffle( troopList, _ai:GetRandomizer() )
 	for k, troop in ipairs( troopList ) do
-		table.insert( troops, troop )
+		if not g_taskMng:GetTaskByActor( troop ) then
+			--print( "regroup with " .. NameIDToString( troop ) )
+			table.insert( troops, troop )
+		end
 	end
-
-	_chara:SubmitProposal( { type = CharacterProposal.REGROUP_CORPS, corps = corps, troops = troops, chara = _chara } )
+	--InputUtility_Pause( "" )
+	_chara:SubmitProposal( { type = CharacterProposal.REGROUP_CORPS, data = corps, target = troops, proposer = _chara } )
 end
 
 local CharacterAI_RegroupCorpsProposal = 
@@ -1094,7 +1121,7 @@ local function TrainCorpsProposal()
 	index = _ai:RandomRange( 1, #corpsList, "Regroup corps proposal" )
 	local corps = corpsList[index]
 
-	_chara:SubmitProposal( { type = CharacterProposal.TRAIN_CORPS, corps = corps, chara = _chara } )
+	_chara:SubmitProposal( { type = CharacterProposal.TRAIN_CORPS, target = corps, proposer = _chara } )
 end
 
 
@@ -1112,7 +1139,7 @@ local function CanReinforceCorps()
 	local city = _blackboard.city
 	return city:CanReinforceCorps()
 end
-local function NeedReinforceCorps( checkCity )
+local function NeedReinforceCorps( checkCity )	
 	return true
 end
 local function ReinforceCorpsProposal()
@@ -1121,13 +1148,13 @@ local function ReinforceCorpsProposal()
 	index = _ai:RandomRange( 1, #corpsList, "Reinforce corps proposal" )
 	local corps = corpsList[index]
 	
-	_chara:SubmitProposal( { type = CharacterProposal.REINFORCE_CORPS, corps = corps, chara = _chara } )
+	_chara:SubmitProposal( { type = CharacterProposal.REINFORCE_CORPS, target = corps, proposer = _chara } )
 end
 local CharacterAI_ReinforceCorpsProposal = 
 {
 	type = "SEQUENCE", children =
 	{
-		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "UNDERSTAFFSED_CROPSLIST", memname = "CORPSLIST" } },
+		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "UNDERSTAFFED_CROPSLIST", memname = "CORPSLIST" } },
 		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "CORPSLIST", number = 0 } },
 		{ type = "FILTER", condition = NeedReinforceCorps },
 		{ type = "ACTION", action = ReinforceCorpsProposal },
@@ -1138,10 +1165,10 @@ local CharacterAI_LeadTroopProposal =
 {
 	type = "SEQUENCE", desc = "Lead", children =
 	{
-		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "FREEMILITARYOFFICER_CHARALIST", memname = "TROOPLIST" } },
-		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "TROOPLIST", number = 0 } },
-		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "FREETROOPLEADER_CHARALIST", memname = "CHARALIST" } },
+		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "FREEMILITARYOFFICER_CHARALIST", memname = "CHARALIST" } },
 		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "CHARALIST", number = 0 } },
+		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "NONLEADER_TROOPLIST", memname = "TROOPLIST" } },
+		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "TROOPLIST", number = 0 } },
 		{ type = "ACTION", action = LeadTroopProposal },
 	}
 }
@@ -1159,7 +1186,7 @@ local CharacterAI_WarPreparednessProposal =
 					CharacterAI_ReinforceCorpsProposal,
 					CharacterAI_RegroupCorpsProposal,
 					CharacterAI_RecruitTroopProposal,
-					CharacterAI_EstablishCorpsProposal,				
+					CharacterAI_EstablishCorpsProposal,
 					CharacterAI_LeadTroopProposal,
 					CharacterAI_TrainCorpsProposal,
 				}
@@ -1178,8 +1205,8 @@ local function AttackProposal()
 	local corpsList = _register["CORPSLIST"]
 	local index = _ai:RandomRange( 1, #corpsList, "Attack Proposal corps" )
 	local corps = corpsList[index]
-
-	_chara:SubmitProposal( { type = CharacterProposal.ATTACK_CITY, targetCity = city, targetCorps = corps, chara = _chara } )
+		
+	_chara:SubmitProposal( { type = CharacterProposal.ATTACK_CITY, target = city, data = corps, proposer = _chara } )
 end
 
 local function ExpeditionProposal()
@@ -1191,7 +1218,7 @@ local function ExpeditionProposal()
 	local index = _ai:RandomRange( 1, #corpsList, "Attack Proposal corps" )
 	local corps = corpsList[index]
 
-	_chara:SubmitProposal( { type = CharacterProposal.EXPEDITION, targetCity = city, targetCorps = corps, chara = _chara } )
+	_chara:SubmitProposal( { type = CharacterProposal.EXPEDITION, target = city, data = corps, proposer = _chara } )
 end
 
 local CharacterAI_AttackProposal =
@@ -1218,7 +1245,8 @@ local CharacterAI_ExpeditionProposal =
 		{ type = "ACTION", action = ExpeditionProposal },
 	}
 }
-				
+
+	
 local CharacterAI_MilitaryProposal =
 {
 	type = "SEQUENCE", children = {
@@ -1239,17 +1267,19 @@ local CharacterAI_MilitaryProposal =
 
 ---------------------------------------------
 
-local function SelectMeetingProposal()		
+local function SelectMeetingProposal()
+	--[[
 	if NeedRecruit( _chara:GetLocation() ) and CanRecruit( _chara:GetLocation() ) then
-		_chara:SubmitProposal( { type = CharacterProposal.AI_SUBMIT_PROPOSAL, chara = _chara } )
+		_chara:SubmitProposal( { type = CharacterProposal.AI_SUBMIT_PROPOSAL, proposer = _chara } )
 		return
 	end
-	--print( #_blackboard, _chara.stamina )
+	]]
+	--ShowText( #_blackboard, _chara.stamina )
 	if _chara.stamina > CharacterParams.STAMINA["ACCEPT_PROPOSAL"] and _blackboard.proposals and #_blackboard.proposals > 0 then
 		for k, proposal in ipairs( _blackboard.proposals ) do
-			if proposal.type == CharacterProposal.RECRUIT_TROOP and not g_taskMng:IsTaskConflict( TaskType.RECRUIT_TROOP, proposal.city ) then
+			if proposal.type == CharacterProposal.RECRUIT_TROOP and not g_taskMng:IsTaskConflict( TaskType.RECRUIT_TROOP, proposal.data ) then
 				--InputUtility_Pause( "Pripority recruit" )
-				_chara:SubmitProposal( { type = CharacterProposal.AI_SELECT_PROPOSAL, proposal = proposal, chara = _chara } )
+				_chara:SubmitProposal( { type = CharacterProposal.AI_SELECT_PROPOSAL, proposal = proposal, proposer = _chara } )
 				return
 			end
 		end
@@ -1257,26 +1287,29 @@ local function SelectMeetingProposal()
 		if  _ai:GetRandom( "Select meeting topic" ) <= RandomParams.MAX_PROBABILITY + ( _chara.stamina - CharacterParams.STAMINA["ACCEPT_PROPOSAL"] ) * RandomParams.PROBABILITY_UNIT then		
 			local proposalList = {}
 			for k, proposal in ipairs( _blackboard.proposals ) do
-				if not g_taskMng:HasSimilarTaskByProposal( proposal ) then
-					--print( "insert proposal=", proposal.chara.name )
+				if not g_taskMng:HasConflictTaskByProposal( proposal ) then
+					--ShowText( "insert proposal=", proposal.proposer.name )
 					table.insert( proposalList, proposal )
 				end
 			end
 			if #proposalList > 0 then
-				--print( "resel", #proposalList)
+				--InputUtility_Pause( "resel", #proposalList)
 				local index = _ai:RandomRange( 1, #proposalList, "Select proposal" )
-				_chara:SubmitProposal( { type = CharacterProposal.AI_SELECT_PROPOSAL, proposal = proposalList[index], chara = _chara } )			
+				_chara:SubmitProposal( { type = CharacterProposal.AI_SELECT_PROPOSAL, proposal = proposalList[index], proposer = _chara } )			
 				return
 			end
 		end
 	end
+	
+	--AI Leader Submit proposal
 	if _chara.stamina > CharacterParams.STAMINA["SUBMIT_PROPOSAL"] then
 		--InputUtility_Pause( "ai submit proposal himself" )
-		_chara:SubmitProposal( { type = CharacterProposal.AI_SUBMIT_PROPOSAL, chara = _chara } )
+		_chara:SubmitProposal( { type = CharacterProposal.AI_SUBMIT_PROPOSAL, proposer = _chara } )
 		return
 	end
-	--InputUtility_Pause( "ai next topic" )
-	_chara:SubmitProposal( { type = CharacterProposal.NEXT_TOPIC, chara = _chara } )
+	
+	--Next/End
+	_chara:SubmitProposal( { type = CharacterProposal.NEXT_TOPIC, proposer = _chara } )
 end
 
 local CharacterAI_AISelectProposal =
@@ -1314,21 +1347,38 @@ local function CheckPriority( params )
 	local category = params.category
 	local tag = nil
 	if category == "WAR_PREPAREDNESS_AFFAIRS" then
+	elseif category == "RECRUIT_TROOP" then	
 		tag = group:GetAsset( GroupTag.SITUATION.WEAK )
+		
 	elseif category == "TECH_AFFAIRS" then
+	elseif category == "RESEARCH_TECH" then
 		tag = group:GetAsset( GroupTag.SITUATION.PRIMITIVE )
+		
 	elseif category == "DIPLOMACY_AFFAIRS" then
 		tag = group:GetAsset( GroupTag.SITUATION.BELLIGERENT )
+	
 	elseif category == "CITY_AFFAIRS" then
 		tag = group:GetAsset( GroupTag.SITUATION.UNDEVELOPED )
+		
 	elseif category == "HR_AFFAIRS" then
-		tag = group:GetAsset( GroupTag.SITUATION.UNDERSTAFFED )
+	elseif category == "HR_HIRE" then
+		tag = group:GetAsset( GroupTag.SITUATION.UNDERSTAFFED )		
+
 	elseif category == "MILITARY_AFFAIRS" then
+	elseif category == "MILITARY_AGGRESSIVE" then
 		tag = group:GetAsset( GroupTag.SITUATION.AGGRESSIVE )
+		--if tag then InputUtility_Pause( group.name, "aggress") end
 	end
-	--if tag then InputUtility_Pause( category .. " is valid" ) end
 	return tag ~= nil
 end
+
+local CharacterAI_AggressiveMilitaryProposal =
+{
+	type = "SELECTOR", children = {
+		CharacterAI_MilitaryProposal,
+		CharacterAI_WarPreparednessProposal,
+	},
+}
 
 local CharacterAI_AISubmitProposal =
 {
@@ -1337,12 +1387,22 @@ local CharacterAI_AISubmitProposal =
 		{ type = "FILTER", condition = CanSubmitProposal },
 		{ type = "SELECTOR", children = 
 			{
-				{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="WAR_PREPAREDNESS_AFFAIRS" } }, CharacterAI_WarPreparednessProposal, } },
-				{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="TECH_AFFAIRS" } }, CharacterAI_TechProposal, } },
-				{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="DIPLOMACY_AFFAIRS" } }, CharacterAI_DiplomacyProposal, } },
-				{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="CITY_AFFAIRS" } }, CharacterAI_CityAffaisProposal, } },
-				{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="HR_AFFAIRS" } }, CharacterAI_HumanResourceProposal, } },
-				{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="MILITARY_AFFAIRS" } }, CharacterAI_MilitaryProposal, } },
+				{ type = "SEQUENCE", children = { 
+					{ type = "FILTER", condition = CheckConflictProposal, params = { type = CharacterProposal.HR_HIRE } },
+					{ type = "FILTER", condition = CheckPriority, params = { category="HR_HIRE" } },
+					{ type = "FILTER", condition = CheckSwitchMode, params = { mode="HR_AFFAIRS" } },					
+					CharacterAI_HireCharaProposal }
+				},
+				{ type = "SEQUENCE", children = { 
+					{ type = "FILTER", condition = CheckPriority, params = { category="RECRUIT_TROOP" } },
+					{ type = "FILTER", condition = CheckSwitchMode, params = { mode="HR_AFFAIRS" } },
+					CharacterAI_RecruitTroopProposal }
+				},
+				{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="MILITARY_AGGRESSIVE" } }, CharacterAI_AggressiveMilitaryProposal } },
+				{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="DIPLOMACY_AFFAIRS" } }, CharacterAI_DiplomacyProposal } },
+				{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="MILITARY_AFFAIRS" } }, CharacterAI_MilitaryProposal } },				
+				{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="CITY_AFFAIRS" } }, CharacterAI_CityAffaisProposal } },				
+				{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="RESEARCH_TECH" } }, CharacterAI_TechProposal } },
 				CharacterAI_DefaultPriorityProposal,
 			},
 		},
@@ -1411,7 +1471,7 @@ local CharacterAI_GroupDiscussProposal =
 				},				
 				{ type = "SEQUENCE", children =
 					{
-						{ type = "FILTER", condition = IsCharaOfficer },
+						{ type = "FILTER", condition = IsCharaCivialOfficial },
 						OfficerDiscussProposal,
 					}
 				},
@@ -1527,7 +1587,7 @@ function CharacterAI:AppendBlackboard( name, data )
 		_blackboard = {}
 	end
 	_blackboard[name] = data
-	--print( "Blackboard=", name, _blackboard[name] )
+	--ShowText( "Blackboard=", name, _blackboard[name] )
 end
 
 function CharacterAI:ClearState()

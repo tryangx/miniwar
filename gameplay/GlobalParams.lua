@@ -5,19 +5,72 @@ PlotAdjacentOffsets = {
 	{ x = 0,  y = 1,  distance = 1, },
 	{ x = -1, y = 1,  distance = 1, },
 	{ x = -1, y = 0,  distance = 1, },	
-	{ x = -2, y = -2, distance = 2, },
+	
 	{ x = -1, y = -2, distance = 2, },
 	{ x = 0,  y = -2, distance = 2, },
+	{ x = 1,  y = -2, distance = 2, },	
 	{ x = 1,  y = -1, distance = 2, },
 	{ x = 2,  y = 0,  distance = 2, },
-	{ x = 1,  y = 1,  distance = 2, },
+	{ x = 1,  y = 1,  distance = 2, },	
+	{ x = 1,  y = 2,  distance = 2, },
 	{ x = 0,  y = 2,  distance = 2, },
-	{ x = -1, y = 2,  distance = 2, },
-	{ x = -2, y = 2,  distance = 2, },
-	{ x = -1, y = 1,  distance = 2, },
+	{ x = -1, y = 2,  distance = 2, },	
+	{ x = -2, y = 1,  distance = 2, },
 	{ x = -2, y = 0,  distance = 2, },
-	{ x = -1, y = -1, distance = 2, },
+	{ x = -2, y = -1, distance = 2, },
+	
+	{ x = -2, y = -3, distance = 3, },
+	{ x = -1, y = -3, distance = 3, },
+	{ x = 0,  y = -3, distance = 3, },
+	{ x = 1,  y = -3, distance = 3, },	
+	{ x = 2,  y = -2, distance = 3, },
+	{ x = 2,  y = -1, distance = 3, },
+	{ x = 3,  y = 0,  distance = 3, },
+	{ x = 2,  y = 1,  distance = 3, },
+	{ x = 2,  y = 2,  distance = 3, },	
+	{ x = 1,  y = 3,  distance = 3, },
+	{ x = 0,  y = 3,  distance = 3, },
+	{ x = -1, y = 3,  distance = 3, },	
+	{ x = -2, y = 3,  distance = 3, },	
+	{ x = -2, y = 2,  distance = 3, },
+	{ x = -3, y = 1,  distance = 3, },	
+	{ x = -3, y = 0,  distance = 3, },
+	{ x = -3, y = -1, distance = 3, },
+	{ x = -2, y = -2, distance = 3, },	
 }
+
+local function CheckPlotAdjacentPlot()
+	local count = 0
+	local lines = {}
+	for k, off in ipairs( PlotAdjacentOffsets ) do
+		if off.distance > 0 then
+			local y = off.y + 6
+			local x = off.x + 6
+			local line = lines[y]
+			if not lines[y] then line = {} lines[y] = line end
+			line[x] = off.distance
+			--print( x, y, off.distance )
+			count = count + 1
+		end
+	end
+
+	--print( count )
+	for y = 1, 10 do
+		local line = lines[y]
+		if line then
+			local content = ""
+			if y % 2 == 1 then content = " " end
+			for x = 1, 10 do
+				if line[x] then
+					content = content .. line[x] .. " "
+				else
+					content = content .. "  "
+				end
+			end
+			print( y .. ": " .. content )
+		end
+	end
+end
 
 GlobalConst = 
 {
@@ -42,7 +95,7 @@ PlotParams =
 
 	--Population
 	PLOT_POPULATION_CONSTANT = 100,
-	PLOT_POPULATION_GROWTH_RATE = 0.035,
+	PLOT_POPULATION_GROWTH_RATE = 0.025,
 	PLOT_POPULATION_DEATH_RATE  = 0.015,
 	
 	--Agriculture -> Supply
@@ -178,22 +231,27 @@ TroopStartLine =
 
 TroopTag = 
 {
-	TRAINING = 1,
+	TRAINING     = 1,
+	ORGANIZATION = 2,
+	
+	MAX_VALUE = 
+	{
+		--training
+		[1] = 100,
+	}
 }
 
 TroopParams =
 {
+	LEVEL_UP_EXP = 1000,
+	
+	REINFORCE_UNDER_PROPORTION   = 0.8,
+
 	TRAINING = 
 	{
 		UNTRAINED_VALUE      = 100,
 		TRAIN_STANDARD_VALUE = 5,
 		TRAIN_DIFF_MODULUS   = 0.25,
-	},
-	
-	MAX_ASSET_VALUE =
-	{
-		--training
-		[1] = 120,
 	},
 }
 
@@ -210,7 +268,7 @@ CorpsTag =
 
 CorpsParams =
 {
-	NUMBER_OF_TROOP_TO_ESTALIBSH = 5,
+	NUMBER_OF_TROOP_TO_ESTALIBSH = 1,
 	NUMBER_OF_TROOP_MAXIMUM      = 10,
 	
 	--
@@ -306,6 +364,17 @@ CityTag =
 	
 	--Bad : People become refugee
 	DESTRUCTION = 31,
+	
+	MAX_VALUE = 
+	{
+		SIEGE       = 3,
+		FRONTIER    = 1,
+		BATTLEFRONT = 1,
+		PROSPERITY  = 3,
+		DEPRESSED   = 3,
+		STARVATION  = 10,
+		DESTRUCTION = 3,
+	},
 }
 
 CityParams = 
@@ -315,6 +384,11 @@ CityParams =
 	SAFETY_TROOP_MAINTAIN_TIME      = 90,
 	
 	SAFETY_FOOD_CONSUME_TIME        = 180,
+	
+	CAPITAL_EXTRA_CHARA_LIMIT          = 99,	
+	CAPITAL_EXTRA_CHARA_REQUIREMENT    = 5,
+	CAPITAL_EXTRA_CORPS_REQUIREMENT    = 2,
+	NONCAPITAL_EXTRA_CHARA_REQUIREMENT = -3,
 	
 	-----------------------------	
 	
@@ -351,18 +425,7 @@ CityParams =
 	{
 		STARVATION_DECREASE_MODULUS = 0.001,
 		STARVATION_DEAD_MODULUS     = 0.05,
-	},
-	
-	MAX_TAG_VALUE = 
-	{
-		SIEGE       = 3,
-		FRONTIER    = 1,
-		BATTLEFRONT = 1,
-		PROSPERITY  = 3,
-		DEPRESSED   = 3,
-		STARVATION  = 10,
-		DESTRUCTION = 3,
-	},
+	},	
 	
 	-----------------------------
 	
@@ -617,11 +680,13 @@ GroupPower =
 
 GroupTag = 
 {
+	REPUTATION   = 1,
+	
 	-- Always declare war at first
-	MILITANT     = 1,
+	MILITANT     = 2,
 	
 	-- Break any contract
-	BETRAYER     = 2,
+	BETRAYER     = 3,
 
 	-- Peace Walker, Always try to avoid war
 	--PEACE_WALKER = 3,
@@ -633,7 +698,7 @@ GroupTag =
 		
 		--Growth
 		UNDEVELOPED = 110,
-		PROSPEROUS  = 111,		
+		PROSPEROUS  = 111,
 		
 		--Power
 		WEAK        = 120,
@@ -651,27 +716,54 @@ GroupTag =
 	},
 }
 
+GroupGoalCategory = 
+{
+	FINAL_GOAL     = 1,
+	
+	SHORTTERM_GOAL = 2,
+}
+
 GroupGoal = 
 {
 	-- Never win
 	NONE          = 0,
 	
-	SURVIVAL_GOAL      = 10,	
-	DOMINATION_GOAL    = 20,	
-	LEADING_GOAL       = 30,
-	----------------------------------
-	-- Survival	
-	SURVIVAL_GOAL_BEG  = 10,		
-	-- Survive for specific time.
-	SURVIVE            = 10,
-	-- Avoid becoming slave group for specific time
-	INDEPENDENT        = 11,	
-	SURVIVAL_GOAL_END  = 19,	
+	--------------------------
+	-- Final goal
+	
+	--Control percent of City( Only city of vassal can be counted )
+	DOMINATION_TERRIORITY = 10,
+	DOMINATION_CITY       = 11,
+	--DOMINATION_PLOT       = 12,
+	--Power is over than special percent number
+	POWER_LEADING         = 20,
+	
+	--------------------------
+	-- Short term goal
+	SHORT_TERM_GOAL   = 100,
+	--
+	SURVIVIVAL        = 100,
+	--
+	INDEPENDENCE      = 101,
+	--Control special city
+	OCCUPY_CITY       = 110,
+	
+	
+	--[[
+		--Divide goal to final goal and short team goal two kinds.
+		--Short team goal will determine every year, gropu can gain lots bonus after finished it in a year.		
+	--Final Goal
+	DOMINATION_GOAL    = 10,
+	LEADING_GOAL       = 20,
+	
+	--Short Goal	
+	SURVIVAL_GOAL      = 100,
+	
 	----------------------------------
 	-- Domination	
 	DOMINATION_GOAL_BEG  = 20,	
 	-- own special city
-	OCCUPY          = 20,	
+	OCCUPY          = 20,
 	-- conpercent of the territory in the continent which the capital stays
 	CONQUER         = 21,
 	DOMINATION_GOAL_END  = 29,		
@@ -682,13 +774,47 @@ GroupGoal =
 	MILITARY_POWER   = 31,
 	LEADING_GOAL_END = 39,		
 	-- Extension maybe economic or anything else
+	
+	----------------------------------	
+	-- Survival	
+	SURVIVAL_GOAL_BEG  = 10,		
+	-- Survive for specific time.
+	SURVIVE            = 10,
+	-- Avoid becoming slave group for specific time
+	INDEPENDENT        = 11,	
+	SURVIVAL_GOAL_END  = 19,		
+	]]
 }
 
 GroupGoalDiplomacyEffect =
 {
-	SURVIVAL_GOAL   = { SURVIVAL_GOAL =  0.02, DOMINATION_GOAL = -0.01, LEADING_GOAL = -0.01 }, 
-	DOMINATION_GOAL = { SURVIVAL_GOAL = -0.01, DOMINATION_GOAL = -0.03, LEADING_GOAL = -0.02 }, 
-	LEADING_GOAL    = { SURVIVAL_GOAL = -0.01, DOMINATION_GOAL = -0.02, LEADING_GOAL = -0.01 }, 
+	SURVIVAL_GOAL   = { SURVIVAL_GOAL =  0.02, DOMINATION_GOAL = -0.02, LEADING_GOAL = -0.02 }, 
+	DOMINATION_GOAL = { SURVIVAL_GOAL = -0.02, DOMINATION_GOAL = -0.04, LEADING_GOAL = -0.03 }, 
+	LEADING_GOAL    = { SURVIVAL_GOAL = -0.02, DOMINATION_GOAL = -0.03, LEADING_GOAL = -0.04 }, 
+}
+
+GroupRelationDiplomacyEffect = 
+{
+	--UNKNOWN
+	[0] = 0,
+	--NEUTRAL
+	[1] = 0,
+	--VASSAL
+	[2] = 0.03,
+	--DEPENDENCE
+	[3] = 0.02,
+	--ALLIANCE
+	[4] = 0.02,
+	--FRIEND
+	[5] = 0.01,
+	--HOSTILITY
+	[6] = -0.01,
+	--ENEMY
+	[7] = -0.02,
+	--TRUCE
+	[8] = 0,
+	--BELLIGERENT
+	[9] = -0.04,
 }
 
 --------------------------------
@@ -736,6 +862,7 @@ DiplomacyMethod =
 	MAKE_PEACE     = 5,	
 	BREAK_CONTRACT = 6,	
 	SURRENDER      = 7,	
+	METHOD_END     = 8,
 	--extension
 	SEPARATE       = 100,
 }
@@ -769,6 +896,7 @@ DiplomacyTendency =
 	[2] =
 	{
 		MAKEPEACE_NUMBER_BELLIGERENT = 1,
+
 		MAKEPEACE_BELLIGERENT_DAYS   = 90,
 		MAKEPEACE_POWER_RATIO        = 1.5,
 		
@@ -844,9 +972,9 @@ GroupRelationDetail =
 
 GroupRelationParam = 
 {
-	DEFAULT_TRUCE_DAY    = 30*6,
+	DEFAULT_TRUCE_DAY    = 180,
 	
-	DEFAULT_ALLIANCE_DAY = 30*24,
+	DEFAULT_ALLIANCE_DAY = 720,
 	
 	--Detail
 	MAX_DETAIL_VALUE = 
@@ -870,6 +998,8 @@ GroupRelationParam =
 	},	
 	METHOD_MOD = 
 	{
+		MAX_SINGLE_MOD = 10,
+		
 		ALLY = 
 		{
 			POWER_MODULUS = 6500,
@@ -895,7 +1025,7 @@ GroupRelationParam =
 			},
 			FRIEND_BELLIGERENT     = -1,
 			TARGET_MULTIPLE_FRONTS = 1,
-			SELF_MULTIPLE_FRONTS   = 2,
+			SELF_MULTIPLE_FRONTS   = 1.5,
 			DISTANCE = 3,
 		},
 		MAKE_PEACE = 
@@ -923,7 +1053,7 @@ GroupRelationParam =
 			},
 			FRIEND_BELLIGERENT     = -1,
 			TARGET_MULTIPLE_FRONTS = -1,
-			SELF_MULTIPLE_FRONTS   = 2.5,
+			SELF_MULTIPLE_FRONTS   = 2,
 			DISTANCE = 3,
 		},
 		FRIENDLY = 
@@ -1070,8 +1200,8 @@ GroupRelationParam =
 			POWER_MODULUS = 6000,
 			[1] = -2, 	--NEUTRAL		
 			[5] = -4, 	--FRIEND			
-			[6] = 2, 	--HOSTILITY			
-			[7] = 4, 	--ENEMY		
+			[6] = 3, 	--HOSTILITY			
+			[7] = 5, 	--ENEMY		
 			DETAIL_MODULUS =
 			{
 				LAST_TARGET     = 0,
@@ -1094,20 +1224,20 @@ GroupRelationParam =
 			},
 			FRIEND_BELLIGERENT     = 1,
 			TARGET_MULTIPLE_FRONTS = 1,			
-			SELF_MULTIPLE_FRONTS   = -1,
+			SELF_MULTIPLE_FRONTS   = -2.5,
 			DISTANCE               = -8,
 			SELF_GOALS =
 			{
 				SURVIVAL    = -2,
-				DOMINATION  = 2,
-				LEADING     = 1,
+				DOMINATION  = 4,
+				LEADING     = 2,
 				INDEPENDENT = -2,
 			},
 			TARGET_GOALS = 
 			{
-				SURVIVAL    = -1,
-				DOMINATION  = 0,
-				LEADING     = 0,
+				SURVIVAL    = 1,
+				DOMINATION  = 1,
+				LEADING     = 1,
 				INDEPENDENT = -1,
 			},
 		},
@@ -1224,9 +1354,13 @@ GroupRelationParam =
 	MAKE_PEACE_DAYS_PROB_MOD     = -900,
 	
 	MAKE_PEACE_DAYS_POW_MODULUS  = 10,
-	MAKE_PEACE_BELLIGERENT_TIME  = 90,
+	MAKE_PEACE_BELLIGERENT_TIME  = 180,	
+	MAKE_PEACE_PROFIT_NEED       = 10000,
+	MAKE_PEACE_PROFIT_MODULUS    = 0.2,
 	
 	--Declare war
+	DECLARE_WAR_PROFIT_NEED      = 10000,
+	DECLARE_WAR_PROFIT_MODULUS   = 0.1,
 }
 
 -----------------------------------
@@ -1318,6 +1452,12 @@ TraitEffectType =
 ---------------------------------
 -- Character
 
+CharacterType = 
+{
+	HISTRORIC = 1,
+	FICTIONAL = 2,
+}
+
 CharacterStatus = 
 {
 	--Appear in the game
@@ -1369,9 +1509,11 @@ CharacterJob =
 {
 	NONE              = 0,
 	
-	LOW_RANK_JOB      = 100,
-	OFFICER           = 101,	
-	MILITARY_OFFICER  = 102,
+	LOW_RANK_JOB      = 100,	
+	OFFICER           = 101,
+	CIVIAL_OFFICIAL   = 102,
+	MILITARY_OFFICER  = 103,
+	
 	SPY               = 120,
 	TRADER            = 130,
 	BUILDER           = 140,
@@ -1446,7 +1588,7 @@ CharacterProposal =
 	HR_CALL          = 42,
 	HR_HIRE          = 43,
 	HR_EXILE         = 44,
-	HR_PROMOTE       = 45,
+	HR_PROMOTE       = 45,--Need AI
 	HR_BONUS         = 46,--Need implement
     HR_AFFAIRS_END   = 49,	
 	
@@ -1455,7 +1597,7 @@ CharacterProposal =
 	RECRUIT_TROOP    = 51,
 	LEAD_TROOP       = 52,
 	ESTABLISH_CORPS  = 53,
-	DISPATCH_CORPS   = 54,
+	DISPATCH_CORPS   = 54,--Need AI
 	REINFORCE_CORPS  = 55,
 	REGROUP_CORPS    = 56,
 	TRAIN_CORPS      = 57,
@@ -1502,6 +1644,18 @@ CharacterProposal =
 
 CharacterParams =
 {
+	ATTRIBUTE = 
+	{
+		MAX_SATISFACTION = 250,
+		MAX_AP           = 250,
+		MAX_TRUST        = 250,
+	},
+
+	TRAIT = 
+	{
+		TRAIT_REQUIREMENT_PER_SLOT = 40,
+	},
+
 	CONTRIBUTION = 
 	{
 		MAX_CONTRIBUTION = 10000,
@@ -1509,6 +1663,7 @@ CharacterParams =
 	
 	SUBORDINATE_LIMIT = 
 	{
+		DEFAULT = 20,
 		--Emperor
 		[400] = 30,
 		--King
@@ -1527,9 +1682,11 @@ CharacterParams =
 	{
 		[0] = { CITY_AFFAIRS = 1 },		
 		--Officer
-		[101] = { CITY_AFFAIRS = 1, HR_AFFAIRS = 1 },
+		[101] = { CITY_AFFAIRS = 1, HR_AFFAIRS = 1, WAR_PREPAREDNESS_AFFAIRS = 1, MILITARY_AFFAIRS = 1 },
+		--Civial Official
+		[102] = { CITY_AFFAIRS = 1, HR_AFFAIRS = 1, },
 		--Military Officer
-		[102] = { WAR_PREPAREDNESS_AFFAIRS = 1, },			
+		[103] = { WAR_PREPAREDNESS_AFFAIRS = 1, MILITARY_AFFAIRS = 1, },
 		--Cabinet minister
 		[200] = { TECH_RESEARCH = 1, CITY_AFFAIRS = 1, HR_AFFAIRS = 1 },
 		--Diplomatic
@@ -1570,12 +1727,20 @@ CharacterParams =
 		[101] = { 
 			limit = 0,
 			promotions = {
-				{ job = "ASSISTANT_MINISTER", contribution = 1000 },
-				{ job = "DIPLOMATIC",       contribution = 1000, trait = {} },
+				{ job = "CIVIAL_OFFICIAL", contribution = 100 },
+				{ job = "MILITARY_OFFICER", contribution = 100 },
 			},
 		},
-		--MILITARY_OFFICER
+		--CIVIAL_OFFICIAL
 		[102] = {
+			limit = 0,
+			promotions = {
+				{ job = "ASSISTANT_MINISTER", contribution = 1000 },
+				{ job = "DIPLOMATIC",       contribution = 1000, trait = {} },				
+			},
+		},		
+		--MILITARY_OFFICER
+		[103] = {
 			limit = 0,
 			promotions = {
 				{ job = "GENERAL", contribution = 1000 },
@@ -1652,7 +1817,6 @@ CharacterParams =
 
 CharacterProposalTendency = 
 {
-	
 	JOB = 
 	{
 		--Default
@@ -1664,7 +1828,7 @@ CharacterProposalTendency =
 		--OFFICER
 		[10] = 
 		{
-			SUCCESS_CRITERIA = { DEFAULT=5000, },
+			SUCCESS_CRITERIA = { DEFAULT=3500, },
 			PROPOSAL = { TECH=3000,FRIENDLY=3000,THREATEN=3000,ALLY=4000,DECLARE_WAR=4000,MAKE_PEACE=3000,BREAK_CONTRACT=2000,SURRENDER=3000,},
 		},		
 		--General
@@ -1676,7 +1840,7 @@ CharacterProposalTendency =
 		--DIPLOMATIC
 		[100] = 
 		{
-			SUCCESS_CRITERIA = { DEFAULT=5000, },
+			SUCCESS_CRITERIA = { DEFAULT=3500, },
 			PROPOSAL = { TECH=0,FRIENDLY=5000,THREATEN=3000,ALLY=4000,DECLARE_WAR=2500,MAKE_PEACE=3500,BREAK_CONTRACT=1500,SURRENDER=2500,},
 		},		
 		--CABINET_MINISTER
@@ -1691,5 +1855,10 @@ CharacterProposalTendency =
 			SUCCESS_CRITERIA = { DEFAULT=5000, },
 			PROPOSAL = { TECH=4000,FRIENDLY=3000,THREATEN=6000,ALLY=3000,DECLARE_WAR=5000,MAKE_PEACE=0,BREAK_CONTRACT=2500,SURRENDER=0,},			
 		},
+		[402] =
+		{
+			SUCCESS_CRITERIA = { DEFAULT=4000, },
+			PROPOSAL = { TECH=4000,FRIENDLY=3000,THREATEN=6000,ALLY=3000,DECLARE_WAR=5000,MAKE_PEACE=0,BREAK_CONTRACT=2500,SURRENDER=0,},			
+		}
 	},
 }

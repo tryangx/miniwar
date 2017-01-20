@@ -31,7 +31,7 @@ function PlotMap:Dump()
 				content = content .. "        "
 			end
 		end
-		print( "Y=".. y, content )
+		ShowText( "Y=".. y, content )
 	end
 end
 
@@ -58,7 +58,7 @@ function PlotMap:RandomMap( width, height )
 	for y = 1, height do
 		for x = 1, width do
 			local plot = Plot()
-			--print( "init plot", x, y )
+			--ShowText( "init plot", x, y )
 			plot:InitPlot( x, y, 4000 )
 			self.mng:SetData( plot.id, plot )
 		end
@@ -70,8 +70,7 @@ function PlotMap:RandomMap( width, height )
 	function SimpleRandomPlotType()
 		local plotTypeMaps = 
 		{
-			{ id = 1000, desc = "landPlain", prob = 3000 },
-			--[[
+			{ id = 1000, desc = "landPlain", prob = 3000 },	
 			{ id = 1100, desc = "landGrass", prob = 3000 },
 			{ id = 1200, desc = "landDesert", prob = 800 },
 			{ id = 1300, desc = "landTundra", prob = 400 },
@@ -84,7 +83,6 @@ function PlotMap:RandomMap( width, height )
 			{ id = 3000, desc = "mountainPlain", prob = 1000 },
 			
 			{ id = 4000, desc = "lake", prob = 500 },
-			]]
 		}
 		local totalProb = 0
 		for k, mapItem in ipairs( plotTypeMaps ) do
@@ -220,7 +218,7 @@ function PlotMap:RandomMap( width, height )
 				return adjaPlot.table:GetFeature() == PlotFeatureType[condition.value]
 			end )
 		else
-			print( "not match" .. condition.type)
+			ShowText( "not match" .. condition.type)
 			return false
 		end
 		--InputUtility_Pause( "match", condition.type, condition.value, plot.table.name )
@@ -264,20 +262,19 @@ function PlotMap:RandomMap( width, height )
 	PutResource( strategicResourceItems )
 	PutResource( bonusResourceItems )
 	PutResource( luxuryResourceItems )
-	PutResource( artificialResourceItems )
+	--PutResource( artificialResourceItems )
 	
 	--InputUtility_Pause( "finished put resource" )
 	
 	----------------------------
 	--Initialize asset data
 	self:ForeachPlot( function ( plot ) 		
-		plot:ConvertID2Data()
-		plot:InitPlotAssets()
+		plot:ConvertID2Data()		
 	end )	
 end
 
 function PlotMap:AllocateToCity()
-	print( "allocate plots to city" )
+	ShowText( "allocate plots to city" )
 	--[[
 	07 08 09
    18 01 02 10
@@ -285,31 +282,55 @@ function PlotMap:AllocateToCity()
    16 05 04 12
 	15 14 13
 	]]
+	local maxDistance = 3
+	
+	--1st, allocate plots to city
 	g_cityDataMng:Foreach( function ( city )
 		local plots = {}
 		local pos = city:GetCoordinate()
-		function AddPlot( list, x, y )
+		function AddPlot( list, x, y, settlement )
 			local plot = self:GetPlot( x, y )
-			if plot and  not plot:GetData() then
+			if plot and ( not plot:GetData() or settlement == maxDistance ) then
 				table.insert( list, plot )
-				--plot:SetData( city )
+				plot:SetData( { city = city, settlement = settlement } )
 				return 1
 			end
 			return 0
 		end
-		AddPlot( plots, pos.x, pos.y )
-		local left = city.level	- 1
-		local distance = 2
-		--print( city.name, x, y, left, #PlotAdjacentOffsets )
+		AddPlot( plots, pos.x, pos.y, maxDistance )
+		local left = city.level	- 1		
+		--ShowText( city.name, x, y, left, #PlotAdjacentOffsets )
 		for k, offset in ipairs( PlotAdjacentOffsets ) do		
-			if left > 0 and offset.distance <= distance then
-				left = left - AddPlot( plots, pos.x + offset.x, pos.y + offset.y )
+			if left > 0 and offset.distance < maxDistance then
+				left = left - AddPlot( plots, pos.x + offset.x, pos.y + offset.y, maxDistance - offset.distance )
 			else
 				break
 			end
-		end		
+		end
 		city:SetPlots( plots )
 	end )
+
+	--2nd, init plot assets, gather people
+	self:ForeachPlot( function ( plot )
+		--[[
+		local params = {}
+		params.settlement = 0
+		for k, offset in ipairs( PlotAdjacentOffsets ) do
+			local adjaPlot = self:GetPlot( plot.x + offset.x, plot.y + offset.y )
+			if adjaPlot then
+				params.settlement = params.settlement + ( maxDistance - adjaPlot:GetData().distance + 1 )
+			end
+		end
+		]]
+		plot:InitPlotAssets( plot:GetData() )
+	end )
+	
+	--3rd, update city plots
+	g_cityDataMng:Foreach( function ( city )
+		city:UpdatePlots()
+	end )
+	
+	--InputUtility_Pause( "alloc" )
 end
 
 function PlotMap:Update( elapsedTime )

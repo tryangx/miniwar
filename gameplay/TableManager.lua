@@ -37,12 +37,12 @@ function TableManager:LoadTable( sources )
 		for k, data in pairs( sources ) do
 			local newData = self.clz()
 			if data.id == nil then
-				--print( "Allocate id=" .. k )
+				--ShowText( "Allocate id=" .. k )
 				data.id = k
 			end
 			newData:Load( data )
 			if not data.id then Debug_Error( "Data has no id" ) end
-			--print( data.id, data.name )
+			--ShowText( data.id, data.name )
 			if not self.datas[data.id] then self.count = self.count + 1 end
 			self.datas[data.id] = newData
 		end
@@ -50,7 +50,7 @@ function TableManager:LoadTable( sources )
 		--swallow copy		
 		self.datas = sources
 	end		
-	print( "Load Table=", self.name, self.count )
+	ShowText( "Load Table=", self.name, self.count )
 	--MathUtility_Dump( self.datas )
 end
 

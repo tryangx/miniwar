@@ -58,6 +58,7 @@ require "Scenario_Standard_CombatEvent"
 ---------------------------------------
 -- Data Mediator
 require "Character"
+require "CharacterTemplate"
 require "Group"
 require "City"
 require "Troop"
@@ -66,10 +67,10 @@ require "Plot"
 
 ---------------------------------------
 -- Logical
---require "Order"
+require "GameEvent"
 require "Task"
 require "TaskOperation"
---require "Combat"
+--require "FullCombat"
 require "QuickCombat"
 require "CombatEvent"
 require "Warfare"
@@ -83,6 +84,8 @@ require "Formula"
 require "Meeting"
 require "Diplomacy"
 require "MovingActor"
+require "Goal"
+require "CharacterGrowth"
 
 ---------------------------------------
 -- AI
@@ -110,6 +113,10 @@ g_season   = Season()
 g_calendar = Calendar()
 
 g_statistic = Statistic()
+
+g_charaTemplate = CharacterTemplate()
+
+g_gameEvent = GameEvent()
 
 ---------------------------
 -- Configure Table
@@ -169,6 +176,3 @@ g_menu = MenuUtility()
 
 ---------------------------
 -- Running Data
-g_activateCharaList  = {}
-g_outCharacterList   = {}
-g_otherCharacterList = {}

@@ -3,9 +3,11 @@ local CharaData =
 	[1] = 
 	{
 		name = "SiMa Cuo",
+		birth = -550,
+		life  = 65,
 		location    = 10,
 		ca          = 60,
-		pa          = 80,
+		ap          = 80,
 		purpose     = 0,
 		status      = "OUT",
 		job         = "NONE",
@@ -13,10 +15,11 @@ local CharaData =
 	},
 	[2] = 
 	{
-		name = "Wang Jian",
+		name = "Wang Ben",
+		birth = -550,
 		location    = 10,		
 		ca          = 60,
-		pa          = 80,
+		ap          = 80,
 		purpose     = 0,
 		status      = "NOT_APPEAR",
 		job         = "NONE",
@@ -26,38 +29,43 @@ local CharaData =
 	[100] = 
 	{
 		name = "QING WANG",
+		birth = -520,
 		location    = 10,		
 		ca          = 60,
-		pa          = 80,
+		ap          = 80,
 		purpose     = 0,
 		job         = "KING",
 		traits = { 1000, 1030 },
 	},	
 	[102] = 
 	{
-		name = "BAI QI",		
+		name = "BAI QI",	
+		birth = -520,		
 		location    = 10,		
 		ca          = 60,
-		pa          = 80,
+		ap          = 80,
 		purpose     = 0,
 		job 		= "MARSHAL",		
 		traits = { 1000, 1030 },
 	},
 	[104] = 
 	{
-		name = "WANG JIAN",		
+		name = "WANG JIAN",	
+		birth = -550,		
 		location    = 10,		
 		ca          = 60,
-		pa          = 80,		
+		ap          = 80,		
 		purpose     = 0,
+		job         = "",
 		traits = { 1000, 1030 },
 	},
 	[103] = 
 	{
-		name = "MENG TIAN",		
+		name = "MENG TIAN",
+		birth = -560,
 		location    = 11,		
 		ca          = 60,
-		pa          = 80,		
+		ap          = 80,		
 		purpose     = 0,		
 		job         = "GENERAL",
 		contribution = 2000,
@@ -65,29 +73,33 @@ local CharaData =
 	},
 	[101] = 
 	{
-		name = "FAN JU",		
+		name = "FAN JU",	
+		birth = -520,		
 		location    = 10,
 		ca          = 60,
-		pa          = 80,		
+		ap          = 80,		
 		purpose     = 0,
 		job         = "CABINET_MINISTER",
 		traits = { 3000 },
 	},
 	[105] = 
 	{
-		name = "YAO JA",		
+		name = "YAO JA",
+		birth = -550,
 		location    = 10,
 		ca          = 60,
-		pa          = 80,		
+		ap          = 80,		
 		purpose     = 0,
+		job         = "CIVIAL_OFFICIAL",
 		traits = { 3000 },
 	},
 	[106] = 
 	{
 		name = "LI SI",		
+		birth = -550,
 		location    = 10,
 		ca          = 60,
-		pa          = 80,		
+		ap          = 80,		
 		purpose     = 0,
 		job         = "OFFICER",
 		contribution = 1200,
@@ -98,37 +110,41 @@ local CharaData =
 	[200] = 
 	{
 		name = "QI WANG",
+		birth = -550,
 		location    = 20,		
 		ca          = 50,
-		pa          = 90,		
+		ap          = 90,		
 		purpose     = 0,		
 		job         = "KING",
 		traits = { 1001, 1010, 1040 },
 	},
 	[201] = 
 	{
-		name = "TIAN DAN",		
+		name = "TIAN DAN",	
+		birth = -550,		
 		location    = 20,		
 		ca          = 50,
-		pa          = 90,		
+		ap          = 90,		
 		purpose     = 0,		
 		traits = { 1001, 1010, 1040 },
 	},
 	[202] = 
 	{
 		name = "SUN BIN",		
+		birth = -550,
 		location    = 20,		
 		ca          = 50,
-		pa          = 90,		
+		ap          = 90,		
 		purpose     = 0,		
 		traits = { 1001, 1010, 1040 },
 	},
 	[203] = 
 	{
 		name = "ZHOU JI",		
+		birth = -550,
 		location    = 20,		
 		ca          = 50,
-		pa          = 90,		
+		ap          = 90,		
 		purpose     = 0,		
 		traits = { 3000 },
 	},
@@ -136,9 +152,10 @@ local CharaData =
 	[300] = 
 	{
 		name = "CHU WANG",
+		birth = -550,
 		location    = 30,		
 		ca          = 50,
-		pa          = 90,		
+		ap          = 90,		
 		purpose     = 0,	
 		job         = "KING",		
 		traits = { 1001, 1010, 1040 },
@@ -147,9 +164,10 @@ local CharaData =
 	[400] = 
 	{
 		name = "WEI WANG",
+		birth = -550,
 		location    = 40,		
 		ca          = 50,
-		pa          = 90,		
+		ap          = 90,		
 		purpose     = 0,	
 		job         = "KING",		
 		traits = { 1001, 1010, 1040 },
@@ -158,9 +176,10 @@ local CharaData =
 	[500] = 
 	{
 		name = "ZHAO WANG",
+		birth = -550,
 		location    = 50,		
 		ca          = 50,
-		pa          = 90,		
+		ap          = 90,		
 		purpose     = 0,		
 		job         = "KING",
 		traits = { 1001, 1010, 1040 },
@@ -169,9 +188,10 @@ local CharaData =
 	[600] = 
 	{
 		name = "YAN WANG",
+		birth = -550,
 		location    = 60,		
 		ca          = 50,
-		pa          = 90,		
+		ap          = 90,		
 		purpose     = 0,	
 		job         = "KING",		
 		traits = { 1001, 1010, 1040 },
@@ -180,9 +200,10 @@ local CharaData =
 	[700] = 
 	{
 		name = "HAN WANG",
+		birth = -550,
 		location    = 70,		
 		ca          = 50,
-		pa          = 90,		
+		ap          = 90,		
 		purpose     = 0,		
 		job         = "KING",
 		traits = { 1001, 1010, 1040 },
@@ -190,10 +211,11 @@ local CharaData =
 	
 	[800] = 
 	{
-		name = "ZHONG SHAN WANG",
+		name = "ZHONGSHAN WANG",
+		birth = -550,
 		location    = 70,		
 		ca          = 50,
-		pa          = 90,		
+		ap          = 90,		
 		purpose     = 0,	
 		job         = "KING",		
 		traits = { 1001, 1010, 1040 },
@@ -202,9 +224,11 @@ local CharaData =
 	[900] = 
 	{
 		name = "ZHOU TIANZI",
+		birth = -550,
+		life  = 65,
 		location    = 70,
 		ca          = 50,
-		pa          = 90,		
+		ap          = 90,		
 		purpose     = 0,		
 		traits = { 1001, 1010, 1040 },
 	},
@@ -435,7 +459,7 @@ local CityData =
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},
-		charas = { 100, 102, 101, 102, 105, 104 },
+		charas = { 100, 102, 101, 105, 104 },
 		corps  = {},--{ 1, 2 },	
 		--troops = { 1, 2 },
 		constructions = {},		
@@ -499,8 +523,8 @@ local CityData =
 		production     = "50%",			
 		cultureCircle = 0,		
 		security = 80,		
-		traits = {},		
-		charas = {},		
+		traits = {},	
+		charas = { 300 },		
 		corps  = {},		
 		troops = {},				
 		constructions = {},		
@@ -521,7 +545,7 @@ local CityData =
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},		
-		charas = {},		
+		charas = { 400 },		
 		corps  = {},		
 		troops = {},				
 		constructions = {},		
@@ -542,7 +566,7 @@ local CityData =
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},		
-		charas = {},		
+		charas = { 500 },		
 		corps  = {},		
 		troops = {},				
 		constructions = {},		
@@ -563,7 +587,7 @@ local CityData =
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},		
-		charas = {},		
+		charas = { 600 },		
 		corps  = {},		
 		troops = {},				
 		constructions = {},		
@@ -584,7 +608,7 @@ local CityData =
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},		
-		charas = {},		
+		charas = { 700 },		
 		corps  = {},		
 		troops = {},				
 		constructions = {},		
@@ -605,7 +629,7 @@ local CityData =
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},		
-		charas = {},		
+		charas = { 800 },		
 		corps  = {},
 		troops = {},				
 		constructions = {},		
@@ -626,7 +650,7 @@ local CityData =
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},		
-		charas = {},		
+		charas = { 900 },		
 		corps  = {},		
 		troops = {},				
 		constructions = {},		
@@ -640,7 +664,7 @@ local GroupData =
 	[1] =
 	{
 		name = "QIN",
-		goals = { { type="CONQUER", value = 6, rate = 80 } },
+		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 100,
 		money = 1000,
 		researchAbility = 100,
@@ -659,7 +683,7 @@ local GroupData =
 	[2] =
 	{
 		name = "QI",
-		goals = { { type="CONQUER", rate = 80 } },
+		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 200,
 		money = 1000,
 		researchAbility = 100,
@@ -674,7 +698,7 @@ local GroupData =
 	[3] =
 	{
 		name = "Chu",
-		goals = { { type="CONQUER", rate = 80 } },
+		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 300,		
 		money = 10000,
 		researchAbility = 100,
@@ -687,10 +711,11 @@ local GroupData =
 		relations = { 11, 20, 30, 31, 32, 33, 34, 35 },
 	},
 	--]]
+	--[[]]
 	[4] =
 	{
 		name = "Wei",
-		goals = { { type="CONQUER", rate = 80 } },
+		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 400,		
 		money = 1000,
 		researchAbility = 100,
@@ -702,11 +727,12 @@ local GroupData =
 		corps = { 3 },		
 		relations = { 12, 21, 30, 40, 41, 42, 43, 44 },
 	},
+	--]]
 	--[[]]
 	[5] =
 	{
 		name = "Zhao",
-		goals = { { type="CONQUER", rate = 80 } },
+		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 500,
 		money = 1000,
 		researchAbility = 100,
@@ -721,7 +747,7 @@ local GroupData =
 	[6] =
 	{
 		name = "Yan",
-		goals = { { type="CONQUER", rate = 80 } },
+		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 600,
 		money = 1000,
 		researchAbility = 100,
@@ -736,7 +762,7 @@ local GroupData =
 	[7] =
 	{
 		name = "Han",
-		goals = { { type="CONQUER", rate = 80 } },
+		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 700,
 		money = 1000,
 		researchAbility = 100,
@@ -751,7 +777,7 @@ local GroupData =
 	[8] =
 	{
 		name = "ZS",
-		goals = { { type="SURVIVE", value = 240 } },
+		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 800,
 		money = 1000,
 		researchAbility = 100,
@@ -766,7 +792,7 @@ local GroupData =
 	[9] =
 	{
 		name = "ZHOU",
-		goals = { { type="INDEPENDENT", value = 120 } },
+		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 900,
 		money = 10000,
 		researchAbility = 100,

@@ -121,8 +121,8 @@ CombatParams =
 	-----------------------
 	NUMBER_BONUS_TO_DAMAGE_MIN_FACTOR    = 0.1,
 	NUMBER_BONUS_TO_DAMAGE_MAX_FACTOR    = 2.5,
-	TRAINING_BONUS_TO_DAMAGE_MIN_FACTOR  = 10,
-	TRAINING_BONUS_TO_DAMAGE_MAX_FACTOR  = 250,
+	LEVEL_BONUS_TO_DAMAGE_MIN_FACTOR     = 10,
+	LEVEL_BONUS_TO_DAMAGE_MAX_FACTOR     = 250,
 
 	-----------------------
 	-- Score
@@ -171,12 +171,19 @@ function Combat:__init()
 	
 	self.atkGroup = nil
 	self.defGroup = nil
-		
+
 	self.corps = {}	
 	self.troops = {}
 	
 	self.status = {}
 	self.sideOptions = {}
+	
+	--statistic
+	self.totalSoldier = 0
+	self.atkNumber = 0
+	self.defNumber = 0
+	self.atkKill = 0
+	self.defKill = 0
 end
 
 local logUtility = LogUtility( "qcombat.log", LogFileMode.WRITE_MANUAL, LogPrinterMode.ON, LogWarningLevel.DEBUG )
@@ -197,7 +204,16 @@ function Combat:Brief()
 	content = content .. ( self.atkGroup and self.atkGroup.name or "Unkown" ) .. "+" .. atkNum .. "/" .. atkMaxNum .. "("..atkTroop..")"
 	content = content .. " VS "
 	content = content .. ( self.defGroup and self.defGroup.name or "Unkown" ) .. "+" .. defNum .. "/" .. defMaxNum .. "("..defTroop..")" 
-	print( content )
+	ShowText( content )
+end
+
+function Combat:CreateDesc()
+	local desc = ( self.atkGroup and self.atkGroup.name or "Unkown" ) .. " v " .. ( self.defGroup and self.defGroup.name or "Unkown" )
+	desc = desc .. " @" .. ( self.location and self.location.name or "" )
+	desc = desc .. " date=" .. g_calendar:CreateDateDescByValue( self.begDate, true, true ) .."->"..g_calendar:CreateDateDescByValue( self.endDate, true, true )
+	desc = desc .. " rslt=" .. MathUtility_FindEnumName( CombatResult, self.result )
+	desc = desc .. " soldier=" .. self.atkNumber .. "/" .. self.defNumber
+	return desc
 end
 
 function Combat:Dump()
@@ -213,7 +229,7 @@ function Combat:Dump()
 	local atkNumber, defNumber = 0, 0
 	function dumpTroop( troops )
 		for k, troop in ipairs( troops ) do
-			print( "	" .. troop.name .. " 	id=" .. troop.id .. "(".. ( troop.corps and troop.corps.id or "" )..") num=" .. troop.number .. " side=" .. MathUtility_FindEnumName( CombatSide, troop._combatSide ) .. " Line=" .. MathUtility_FindEnumName( TroopStartLine, troop._startLine ) .. " Mor=" .. troop.morale .. "/" .. troop.maxMorale .. " In="..(troop:IsInCombat() and "true" or "false" ) )
+			ShowText( "	" .. troop.name .. " 	id=" .. troop.id .. "(".. ( troop.corps and troop.corps.id or "" )..") num=" .. troop.number .. " side=" .. MathUtility_FindEnumName( CombatSide, troop._combatSide ) .. " Line=" .. MathUtility_FindEnumName( TroopStartLine, troop._startLine ) .. " Mor=" .. troop.morale .. "/" .. troop.maxMorale .. " In="..(troop:IsInCombat() and "true" or "false" ) )
 			if troop:IsCombatUnit() then
 				if troop._combatSide == CombatSide.ATTACKER then
 					atkNumber = atkNumber + troop.number
@@ -261,7 +277,7 @@ function Combat:AddTroopToSide( side, troop )
 	table.insert( self.troops, troop )
 	
 	troop:NewCombat()
-
+	
 	--init side
 	troop._combatSide = side
 
@@ -269,6 +285,13 @@ function Combat:AddTroopToSide( side, troop )
 	troop._armorWeight = 0
 	for k, armor in pairs( troop.table.armors ) do
 		troop._armorWeight = troop._armorWeight + armor.weight
+	end
+	
+	self.totalSoldier = self.totalSoldier + troop.number		
+	if troop._combatSide == CombatSide.ATTACKER then
+		self.atkNumber = self.atkNumber + troop.number
+	else
+		self.defNumber = self.defNumber + troop.number
 	end
 end
 
@@ -309,7 +332,7 @@ end
 
 function Combat:SetLocation( id )
 	self.location = g_cityDataMng:GetData( id )
-	--print( "location", id, combat.location )
+	--ShowText( "location", id, combat.location )
 end
 
 function Combat:SetSide( side, data )
@@ -331,8 +354,14 @@ function Combat:SetSide( side, data )
 	self.sideOptions[side] = data
 end
 
+function Combat:End()
+	self.endDate = g_calendar:GetDateValue()
+end
+
 function Combat:Init()
 	if not self.battlefield then return end
+	
+	self.begDate = g_calendar:GetDateValue()
 
 	--start time
 	self.time = ( self.battlefield.time + g_season:GetSeasonTable().dawnTime ) * 60
@@ -399,7 +428,7 @@ function Combat:Embattle()
 				troop._startLine = TroopStartLine.BACK
 				table.insert( self.backLine, troop )
 			end
-			--print( "embattle siege", troop.name, MathUtility_FindEnumName( TroopStartLine, troop._startLine ) )
+			--ShowText( "embattle siege", troop.name, MathUtility_FindEnumName( TroopStartLine, troop._startLine ) )
 		end
 	end
 end
@@ -652,7 +681,7 @@ function Combat:NextTurn()
 						troop:Flee()					
 					end
 				end
-				print( "Attacker retreat" )
+				ShowText( "Attacker retreat" )
 				self:AddStatus( CombatStatus.SIDE_FLEE )
 				self.round = CombatRound.PURSUE_ROUND
 			end
@@ -665,7 +694,7 @@ function Combat:NextTurn()
 							troop:Flee()						
 						end
 					end
-					print( "Garrison retreat" )
+					ShowText( "Garrison retreat" )
 					self:AddStatus( CombatStatus.SIDE_FLEE )
 					self.round = CombatRound.PURSUE_ROUND
 				end
@@ -678,7 +707,7 @@ function Combat:NextTurn()
 							troop:Flee()
 						end
 					end
-					print( "Defender retreat" )
+					ShowText( "Defender retreat" )
 					self:AddStatus( CombatStatus.SIDE_FLEE )
 					self.round = CombatRound.PURSUE_ROUND
 				end
@@ -701,7 +730,7 @@ function Combat:FindTargetInLine( troop, line )
 	elseif line == TroopStartLine.MELEE then
 		lineTroops = self.meleeLine
 	end	
-	--print( "find line", MathUtility_FindEnumName( TroopStartLine, line ), lineTroops and #lineTroops or 0 )
+	--ShowText( "find line", MathUtility_FindEnumName( TroopStartLine, line ), lineTroops and #lineTroops or 0 )
 	if not lineTroops then return nil end
 	for k, target in ipairs( lineTroops ) do
 		if target:IsInCombat() and target._combatSide ~= troop._combatSide then
@@ -710,7 +739,7 @@ function Combat:FindTargetInLine( troop, line )
 	end
 	if #troops == 0 then return nil end
 	local index = Random_SyncGetRange( 1, #troops, "Random Target" )
-	--print( "total target=" .. #troops, #lineTroops, MathUtility_FindEnumName( TroopStartLine, line ), " index=", index )
+	--ShowText( "total target=" .. #troops, #lineTroops, MathUtility_FindEnumName( TroopStartLine, line ), " index=", index )
 	return troops[index]
 end
 
@@ -720,7 +749,7 @@ function Combat:FindTarget( troop )
 		target = self:FindTargetInLine( troop, line )
 		if target then break end 
 	end
-	--print( NameIDToString( troop ) .. " Find target=" .. ( target and target.name or "" ) )
+	--ShowText( NameIDToString( troop ) .. " Find target=" .. ( target and target.name or "" ) )
 	return target
 end
 
@@ -756,29 +785,27 @@ function Combat:FindFledTarget( troop )
 end
 
 function Combat:CalcDamage( troop, target, weapon, armor, params )
-	local trainingRate = 100
+	local lvRate = 100
 	if params.isMelee then
-		local traingTag1 = troop:GetAsset( TroopTag.TRAINING )
-		local traingTag2 = target:GetAsset( TroopTag.TRAINING )
-		local t1 = traingTag1 and traingTag1.value or 0
-		local t2 = traingTag1 and traingTag1.value or 0
+		local t1 = troop:GetLevel()
+		local t2 = target:GetLevel()
 		local range = Random_SyncGetRange( 1, math.abs( t1 - t2 ), "Random Damage BonusRate" ) 
 		range = t1 > t2 and range or -range
-		trainingRate = MathUtility_Clamp( 100 + range, CombatParams.TRAINING_BONUS_TO_DAMAGE_MIN_FACTOR, CombatParams.TRAINING_BONUS_TO_DAMAGE_MAX_FACTOR )
+		trainingRate = MathUtility_Clamp( 100 + range, CombatParams.LEVEL_BONUS_TO_DAMAGE_MIN_FACTOR, CombatParams.LEVEL_BONUS_TO_DAMAGE_MAX_FACTOR )
 	end
 
 	local number = troop.number
 	if params.isMelee and troop.number ~= target.number then
 		number = troop.number > target.number and math.floor( target.number * ( troop.number / target.number ) ^ 0.5 ) or math.floor( troop.number * ( target.number / troop.number ) ^ 0.5 )
-		--print( "!!!!ismelee number", number )
+		--ShowText( "!!!!ismelee number", number )
 	end
 	local modNumber = math.floor( number < self.battlefield.width and number or self.battlefield.width + ( number - self.battlefield.width ) / 2 )
 	
 	local weaponRate = armor and math.max( 10, ( weapon.power - armor.protection ) ) / ( 100 + armor.protection ) or 1
 	
-	local dmg = modNumber * weaponRate * trainingRate * 0.0035
+	local dmg = modNumber * weaponRate * lvRate * 0.0035
 		
-	--print( "    num=" .. modNumber, "weapon=" .. math.floor( weaponRate * 350 ) .. "("..weapon.power..","..armor.protection..")", "train=" .. trainingRate )
+	--ShowText( "    num=" .. modNumber, "weapon=" .. math.floor( weaponRate * 350 ) .. "("..weapon.power..","..armor.protection..")", "lv=" .. lvRate )
 	
 	local modulus = 1
 	
@@ -788,11 +815,11 @@ function Combat:CalcDamage( troop, target, weapon, armor, params )
 		if criticalProb > 0 and Random_SyncGetRange( 1, RandomParams.MAX_PROBABILITY, "critical prob" ) < criticalProb then dmg = dmg * 1.5 end
 	end
 	
-	--print( "first dmg=", dmg )
+	--ShowText( "first dmg=", dmg )
 	
 	-- Damage Modification
 	if params.isCounter then dmg = dmg * 0.65 end
-	if params.isMissile and target._startLine == TroopStartLine.CHARGE then dmg = dmg * 0.65 print( "!!!!!!!!!!!!!!shoot moving" ) end	
+	if params.isMissile and target._startLine == TroopStartLine.CHARGE then dmg = dmg * 0.65 ShowText( "!!!!!!!!!!!!!!shoot moving" ) end	
 	if target:IsAttacked() then dmg = dmg * MathUtility_Clamp( 1 - 0.35 * target:IsAttacked(), 0.2, 2 ) end
 	if target:IsDefended() then dmg = dmg * MathUtility_Clamp( 1 + 0.35 * target:IsDefended(), 0.3, 2.5 ) end
 	if troop._combatSide == CombatSide.ATTACKER and self.type == CombatType.SIEGE_COMBAT then		
@@ -835,7 +862,7 @@ function Combat:Flee( target )
 		for k, troop in ipairs( self.troops ) do
 			if troop:IsCombatUnit() and troop.id ~= target.id and troop._combatSide == target._combatSide then
 				local rate = target.number * 100 / totalNum
-				local delta = troop.level - target.level - rate
+				local delta = troop:GetLevel() - target:GetLevel() - rate
 				if delta > 0 then
 					target:LoseMorale( delta, nil, 1 )
 				end
@@ -847,6 +874,26 @@ end
 function Combat:LostMorale( target, morale )
 	target:LoseMorale( morale )
 	if target.morale <= 0 then self:Flee( target ) end
+end
+
+function Combat:DealDamage( troop, target, damage )
+	local org = target:GetAsset( TroopTag.ORGANIZATION )
+	if org then
+		local reduceOrg = math.ceil( damage * 0.5 )
+		if reduceOrg >= org.value then reduceOrg = org.value end
+		org.value = org.value - reduceOrg
+		InputUtility_Pause( "reduceorg=" .. reduceOrg )
+		damage = damage - reduceOrg		
+	end
+	damage = target:SufferDamage( damage )
+	troop:DealDamage( damage )
+	troop:Kill( target, damage, not target:IsAlive() )
+	if troop._combatSide == CombatSide.ATTACKER then
+		self.atkKill = self.atkKill + damage
+	else
+		self.defKill = self.defKill + damage
+	end
+	return damage
 end
 
 function Combat:Hit( troop, target, params )
@@ -862,7 +909,7 @@ function Combat:Hit( troop, target, params )
 	elseif params.isSiege then atkWeapon = troop:GetSiegeWeapon()
 	end
 	if not atkWeapon then 
-		print( NameIDToString( troop ) .. " don't have right weapon", params.isMissile, params.isCharge, params.isMelee, params.isCounter )
+		ShowText( NameIDToString( troop ) .. " don't have right weapon", params.isMissile, params.isCharge, params.isMelee, params.isCounter )
 		return
 	end
 	local defArmor = target:GetDefendArmor( atkWeapon )
@@ -875,14 +922,13 @@ function Combat:Hit( troop, target, params )
 	target:UseArmor( defArmor )
 
 	local oldNumber = target.number
-	--damage	
-	damage = target:SufferDamage( damage )
-	troop:DealDamage( damage )
-
+	--damage
+	self:DealDamage( troop, target, damage )	
+	
 	if params.isCounter then
-		print( NameIDToString( troop ) .. "use ["..atkWeapon.name.."] counter " .. NameIDToString( target ) .. " deal dmg=" .. damage .. " left=" .. target.number )
+		ShowText( NameIDToString( troop ) .. "use ["..atkWeapon.name.."] counter " .. NameIDToString( target ) .. " deal dmg=" .. damage .. " left=" .. target.number )
 	else
-		print( NameIDToString( troop ) .. "use ["..atkWeapon.name.."] " .. ( params.isPursue and "pursue " or "hit " ) .. NameIDToString( target ) .. " deal dmg=" .. damage .. " left=" .. target.number )
+		ShowText( NameIDToString( troop ) .. "use ["..atkWeapon.name.."] " .. ( params.isPursue and "pursue " or "hit " ) .. NameIDToString( target ) .. " deal dmg=" .. damage .. " left=" .. target.number )
 	end
 	
 	--score
@@ -890,7 +936,7 @@ function Combat:Hit( troop, target, params )
 	local score = 0
 	for k, data in ipairs( CombatParams.DAMAGE_SCORE ) do
 		if rate < data.rate then 
-			--print( MathUtility_FindEnumName( CombatSide, troop._combatSide ) .. " score+", data.score, rate )
+			--ShowText( MathUtility_FindEnumName( CombatSide, troop._combatSide ) .. " score+", data.score, rate )
 			score = data.score
 			self:LostMorale( target, math.floor( target.morale * data.rate + data.morale ) )			
 			break

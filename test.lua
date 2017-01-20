@@ -90,12 +90,10 @@ for i = 1, 20 do
 end
 ]]
 
-
 --[[]]
-
-game = Game()
-game:Init()
-game:MainMenu()
+g_game = Game()
+g_game:Init()
+g_game:MainMenu()
 --]]
 
 

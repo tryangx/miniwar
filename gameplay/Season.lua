@@ -37,7 +37,7 @@ function Season:SetDate( month, day, monthInYear, dayInMonth )
 	for k, season in pairs( self.seasons ) do
 		local dateVal1 = self.calendar:ConvertDateValue( 1, season.startMon, season.startDay )
 		local dateVal2 = self.calendar:ConvertDateValue( 1, season.endMon, season.endDay )
-		--print( season.name, dateVal1, curDateVal, dateVal2 )
+		--ShowText( season.name, dateVal1, curDateVal, dateVal2 )
 		local inSeason = true
 		if season.startMon <= season.endMon then
 			inSeason = curDateVal >= dateVal1 and curDateVal <= dateVal2
@@ -47,11 +47,11 @@ function Season:SetDate( month, day, monthInYear, dayInMonth )
 		if inSeason then
 			self.seasonTable = season
 			self.seasonType  = season.type
-			print( "Set Season:" .. season.name .. " for date=" .. month .. "M" .. day .. "D" )
+			ShowText( "Set Season:" .. season.name .. " for date=" .. month .. "M" .. day .. "D" )
 			return
 		end
 	end
-	print( "No match season for date=" .. month .. "M" .. day .. "D" )
+	ShowText( "No match season for date=" .. month .. "M" .. day .. "D" )
 end
 
 function Season:SetSeason( seasonType )

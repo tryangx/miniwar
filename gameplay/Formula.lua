@@ -1,25 +1,43 @@
---[[
-	City Produce
-	
-	#Agriculture -> Supply
-	Supply = power( Agriculture, 2 ) * 0.5
-	
-	
---]]
+------------------------------
+-- Group relative
+function QueryGroupNeedCorpsForWar( group )
+	local relations = group:GetBelligerentRelations()
+	local number = math.max( 1, math.ceil( #group.cities / 2.5 ) )
+	number = number + #relations
+	return number
+end
+
+function QueryGroupCharaLimit( group )
+	local leader = group:GetLeader()
+	local params = CharacterParams.SUBORDINATE_LIMIT[leader:GetJob()]
+	if not params then params = CharacterParams.SUBORDINATE_LIMIT.DEFAULT end
+	return params
+end
 
 ------------------------------
 -- City relative
 
 function QueryCityCorpsSupport( city )
 	local numPlot = #city.plots
-	return math.floor( numPlot ^ 0.5 )
+	local ret = math.floor( numPlot ^ 0.5 )
+	if city:IsCapital() then ret = ret + CityParams.CAPITAL_EXTRA_CORPS_REQUIREMENT end
+	return ret
+end
+
+function QueryCityCharaLimit( city )
+	local numPlot = #city.plots
+	local ret = math.max( 1, math.floor( numPlot ^ 0.5 ) )
+	if city:IsCapital() then ret = ret + CityParams.CAPITAL_EXTRA_CHARA_LIMIT end
+	return ret
 end
 
 function QueryCityNeedChara( city )
-	local isCapital = city:GetGroup():GetCapital() == city
 	local numPlot = #city.plots
-	local need = math.max( 1, math.floor( numPlot ^ 0.5 ) - 1 )
-	return need
+	local ret = math.max( 1, math.floor( numPlot ^ 0.5 ) + CityParams.NONCAPITAL_EXTRA_CHARA_REQUIREMENT )
+	if city:IsCapital() then ret = ret + CityParams.CAPITAL_EXTRA_CHARA_REQUIREMENT end
+	--fortress modification?
+	--print( city.name, " need ", ret, numPlot ^ 0.5 )
+	return ret
 end
 
 ------------------------------
@@ -81,11 +99,16 @@ function CalcCityMinPopulation( city )
 end
 
 --------------------------
--- Time spend on the road
+-- Time spend on the task
+
+function CalcSpendTimeOnCityAffairs( city )
+	local numPlot = #city.plots
+	return math.max( 1, math.floor( numPlot ^ 0.5 ) )
+end
 
 function CalcSpendTimeOnRoad( currentCity, targetCity )
 	if not currentCity or not targetCity then
-		print( "invalid city, cann't calculate time spend on the road" .. currentCity, targetCity )
+		ShowText( "invalid city, cann't calculate time spend on the road" .. currentCity, targetCity )
 		return 0
 	end
 	local pos1 = currentCity:GetCoordinate()
@@ -96,7 +119,7 @@ end
 
 function CalcCorpsSpendTimeOnRoad( currentCity, targetCity )
 	if not currentCity or not targetCity then
-		print( "invalid city, cann't calculate time spend on the road" )
+		ShowText( "invalid city, cann't calculate time spend on the road" )
 		return 0
 	end
 	local pos1 = currentCity:GetCoordinate()
@@ -107,11 +130,12 @@ end
 
 --------------------------
 -- Group Situation Tag
+
 function CheckGroupStuMultipleFronts( group )
 	local enemies = #group:GetBelligerentRelations()
 	local prob = enemies * 4000 - 3000
 	local rand = Random_SyncGetProb()
-	--print( "multiplefronts=" ..rand .."/" .. prob )
+	--ShowText( "multiplefronts=" ..rand .."/" .. prob )
 	return rand < prob
 end
 
@@ -128,7 +152,7 @@ function CheckGroupUndeveloped( group )
 	end
 	local prob = ( 1 - ( groupAgr + groupEcn + groupPrd ) / ( groupMaxAgr + groupMaxEcn + groupMaxPrd ) ) * 10000
 	local rand = Random_SyncGetProb()
-	--print( "undeveloped=" ..rand .."/" .. prob )
+	--ShowText( "undeveloped=" ..rand .."/" .. prob )
 	return rand < prob
 end
 
@@ -139,26 +163,40 @@ function CheckGroupStuWeak( group )
 	local prob = maxPower * 8000 / ( curPower + maxPower ) + totalPower * 3500 / ( curPower + totalPower ) + avgPower * 3500 / ( curPower + avgPower )
 	--InputUtility_Pause( curPower, maxPower, totalPower, avgPower )
 	local rand = Random_SyncGetProb()	
-	--print( "weak=" ..rand .."/" .. prob )
+	--ShowText( "weak=" ..rand .."/" .. prob )
 	return rand < prob
 end
 
 function CheckGroupStuPrimitive( group )
-	--Need global data about how many tech owns by every group
-	return false
+	local techs = #group.techs
+	return techs <= g_statistic.minNumOfResearchTech or techs <= math.ceil( g_statistic.numOfReserachTech / #g_statistic.activateGroups )
 end
 
 function CheckGroupStuUnderstaff( group )
-	--Need to determine the number of character limitation owns by group 
+	if #group.charas < QueryGroupCharaLimit( group ) then
+		local prob = 5000
+		local rand = Random_SyncGetProb()
+		return true--rand < prob
+	end
 	return false
 end
 
 function CheckGroupStuAggressive( group )
 	local prob = 0
-	if group:HasGoal( GroupGoal.DOMINATION_GOAL_BEG, GroupGoal.DOMINATION_GOAL_END ) then prob = prob + 3000 end
-	if group:HasGoal( GroupGoal.LEADING_BEG, GroupGoal.LEADING_END ) then prob = prob + 1500 end
+	if group:HasGoal( GroupGoal.DOMINATION_TERRIORITY, GroupGoal.DOMINATION_CITY ) then prob = prob + 3500 end
+	if group:HasGoal( GroupGoal.POWER_LEADING, GroupGoal.POWER_LEADING ) then prob = prob + 1000 end
+	if group:HasGoal( GroupGoal.OCCUPY_CITY ) then prob = prob + 7000 end
+	
+	local curPower = group:GetPower()
+	local totalPower, maxPower, minPower, number = group:GetBelligerentGroupPower()
+	local avgPower = number > 0 and totalPower / number or 0
+	if curPower >= maxPower then prob = prob + 2500 end
+	if curPower >= minPower then prob = prob + 1000 end
+	if curPower >= avgPower then prob = prob + 1000 end
+	
 	local rand = Random_SyncGetProb()
-	--print( "aggressive=" ..rand .."/" .. prob )
+	--InputUtility_Pause( group.name .. " aggressive=" ..rand .."/" .. prob )
+	--if rand < prob then print( "aggressive=" ..rand .."/" .. prob ) end
 	return rand < prob
 end
 
@@ -170,7 +208,7 @@ function EvaluateDiplomacySuccessRate( method, relation, group, target )
 		return 0
 	end
 	local prob = 0
-	--print( "evaluate", MathUtility_FindEnumName( DiplomacyMethod, method ) )
+	--ShowText( "evaluate", MathUtility_FindEnumName( DiplomacyMethod, method ) )
 	if method == DiplomacyMethod.FRIENDLY then
 		prob = relation:EvalFriendlyProb( _chara, group, target )
 	elseif method == DiplomacyMethod.THREATEN then

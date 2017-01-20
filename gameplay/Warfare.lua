@@ -82,8 +82,6 @@ function Warfare:AddSiegeCombat( corps, city )
 		combat:AddTroopToSide( CombatSide.DEFENDER, g_troopDataMng:GetData( 210 ) )
 
 		combat:Init()
-		
-		g_statistic:CombatOccured()
 	else
 		--InputUtility_Wait( "reinforce in combat", "next" )
 	end
@@ -160,17 +158,24 @@ function Warfare:Test( atks, defs )
 	
 	combat:Init()
 	
-	--print( "testCombat", combat.id )
+	--ShowText( "testCombat", combat.id )
 end
 
 function Warfare:ProcessCombatResult( combat )
-	-- Determine the ownership of the city if it's a siege combat
-	if combat.type == CombatType.SIEGE_COMBAT then		
-		local winner = combat:GetWinner()
+	combat:End()
+	
+	local winner = combat:GetWinner()
+	local atkGroup = combat:GetSideGroup( CombatSide.ATTACKER )
+	local defGroup = combat:GetSideGroup( CombatSide.DEFENDER )
+	local relation = atkGroup:GetGroupRelation( defGroup.id )	
+	relation:GainProfit( atkGroup, combat.atkKill )
+	relation:GainProfit( defGroup, combat.defKill )
+	if combat.type == CombatType.SIEGE_COMBAT then
 		if winner == CombatSide.ATTACKER then
-			local group = combat:GetSideGroup( CombatSide.ATTACKER )
-			if group then group:CaptureCity( combat ) end			
-			g_taskMng:CancelTask( group, TaskType.ATTACK_CITY, combat:GetLocation() )
+			-- Determine the ownership of the city if it's a siege combat
+			if atkGroup then atkGroup:CaptureCity( combat ) end
+			g_taskMng:FinishTask( atkGroup, TaskType.ATTACK_CITY, combat:GetLocation() )
+			g_taskMng:CancelTaskFromOtherGroup( atkGroup, TaskType.ATTACK_CITY, combat:GetLocation() )
 		else
 			--go back home
 			combat:ForeachCorps( function ( corps )	
@@ -181,7 +186,7 @@ function Warfare:ProcessCombatResult( combat )
 					end
 				end
 			end )
-		end
+		end		
 	elseif combat.type == CombatType.FIELD_COMBAT then
 		--go back home
 		combat:ForeachCorps( function ( corps )			
@@ -191,6 +196,7 @@ function Warfare:ProcessCombatResult( combat )
 			end
 		end )
 	end
+	g_statistic:CombatOccured( combat:CreateDesc() )
 end
 
 ---------------------------------------
@@ -213,7 +219,7 @@ function Warfare:Dump()
 		end )
 		--InputUtility_Pause( "combat exist", g_combatDataMng:GetCount() )
 	end
-	--print( "Combat Left " .. #g_combatDataMng.datas .. "/" .. g_combatDataMng.count )
+	--ShowText( "Combat Left " .. #g_combatDataMng.datas .. "/" .. g_combatDataMng.count )
 end
 
 function Warfare:RunOneDay()

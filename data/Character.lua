@@ -9,13 +9,20 @@
 --
 --
 
-
 Character = class()
 
 function Character:Load( data )
 	self.id = data.id or 0
 		
 	self.name = data.name or ""
+	
+	self.birth = data.birth or 1
+	
+	self.life  = data.life or 0
+	
+	self.age = g_calendar:CalcDiffYear( self.birth, nil, nil, self.birth < 0 and true or false )
+	
+	self.type = Character.HISTRORIC
 	
 	-- Current ability
 	--   Condition to enable the character's trait
@@ -31,31 +38,32 @@ function Character:Load( data )
 	--     e.g. when satisfaction subtract 5 from 200 and equal 195, ap will decrease 10pt.
 	self.ap = data.ap or 0
 	
-	-- Traits
-	--   Like skill
-	self.traits   = MathUtility_Copy( data.traits )
+	--InputUtility_Pause( self.name, self.ca, self.ap )
 	
 	-- Stamina
 	--   Allow character to do action
 	--   Low stamina may caused disease
-	--   It'll increase after rest
+	--   Increase after time elapsed
 	self.stamina = data.stamina or CharacterParams.STAMINA.STANDARD_STAMINA
 	
 	-- Satisfaction
-	--   Low satisfaction will lead to betray or leave
-	--   Determines the Ability Potential
-	--   Always 
-	self.satisfaction = data.satisfaction or 0
+	--   Will always decrease
+	--   Increase after finish task, no matter success or failed
+	--   Increase after finish event
+	self.satisfaction = data.satisfaction or 100
 	
 	-- Contribution
 	--   Determine how hard the character works and contribute to the group	
 	self.contribution = data.contribution or 0
-	
+
 	-- Trust
 	--   Determine how close to the leader of the Group
-	--   High value means more probability of successful
 	--   Low value means betray or leave or punish
 	self.trust        = data.trust or 0
+
+	-- Traits
+	--   Like skill
+	self.traits   = MathUtility_Copy( data.traits )
 	
 	------------------------------------
 	
@@ -76,14 +84,10 @@ function Character:Load( data )
 	self.action   = data.action or CharacterAction.NONE
 	
 	------------------------------------
-	-- Dynamic Data
-		
-	self._group   = nil
-	
-	self._troop   = nil
-		
-	self._corps   = nil
-	
+	-- Dynamic Data		
+	self._group   = nil	
+	self._troop   = nil		
+	self._corps   = nil	
 	self._submitProposal = nil
 end
 
@@ -138,17 +142,32 @@ end
 function Character:Dump( indent )
 	if not indent then indent = "" end
 	local content = indent .. "Chara [".. self.name .. "] Stay [".. self.location.name .. "] st=" .. self.stamina .. " job=" .. MathUtility_FindEnumName( CharacterJob, self.job ) .. " Task=" .. ( g_taskMng:GetTaskByActor( self ) and "True" or "False" )
-	print( content )
+	ShowText( content )
 end
 
 ----------------------------------
 -- Getter
+
+function Character:HasPriviage( checkPriviage )
+	local priviageData = CharacterParams.PRIVIAGE[self:GetJob()]
+	if not priviageData then
+		InputUtility_Pause( "no private", self:GetJob() )
+		return false
+	end
+	--if params.affair == "MILITARY_AFFAIRS" then InputUtility_Pause( _chara.name .. " job=" .. MathUtility_FindEnumName( CharacterJob, _chara:GetJob() ) .. " have priviage " .. params.affair, priviage[params.affair] ) end
+	if priviageData["ALL"] or priviageData[checkPriviage] then return true end
+	--ShowText( _chara.name .. " job=" .. MathUtility_FindEnumName( CharacterJob, _chara:GetJob() ) .. " don't have priviage " .. params.affair, priviage[params.affair] )
+	return false
+end
 
 function Character:IsAlive()
 	return self.status ~= Characterstatus.DEAD
 end
 
 function Character:IsGroupLeader()
+	if not self._group then
+		ShowText( self.name )
+	end
 	return self._group:GetLeader() == self
 end
 
@@ -168,19 +187,11 @@ end
 function Character:IsImportant()
 	return self.job >= CharacterJob.IMPORTANT_JOB
 end
-function Character:IsOfficer()
-	return self.job == CharacterJob.OFFICER 
-		or self.job == CharacterJob.DIPLOMATIC
-		or self.job == CharacterJob.CABINET_MINISTER
-		or self.job == CharacterJob.MAYOR
-		or self.job == CharacterJob.PREMIER
+function Character:IsCivialOfficial()
+	return self:HasPriviage( "CITY_AFFAIRS" )
 end
 function Character:IsMilitaryOfficer()
-	return self.job == CharacterJob.MILITARY_OFFICER 
-		or self.job == CharacterJob.GENERAL 
-		or self.job == CharacterJob.CAPTAIN 
-		or self.job == CharacterJob.MARSHAL
-		or self.job == CharacterJob.ADMIRAL
+	return self:HasPriviage( "MILITARY_AFFAIRS" )
 end
 function Character:IsDiplomatic()
 	return self.job == CharacterJob.DIPLOMATIC
@@ -215,7 +226,7 @@ end
 
 function Character:ChoiceAction( action )
 	self.action = action
-	--print( NameIDToString( self ) .. " Choice " .. MathUtility_FindEnumName( CharacterAction, action ) )
+	--ShowText( NameIDToString( self ) .. " Choice " .. MathUtility_FindEnumName( CharacterAction, action ) )
 end
 
 function Character:Contribute( contribution )
@@ -240,8 +251,9 @@ function Character:LeadTroop( troop )
 	end
 end
 
-function Character:JoinGroup( group )
+function Character:JoinGroup( group )	
 	self._group = group
+	InputUtility_Pause( self.name, group.name )
 end
 
 -- When the group which character works in is fallen,
@@ -312,11 +324,14 @@ function Character:IsFree()
 	return not self:IsLeadTroop() and not self:IsImportant() and self:IsAtHome() and not g_taskMng:GetTaskByActor( self )
 end
 
-function Character:SubmitProposal( proposal )	
+function Character:SubmitProposal( proposal )
 	self._submitProposal = proposal
 	if proposal.type <= CharacterProposal.PROPOSAL_COMMAND or proposal.type == CharacterProposal.PLAYER_GIVEUP_PROPOSAL then
-		--print( self.name, "submit ", proposal.type, MathUtility_FindEnumName( CharacterProposal, proposal.type ) )
 		self._hasSubmitProposal = true
+		--if proposal.type == CharacterProposal.ATTACK_CITY then debugMeeting = true end
+		local desc = Meeting:CreateProposalDesc( proposal, true, true )
+		--if debugMeeting then print( desc ) end
+		g_statistic:SubmitProposal( desc )
 	end
 end
 
@@ -341,22 +356,32 @@ end
 ----------------------------------
 -- Update
 
-function Character:Update()
-	self:ClearProposal()
+function Character:Update( elapsedTime )
+	self:ClearProposal()	
 	
 	local restoreStamina = CharacterParams.STAMINA.STANDARD_STAMINA * CharacterParams.STAMINA.RESTORE_STAMINA_RATE
 	self.stamina = MathUtility_Clamp( math.ceil( self.stamina + restoreStamina ), 0, CharacterParams.STAMINA.STANDARD_STAMINA )
+	
+	UpdateCharaGrowth( self )
 end
 
 ----------------------------------
 -- Combat
 
+function Character:IsTraitEnable( index )
+	local req = index * CharacterParams.TRAIT.TRAIT_REQUIREMENT_PER_SLOT 
+	if self.ca >= req or self.satisfaction >= req or self.trust >= req then return true end
+	return false
+end
+
 function Character:QueryTrait( effect, params )	
 	for k, trait in ipairs( self.traits ) do
-		local data = trait:GetEffect( effect, params )
-		if data then 
-			--print( "query trait", effect, data.value )
-			return data
+		if self:IsTraitEnable( k ) then
+			local data = trait:GetEffect( effect, params )
+			if data then 
+				--ShowText( "query trait", effect, data.value )
+				return data
+			end
 		end
 	end
 	return nil

@@ -70,28 +70,34 @@ function Plot:InitPlot( x, y, table )
 	self:ConvertID2Data()
 end
 
-function Plot:InitPlotAssets()
-	local minProp, maxProb = 0.4, 0.8
+function Plot:InitPlotAssets( params )
+	local prob
+	local settlement = params and params.settlement	or 0
+	--growth
 	self.maxAgriculture = self:GetBonusValue( PlotResourceBonusType.AGRICULTURE )
 	self.maxEconomy     = self:GetBonusValue( PlotResourceBonusType.ECONOMY )
 	self.maxProduction  = self:GetBonusValue( PlotResourceBonusType.PRODUCTION )
 	self._livingSpace   = self:GetBonusValue( PlotResourceBonusType.LIVING_SPACE )
-	--growth
-	self:SetAsset( PlotAssetType.AGRICULTURE, math.floor( Random_SyncGetRange( minProp * self.maxAgriculture, maxProb * self.maxAgriculture ) ) )	
-	self:SetAsset( PlotAssetType.ECONOMY, math.floor( Random_SyncGetRange( minProp * self.maxEconomy, maxProb * self.maxEconomy ) ) )
-	self:SetAsset( PlotAssetType.PRODUCTION, math.floor( Random_SyncGetRange( minProp * self.maxProduction, maxProb * self.maxProduction ) ) )
-	--status evaluation
-	self:SetAsset( PlotAssetType.SECURITY, math.floor( Random_SyncGetRange( minProp * PlotParams.MAX_PLOT_SECURITY, maxProb * PlotParams.MAX_PLOT_SECURITY ) ) )
-	--population
-	minProp = 0.6
-	maxProb = 1.1
-	local population = CalcPlotPopulation( self._livingSpace )
-	local supply = CalcPlotSupply( self:GetAsset( PlotAssetType.AGRICULTURE ) )
-	--InputUtility_Pause( "init", population, supply )
-	local base = math.min( population, supply )
-	self:SetAsset( PlotAssetType.POPULATION, math.floor( Random_SyncGetRange( minProp * base, maxProb * base ) ) )
+	prob = Random_SyncGetRange( 60, 80 )
+	self:SetAsset( PlotAssetType.AGRICULTURE, math.floor( prob * self.maxAgriculture * 0.01 ) )
+	prob = Random_SyncGetRange( 50, 80 )
+	self:SetAsset( PlotAssetType.ECONOMY, math.floor( prob * self.maxEconomy * 0.01 ) )
+	prob = Random_SyncGetRange( 50, 80 )
+	self:SetAsset( PlotAssetType.PRODUCTION, math.floor( prob * self.maxProduction * 0.01 ) )
 	
-	--print( "agr="..self:GetAsset( PlotAssetType.AGRICULTURE ), "popu=" .. self:GetAsset( PlotAssetType.POPULATION ), population )
+	--status evaluation
+	prob = Random_SyncGetRange( 40, 80 )
+	self:SetAsset( PlotAssetType.SECURITY, math.floor( prob * PlotParams.MAX_PLOT_SECURITY * 0.01 ) )
+	
+	--population
+	local prob = Random_SyncGetRange( 30 + settlement * 35, 50 + settlement * 35 )
+	local living = CalcPlotPopulation( self._livingSpace )
+	local supply = CalcPlotSupply( self:GetAsset( PlotAssetType.AGRICULTURE ) )	
+	local population = math.min( living, math.floor( prob * supply * 0.01 ) )
+	self:SetAsset( PlotAssetType.POPULATION, population )
+	
+	--InputUtility_Pause( self.x, self.y, population, settlement, prob, living, supply, params and params.city.name or "" )
+	--ShowText( "agr="..self:GetAsset( PlotAssetType.AGRICULTURE ), "popu=" .. self:GetAsset( PlotAssetType.POPULATION ), population )
 end
 
 --------------------------------
@@ -141,7 +147,6 @@ end
 
 function Plot:Update( elapsedTime )
 	local rate = elapsedTime / GlobalConst.TIME_PER_YEAR
-	
 	local population = self:GetAsset( PlotAssetType.POPULATION )
 	--population born
 	local birth = math.ceil( population * ( PlotParams.PLOT_POPULATION_GROWTH_RATE * rate ) )
@@ -149,8 +154,8 @@ function Plot:Update( elapsedTime )
 	local dead = math.ceil( population * ( PlotParams.PLOT_POPULATION_DEATH_RATE * rate ) )
 	population = population + birth + dead 
 	self:SetAsset( PlotAssetType.POPULATION, population )
-	--print( "Plot("..self.x..","..self.y..") born="..birth..",die="..dead..",now="..population )
-	
+	--ShowText( "Plot("..self.x..","..self.y..") born="..birth..",die="..dead..",now="..population )
+	g_statistic:CountPopulation( population )
 	g_statistic:DieNatural( dead )
 	g_statistic:BornNatural( birth )
 end
