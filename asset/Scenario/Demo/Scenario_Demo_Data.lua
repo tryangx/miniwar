@@ -487,7 +487,7 @@ local CityData =
 		constructions = {},		
 		resources = {},
 		plots = { { x = 2, y = 2 }, { x = 2, y = 2 } },
-		adjacentCities = { 10, 40 },
+		adjacentCities = { 10, 40, 90 },
 	},
 	
 	[20] = 
@@ -613,7 +613,7 @@ local CityData =
 		troops = {},				
 		constructions = {},		
 		resources = {},		
-		adjacentCities = { 10, 30, 40, 50 },
+		adjacentCities = { 10, 30, 40, 50, 80, 90, },
 	},
 	
 	[80] = 
@@ -634,7 +634,7 @@ local CityData =
 		troops = {},				
 		constructions = {},		
 		resources = {},		
-		adjacentCities = {},
+		adjacentCities = { 70, 90, },
 	},
 	
 	[90] = 
@@ -655,12 +655,13 @@ local CityData =
 		troops = {},				
 		constructions = {},		
 		resources = {},		
-		adjacentCities = {},
+		adjacentCities = { 11, 70, 80 },
 	},
 }
 
 local GroupData =
 {
+	--[[]]
 	[1] =
 	{
 		name = "QIN",
@@ -679,7 +680,6 @@ local GroupData =
 			{ type = "MILITANT", value = 6 },
 		}		
 	},
-	--[[]]
 	[2] =
 	{
 		name = "QI",
@@ -710,8 +710,6 @@ local GroupData =
 		corps = {},		
 		relations = { 11, 20, 30, 31, 32, 33, 34, 35 },
 	},
-	--]]
-	--[[]]
 	[4] =
 	{
 		name = "Wei",
@@ -789,6 +787,7 @@ local GroupData =
 		corps = {},		
 		relations = { 16, 25, 34, 43, 52, 61, 70, 80 },
 	},
+	--]]
 	[9] =
 	{
 		name = "ZHOU",
@@ -804,7 +803,6 @@ local GroupData =
 		corps = {},		
 		relations = { 17, 26, 35, 44, 53, 62, 71, 80 },
 	},
-	--]]
 }
 
 local GroupRelationData = 

@@ -159,10 +159,14 @@ function Troop:AddToCorps( corps )
 	--ShowText( "Add to corps", self.name, corps.name )
 end
 
-function Troop:Lead( chara )
+-- Surrender to enemy
+function Troop:LeaveCorps()
+	self.corps = nil
+end
+
+function Troop:LeadByChara( chara )
 	self.leader = chara
-	
-	Debug_Normal( "Troop [".. self.name.. "] lead by [".. chara.name .. "]" )
+	Debug_Normal( "Troop [".. self.name.. "] lead by " .. NameIDToString( chara ) )
 end
 
 -----------------------------------
@@ -628,4 +632,46 @@ function Troop:Update()
 		end
 	end
 	
+end
+
+-------------------------
+function Troop:MoveToLocation( location )
+	if self.leader then
+		self.leader:MoveToLocation( location )
+	end
+end
+
+function Troop:DispatchToCity( city )
+	self.encampment = city
+	if self.leader then
+		self.leader:DispatchToCity( city )
+	end
+end
+
+function Troop:JoinCity( group, city )
+	self.encampment = city
+end
+
+function Troop:Neutralize( isLeaderKilled, isLeaderBackHome )
+	local leader = self:GetLeader()
+	if leader then
+		if isLeaderKilled then
+			CharaDie( leader )
+		elseif isLeaderBackHome then
+			CharaBackHome( leader )
+		end
+	end
+
+	local group = self.encampment and self.encampment:GetGroup() or nil
+	if group then
+		group:LoseTroop( self )
+	end
+	
+	if self.corps then
+		self.corps:RemoveTroop( self )
+	end
+	
+	self.encampment = nil
+	self.corps    = nil
+	self.leader   = nil
 end

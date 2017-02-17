@@ -66,19 +66,25 @@ function HaveAchievedGroupFinalGoal( group )
 	for k, goal in ipairs( group.goals ) do		
 		--Final goal
 		if goal.type == GroupGoal.DOMINATION_TERRIORITY then
-			local number, rate = group:GetTerritoryRate()
-			--ShowText( group.name .. " DOMINATION_TERRIORITY=" .. number .. "+" .. rate .. "%", " Goal=" .. ( goal.value or 0 ) .. "+" .. ( goal.rate or 0 ) .. "%" )
+			local number, rate = group:GetTerritoryRate()			
 			AchievedFinalGoal = MeetGroupFinalGoal( group, goal, curDate, rate )
+			if AchievedFinalGoal then
+				InputUtility_Pause( group.name .. " DOMINATION_TERRIORITY=" .. number .. "+" .. rate .. "%", " Goal=" .. ( goal.target or 0 ) .. "+" .. ( goal.rate or 0 ) .. "%" )
+			end
 			
 		elseif goal.type == GroupGoal.DOMINATION_CITY then
-			local number, rate = group:GetTerritoryRate()
-			--ShowText( group.name .. " DOMINATION_CITY=" .. number .. "+" .. rate .. "%", " Goal=" .. ( goal.value or 0 ) .. "+" .. ( goal.rate or 0 ) .. "%" )
-			AchievedFinalGoal = MeetGroupFinalGoal( group, goal, curDate, number )			
+			local number, rate = group:GetTerritoryRate()			
+			AchievedFinalGoal = MeetGroupFinalGoal( group, goal, curDate, number )
+			if AchievedFinalGoal then
+				InputUtility_Pause( group.name .. " DOMINATION_CITY=" .. number .. "+" .. rate .. "%", " Goal=" .. ( goal.target or 0 ) .. "+" .. ( goal.rate or 0 ) .. "%" )
+			end
 			
 		elseif goal.type == GroupGoal.POWER_LEADING then
-			local power, rate = group:GetDominationRate()
-			ShowText( group.name .. " POWER_LEADING=" .. power .. "+" .. rate .. "%" .. " Goal=" .. ( goal.value or 0 ) .. "+" .. ( goal.rate or 0 ) .. "%" )
+			local power, rate = group:GetDominationRate()			
 			AchievedFinalGoal = MeetGroupFinalGoal( group, goal, curDate, rate )
+			if AchievedFinalGoal then
+				InputUtility_Pause( group.name .. " POWER_LEADING=" .. power .. "+" .. rate .. "%" .. " Goal=" .. ( goal.target or 0 ) .. "+" .. ( goal.rate or 0 ) .. "%" )
+			end
 		
 		--Short term goal
 		elseif goal.type == GroupGoal.SURVIVIVAL then

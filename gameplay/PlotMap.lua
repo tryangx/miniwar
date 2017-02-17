@@ -329,8 +329,6 @@ function PlotMap:AllocateToCity()
 	g_cityDataMng:Foreach( function ( city )
 		city:UpdatePlots()
 	end )
-	
-	--InputUtility_Pause( "alloc" )
 end
 
 function PlotMap:Update( elapsedTime )

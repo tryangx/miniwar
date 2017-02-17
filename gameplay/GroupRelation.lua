@@ -1,15 +1,26 @@
 local debugChange = true
-local watchAction --= "DECLARE_WAR"--= "MAKE_PEACE"--= "SURRENDERER"
+local watchAction --= "SEPARATE"--= "THREATEN" --= "MAKE_PEACE" --= "DECLARE_WAR"--= "MAKE_PEACE"--= "SURRENDERER"
+local watchGroup = nil
+
+local function CalcNativePowerProb( group, target )
+	local pow1 = math.max( 0, group:GetPower() - group:GetDependencePower() )
+	local pow2 = target:GetPower()
+	local ret1 = ( pow1 + pow2 == 0 ) and 0 or ( pow1 - pow2 ) / ( pow1 + pow2 )
+	return ret1 * 0.5
+end
 
 local function CalcPowerProb( group, target )
 	local pow1 = group:GetPower()
 	local pow2 = target:GetPower()
-	local supply1 = group:GetSupply()
-	local supply2 = target:GetSupply()
-	local ret1 = ( pow1 + pow2 == 0 ) and 0 or ( pow1 - pow2 ) / ( pow1 + pow2 )	
-	local ret2 = 0--( supply1 + supply2 == 0 ) and 0 or ( supply1 - supply2 ) / ( supply1 + supply2 )
-	--ShowText( group.name, target.name, ret1, ret2, pow1, pow2 )
-	return ( ret1 + ret2 ) * 0.5
+	local ret1 = ( pow1 + pow2 == 0 ) and 0 or ( pow1 - pow2 ) / ( pow1 + pow2 )
+	return ret1 * 0.5
+end
+
+local function CalcPowerPenaltyProb( group, target )
+	local pow1 = group:GetPower()
+	local pow2 = target:GetPower()
+	local ret1 = ( pow1 + pow2 == 0 ) and 0 or ( pow2 - pow1 ) / pow2
+	return ret1
 end
 
 local function GetDiplomacyMethodValue( action, relationType )
@@ -78,9 +89,13 @@ function GroupRelation:ConvertID2Data()
 	self.powerBalance = self:CalcBalance()
 end
 
-function GroupRelation:Record( desc )
-	desc = desc .. " type=" .. MathUtility_FindEnumName( GroupRelationType, self.type ) .. " " .. g_calendar:CreateCurrentDateDesc( true, true )
+function GroupRelation:Record( desc, actor )
+	desc = desc .. " " .. ( actor and actor.name or "" ) .. " type=" .. MathUtility_FindEnumName( GroupRelationType, self.type ) .. " ev=" .. self.evaluation .. " pow1="..self._sourceGroup:GetPower() .. " pow2="..self._targetGroup:GetPower() .. " " .. g_calendar:CreateCurrentDateDesc( true, true )
 	table.insert( self.records, desc )
+end
+
+function GroupRelation:Dump()
+	print( self._sourceGroup.name, self._targetGroup.name, " type=" .. MathUtility_FindEnumName( GroupRelationType, self.type ) .. " ev=" .. self.evaluation )
 end
 
 function GroupRelation:DumpDetail()
@@ -90,7 +105,11 @@ function GroupRelation:DumpDetail()
 end
 
 function GroupRelation:watchProb( action, name, ... )
-	if watchAction == action then ShowText( name .. "=" .. ... ) end
+	if watchAction == action then 
+		if not watchGroup or watchGroup == self.sid or watchGroup == self.tid then			
+			print( action .. " " .. name .. "=" .. ... )
+		end
+	end
 end
 
 function GroupRelation:GetOppGroup( id )
@@ -325,6 +344,14 @@ function GroupRelation:GetDiplomacyMethodProbMod( action, group, target )
 			targetEnemyRelations, targetFriendFronts = target:GetBelligerentStatus( group )
 		end
 		if params["TARGET_MULTIPLE_FRONTS"] then
+			--[[
+			if watchAction == action then			
+				print( "enemy multiple fronts=" .. #targetEnemyRelations )
+				for k, relation in ipairs( targetEnemyRelations ) do
+					relation:Dump()
+				end
+			end
+			]]
 			self:watchProb( action,  "target mul-fronts mod", #targetEnemyRelations * params["TARGET_MULTIPLE_FRONTS"] )
 			value = value + #targetEnemyRelations * params["TARGET_MULTIPLE_FRONTS"]
 		end
@@ -353,19 +380,32 @@ function GroupRelation:GetDiplomacyMethodProbMod( action, group, target )
 end
 
 function GroupRelation:GetDipomacyMethodProb( action, group, target )
-	local value1 = GetDiplomacyMethodValue( action, self.type )
-	self:watchProb( action, "relation mod", value1 )
-	local value2 = self:GetDiplomacyMethodProbMod( action, group, target )
-	self:watchProb( action, "other mod", value2 )
+	local value1 = GetDiplomacyMethodValue( action, self.type )	
+	self:watchProb( action, "*relation mod", value1 )
+	local value2 = self:GetDiplomacyMethodProbMod( action, group, target )	
+	self:watchProb( action, "*other mod", value2 )
 	local basePart = ( value1 + math.max( 0, value2 ) ) * GroupRelationParam.EVALUATION_RANGE + self.evaluation
-	local powerPart = math.floor( CalcPowerProb( group, target ) * GroupRelationParam.METHOD_MOD[action].POWER_MODULUS )
+	local powerPart = 0
+	if GroupRelationParam.METHOD_MOD[action].POWER_PENALTY_MODULUS then		
+		local penalty = math.floor( CalcPowerPenaltyProb( group, target ) * GroupRelationParam.METHOD_MOD[action].POWER_PENALTY_MODULUS )
+		powerPart = powerPart - ( penalty > 0 and penalty or 0 )
+		--if penalty > 0 then InputUtility_Pause( "penalty=" .. penalty ) end
+	end
+	if GroupRelationParam.METHOD_MOD[action].POWER_MODULUS then
+		powerPart = powerPart + math.floor( CalcPowerProb( group, target ) * GroupRelationParam.METHOD_MOD[action].POWER_MODULUS )
+	end
+	if GroupRelationParam.METHOD_MOD[action].NATIVE_POWER_MODULUS then
+		powerPart = powerPart + math.floor( CalcNativePowerProb( group, target ) * GroupRelationParam.METHOD_MOD[action].NATIVE_POWER_MODULUS )
+	end
 	local total = basePart + powerPart
-	self:watchProb( action, "base prob", basePart )
-	self:watchProb( action, "power mod", powerPart )
-	self:watchProb( action, "total", total )
-	if action == watchAction and total >= 5000 then 
-		ShowText( group.name, target.name )
-		InputUtility_Pause( action )
+	self:watchProb( action, "*base prob", basePart )
+	self:watchProb( action, "*power mod", powerPart )
+	self:watchProb( action, "*total", total )
+	if action == watchAction then--and total >= 5000 then 	
+		print( group.name .."+"..group:GetPower(), target.name.."+"..target:GetPower() .. " ->".. MathUtility_FindEnumName( GroupRelationType, self.type ) )
+		--if self.type == GroupRelationType.DEPENDENCE then
+			InputUtility_Pause( group.name .. " want to " .. action .. " " .. self:GetOppGroup( group.id ).name )
+		--end
 	end
 	return total
 end
@@ -386,21 +426,33 @@ end
 
 function GroupRelation:EvalMakePeaceProb( chara, group, target )
 	local prob = self:GetDipomacyMethodProb( "MAKE_PEACE", group, target )	
-	local mod = 0	
+	local mod = 0
 	local detail = self:GetDetail( GroupRelationDetail.BELLIGERENT_DURATION )	
 	if detail then
 		mod = mod + detail.value * GroupRelationParam.MAKE_PEACE_DAYS_POW_MODULUS
+	end
+	detail = self:GetDetail( GroupRelationDetail.WAR_DECLARER, group.id )
+	if detail then
+		mod = mod + GroupRelationParam.MAKE_PEACE_DECLARER_PENALTY
 	end
 	mod = mod + GroupRelationParam.MAKE_PEACE_DAYS_PROB_MOD
 	self:watchProb( "MAKE_PEACE", "mod", mod )
 	local profit = group.id == self.sid and self.profit or -self.profit
 	local profitMod = GroupRelationParam.MAKE_PEACE_PROFIT_MODULUS * ( profit - GroupRelationParam.MAKE_PEACE_PROFIT_NEED )
-	--print( "profit mod=" .. profitMod )
+	--InputUtility_Pause( "profit mod=" .. profitMod )
 	return prob + mod + profitMod
 end
 
 function GroupRelation:EvalThreatenProb( chara, group, target )
-	return self:GetDipomacyMethodProb( "THREATEN", group, target )
+	local prob = self:GetDipomacyMethodProb( "THREATEN", group, target )
+	local pow1 = group:GetPower()
+	local pow2 = target:GetPower()
+	if prob > 5000 and pow1 < pow2 then
+		watchAction = "THREATEN"
+		prob = self:GetDipomacyMethodProb( "THREATEN", group, target )
+		InputUtility_Pause( group.name .. "+" .. pow1 .. "->" .. target.name .. "+" .. pow2 .. "=" .. prob )
+	end
+	return prob
 end
 
 function GroupRelation:EvalSurrenderProb( chara, group, target )
@@ -410,15 +462,21 @@ end
 function GroupRelation:EvalDeclareWarProb( chara, group, target )
 	local prob = self:GetDipomacyMethodProb( "DECLARE_WAR", group, target )
 	--profit mod
+	local mod = 0
+	local detail = self:GetDetail( GroupRelationDetail.TRUCE_TIME_DURATION )
+	if detail then
+		mod = mod + detail.value * GroupRelationParam.MAKE_PEACE_DAYS_POW_MODULUS
+	end
 	local profit = group.id == self.sid and self.profit or -self.profit
 	local profitMod = math.max( 0, GroupRelationParam.DECLARE_WAR_PROFIT_MODULUS * ( GroupRelationParam.DECLARE_WAR_PROFIT_NEED - profit ) )
+	prob = prob + mod + profitMod
 	return prob
 end
 
 function GroupRelation:EvalBreakContractProb( chara, group, target )
 	local action
 	if self:IsDependency() and self.tid == group.id then
-		action = "SEPARATE"		
+		action = "SEPARATE"
 	else
 		action = "BREAK_CONTRACT"
 	end	
@@ -433,7 +491,7 @@ function GroupRelation:IsMethodValid( method, group, target )
 		or self.type == GroupRelationType.BELLIGERENT
 		or self.type == GroupRelationType.TRUCE
 		or self:GetDetail( GroupRelationDetail.OLD_ENEMY, group.id, target.id )
-		or self.evaluation >= GroupRelationParam.EVALUATION_RANGE * 0.9 then
+		or self.evaluation >= GroupRelationParam.MAX_EVALUATION * 0.8 then
 			return false
 		end
 	elseif method == DiplomacyMethod.THREATEN then
@@ -479,7 +537,8 @@ function GroupRelation:IsMethodValid( method, group, target )
 		if self.type == GroupRelationType.BELLIGERENT
 		or self.type == GroupRelationType.ENEMY
 		or self.type == GroupRelationType.HOSTILITY
-		or self.type == GroupRelationType.NEUTRAL		
+		or self.type == GroupRelationType.NEUTRAL
+		or self.type == GroupRelationType.TRUCE
 		or self.type == GroupRelationType.FRIEND then
 			return false
 		end
@@ -565,7 +624,7 @@ function GroupRelation:Threaten( group, chara )
 		self.evaluation = math.floor( self.evaluation * 0.5 )
 		self.profit = -self.profit
 		self:DebugRelationChanged( NameIDToString( group ) .. "("..group:GetPower()..")" .. " threaten " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) )		
-		self:Record( "Threaten" )
+		self:Record( "Threaten", group )
 		return true
 	else	
 		if self.type == GroupRelationType.HOSTILITY then		
@@ -589,7 +648,7 @@ function GroupRelation:Ally( group, chara )
 		self.evaluation = math.floor( self.evaluation * 0.5 )
 		self:AppendDetail( GroupRelationDetail.ALLIANCE_TIME_REMAINS, nil, GroupRelationParam.DEFAULT_ALLIANCE_DAY )
 		self:DebugRelationChanged( NameIDToString( group ) .. "("..group:GetPower()..")" .. " ally relationship with " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) )		
-		self:Record( "Ally" )
+		self:Record( "Ally", group )
 		return true
 	else
 		Debug_Normal( "[DIPLOMACY] " .. self._sourceGroup.name .. "/" .. self._targetGroup.name  .. " ".. NameIDToString( group ) .. "("..group:GetPower()..")" .. " failed to ally with " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) .. " prob=" .. prob )		
@@ -602,9 +661,10 @@ function GroupRelation:MakePeace( group, chara )
 	local value = Random_SyncGetRange( 1, RandomParams.MAX_PROBABILITY, "Make peace" )
 	if value <= prob then
 		self.type = GroupRelationType.TRUCE
+		self:RemoveDetail( GroupRelationDetail.TRUCE_TIME_DURATION, nil )
 		self:AppendDetail( GroupRelationDetail.TRUCE_TIME_REMAINS, nil, GroupRelationParam.DEFAULT_TRUCE_DAY )
 		self:DebugRelationChanged( NameIDToString( group ) .. "("..group:GetPower()..")" .. " make peace with " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) )
-		self:Record( "Make peace" )
+		self:Record( "Make peace", group )
 		return true
 	else
 		self:AppendDetail( GroupRelationDetail.DECLINATURE, group.id, 1, GroupRelationParam.MAX_DETAIL_VALUE[GroupRelationDetail.DECLINATURE] )
@@ -615,14 +675,14 @@ end
 function GroupRelation:EndTruce()
 	if self.type == GroupRelationType.TRUCE then
 		self.type = GroupRelationType.ENEMY
-		self:Record( "End truce" )
+		self:Record( "End truce", group )
 	end
 end
 
 function GroupRelation:EndAlliance()
 	if self.type == GroupRelationType.ALLIANCE then
 		self.type = GroupRelationType.FRIEND
-		self:Record( "End alliance" )
+		self:Record( "End alliance", group )
 	end
 end
 
@@ -643,7 +703,7 @@ function GroupRelation:Surrender( group, char )
 			self.evaluation = math.floor( self.evaluation * 0.5 )
 		end
 		self:DebugRelationChanged( NameIDToString( group ) .. "("..group:GetPower()..")" .. " surrender to " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) .. " prob=" .. value .. "/" .. prob )
-		self:Record( "Surrender" )
+		self:Record( "Surrender", group )
 		return true
 	else
 		self:AppendDetail( GroupRelationDetail.DECLINATURE, group.id, 1, GroupRelationParam.MAX_DETAIL_VALUE[GroupRelationDetail.DECLINATURE] )
@@ -665,6 +725,7 @@ function GroupRelation:Friendly( group, chara )
 		end
 		self:Improve( improve )
 		self:DebugRelationChanged( NameIDToString( group ) .. "("..group:GetPower()..")" .. " improve relationship with " .. NameIDToString( target ) .. "("..target:GetPower()..")" .. " in " .. MathUtility_FindEnumName( GroupRelationType, self.type ) )
+		self:Record( "Friendly", group )
 		return true
 	else
 		self:AppendDetail( GroupRelationDetail.DECLINATURE, group.id, 1, GroupRelationParam.MAX_DETAIL_VALUE[GroupRelationDetail.DECLINATURE] )
@@ -694,6 +755,7 @@ function GroupRelation:BreakContract( group, chara )
 	target:AppendAsset( GroupTag.BETRAYER, value, GroupRelationParam.MAX_TAG_VALUE[GroupTag.BETRAYER] )
 	self.evaluation = GroupRelationParam.MIN_EVALUATION
 	self:DebugRelationChanged( NameIDToString( group ) .. "("..group:GetPower()..")" .. " break contract with " .. NameIDToString( target ) .. "("..target:GetPower()..")" )
+	self:Record( "Breakcontract", group )
 	return true
 end
 
@@ -731,11 +793,12 @@ function GroupRelation:DeclareWar( group, chara )
 	if value > 0 then
 		group:AppendAsset( GroupTag.MILITANT, value, GroupRelationParam.MAX_TAG_VALUE[GroupTag.MILITANT] )
 	end
+	self:AppendDetail( GroupRelationDetail.WAR_DECLARER, group.id, 1 )
 	self:AppendDetail( GroupRelationDetail.HOSTILITY, nil, 1 )
 	self.type = GroupRelationType.BELLIGERENT
 	self.evaluation = GroupRelationParam.MIN_EVALUATION
 	--self:DebugImportantRelationChanged( NameIDToString( group ) .. "("..group:GetPower()..")" .. " declare war at " .. NameIDToString( target ) .. "("..target:GetPower()..")" )
-	self:Record( "Declare war" )
+	self:Record( "Declare war", group )
 	
 	--check alliance
 	for k, relation in ipairs( target.relations ) do

@@ -97,8 +97,8 @@ function Corps:AddTroop( troop )
 	
 	troop:AddToCorps( self )
 	
-	if not self.name then 
-		self.name = troop.name or ""		
+	if #self.troops == 1 then
+		self.name = troop.name or ""
 	end
 end
 
@@ -187,7 +187,7 @@ end
 function Corps:GetTrainingEval()
 	local training = 0
 	for k, troop in ipairs( self.troops ) do
-		local tag = troop:GetAsset( TroopTag.TRAINING )
+		local tag = troop:GetAsset( TroopTag.TRAINING )		
 		training = training + ( tag and tag.value or 0 )
 	end
 	training = math.floor( training / #self.troops )
@@ -215,15 +215,34 @@ end
 
 function Corps:IsUnderstaffed()
 	for k, troop in ipairs( self.troops ) do
-		if troop.number < troop.maxNumber * TroopParams.REINFORCE_UNDER_PROPORTION then
+		if troop.number < troop.maxNumber then
 			return true
 		end
 	end
 	return false
 end
 
+function Corps:GetUnderstaffedNumber()
+	local understaffed = 0
+	for k, troop in ipairs( self.troops ) do
+		if troop.number < troop.maxNumber then
+			understaffed = understaffed + troop.maxNumber - troop.number
+		end
+	end
+	return understaffed
+end
+
 function Corps:IsUntrained()
-	return self:GetTrainingEval() < TroopParams.TRAINING.UNTRAINED_VALUE
+	local number = 0
+	for k, troop in ipairs( self.troops ) do
+		local tag = troop:GetAsset( TroopTag.TRAINING )		
+		local value = tag and tag.value or 0
+		local maxValue = math.min( troop.level, TroopParams.MAX_LEVEL ) * TroopParams.TRAINING.TRAINING_PER_LEVEL		
+		if value < maxValue then
+			number = number + 1
+		end
+	end
+	return number > math.floor( #self.troops * 0.5 )
 end
 
 ------------------------------------------
@@ -231,20 +250,26 @@ end
 
 function Corps:MoveToLocation( location )
 	--ShowText( "move to location", location.name )
-	self.location = location	
+	self.location = location
 	for k, troop in ipairs( self.troops ) do
-		local leader = troop:GetLeader()
-		if leader then leader:MoveToLocation( location ) end
+		troop:MoveToLocation( location )
 	end
 end
 
 function Corps:DispatchToCity( city )
+	if self.encampment then
+		self.encampment:RemoveCorps( self )
+	end
+
 	self.encampment = city
+	for k, troop in ipairs( self.troops ) do
+		troop:DispatchToCity( city )
+	end
 	
 	Debug_Normal( "Corps [".. self.name.. "] set up an encampment in [".. city.name .. "]" )
 end
 
-function Corps:Lead( chara )
+function Corps:LeadByChara( chara )
 	self.leader = chara
 	
 	--InputUtility_Pause( "Corps [".. self.name.. "] lead by [".. chara.name .. "]" )
@@ -274,4 +299,31 @@ function Corps:Reinforce( reinforcement )
 		ShowText( "reduce teamwork", loseTeamwork, teamWork.value )
 		Helper_RemoveVarb( self.tags, CorpsTag.TEAMWORK, loseTeamwork )
 	end
+end
+
+function Corps:JoinGroup( group, city )
+	self._group = group
+	self.encampment = city
+end
+
+function Corps:JoinCity( city )
+	self.encampment = city
+end
+
+--killed after captured
+function Corps:Neutralize( isLeaderKilled, isLeaderBackHome )
+	for k, troop in ipairs( self.troops ) do
+		local leader = troop:GetLeader()
+		if leader then
+			if isLeaderKilled then
+				CharaDie( leader )
+			elseif isLeaderBackHome then
+				CharaBackHome( leader )
+			end
+		end
+		self._group:LoseTroop( troop )
+		g_troopDataMng:RemoveData( troop )
+	end
+	self._group:LoseCorps( self )
+	g_corpsDataMng:RemoveData( self )
 end

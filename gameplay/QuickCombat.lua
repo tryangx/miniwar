@@ -217,7 +217,6 @@ function Combat:CreateDesc()
 end
 
 function Combat:Dump()
-	--self:Log( NameIDToString( self:GetSideGroup( CombatSide.ATTACKER ) ) .. " vs " .. NameIDToString( self:GetSideGroup( CombatSide.DEFENDER ) ) .. ( self.type == CombatType.SIEGE_COMBAT and "[Siege]" or "" ) )
 	self:Log( "Day     : ".. self.day )
 	self:Log( "Time    : ".. math.ceil( self.time / 60 ) )
 	self:Log( "Weather : ".. self.weatherTable.name .. "/" .. self.weatherDuration )
@@ -445,12 +444,6 @@ function Combat:GetSideGroup( side )
 	elseif side == CombatSide.DEFENDER then
 		return self.defGroup
 	end
-	--[[
-	local sideCorps = side == CombatSide.ATTACKER and self.attackers or self.defenders
-	if #sideCorps > 0 and sideCorps[1]:GetEncampment() then
-		return sideCorps[1]:GetEncampment():GetGroup()
-	end
-	]]
 	return nil
 end
 

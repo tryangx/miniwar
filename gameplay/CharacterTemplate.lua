@@ -12,6 +12,26 @@ CharacterFamilyName =
 
 CharacterGivenName = 
 {
+	{ name="I", prob=10 },
+	{ name="II", prob=10 },
+	{ name="III", prob=10 },
+	{ name="IV", prob=10 },
+	{ name="V", prob=10 },
+	{ name="VI", prob=10 },
+	{ name="VII", prob=10 },
+	{ name="VIII", prob=10 },
+	{ name="IX", prob=10 },
+	{ name="XI", prob=10 },	
+	{ name="XII", prob=10 },
+	{ name="XIII", prob=10 },
+	{ name="XIV", prob=10 },
+	{ name="XV", prob=10 },
+	{ name="XVI", prob=10 },
+	{ name="XVII", prob=10 },
+	{ name="XVIII", prob=10 },
+	{ name="XIX", prob=10 },
+	{ name="XX", prob=10 },
+	--[[
 	{ name="YI", prob=10 },
 	{ name="ER", prob=10 },
 	{ name="SAN", prob=10 },
@@ -31,6 +51,7 @@ CharacterGivenName =
 	{ name="QIQI", prob=10 },
 	{ name="BABA", prob=10 },
 	{ name="JIUJIU", prob=10 },
+	]]
 }
 
 CharacterTemplate = class()

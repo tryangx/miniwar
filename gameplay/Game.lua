@@ -192,7 +192,7 @@ function Game:Init()
 	Debug_SetFileMode( false )	
 
 	self.turn = 0
-	self.maxTurn = 50
+	self.maxTurn = 200
 	
 	g_gameEvent:InitData()
 	
@@ -284,6 +284,8 @@ function Game:PreprocessGameData()
 			g_statistic:AddActivateChara( data )
 		elseif data.status == CharacterStatus.OUT then
 			g_statistic:AddOutChara( data )
+		elseif data.status == CharacterStatus.PRISONER then
+			g_statistic:AddPrisonerChara( data )
 		else
 			g_statistic:AddOtherChara( data )
 		end		
@@ -373,7 +375,7 @@ function Game:Run()
 				city:Dump()
 			end
 		end
-		g_taskMng:DumpResult()
+		--g_taskMng:DumpResult()
 		g_diplomacy:DumpResult()
 		g_statistic:Dump()
 	end
@@ -438,7 +440,7 @@ function Game:NextTurn()
 	local elapsedTime = GlobalConst.ELPASED_TIME
 	g_statistic:ElapseTime( elapsedTime )	
 	g_calendar:ElapseDay( elapsedTime )	
-	g_calendar:DumpDate( true )
+	print( g_calendar:CreateCurrentDateDesc( true ) )
 	
 	-- Event Flow	
 	g_gameEvent:Trigger()
@@ -565,16 +567,15 @@ end
 
 function Game:Update( elpasedTime )
 	ShowText( "************** Update Flow ******************" )
-	
 	local passDay = elpasedTime
+	
+	g_statistic:Update()
 	
 	g_warfare:Update( elpasedTime )	
 	g_diplomacy:Update( elpasedTime )	
 	g_taskMng:Update( elpasedTime )	
 	g_movingActorMng:Update( elpasedTime )
 	g_plotMap:Update( elpasedTime )
-
-	g_statistic:Update()
 	
 	for k, group in ipairs( self._groupList ) do
 		group:Update()

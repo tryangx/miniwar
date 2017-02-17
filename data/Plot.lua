@@ -73,6 +73,7 @@ end
 function Plot:InitPlotAssets( params )
 	local prob
 	local settlement = params and params.settlement	or 0
+	
 	--growth
 	self.maxAgriculture = self:GetBonusValue( PlotResourceBonusType.AGRICULTURE )
 	self.maxEconomy     = self:GetBonusValue( PlotResourceBonusType.ECONOMY )
@@ -90,7 +91,7 @@ function Plot:InitPlotAssets( params )
 	self:SetAsset( PlotAssetType.SECURITY, math.floor( prob * PlotParams.MAX_PLOT_SECURITY * 0.01 ) )
 	
 	--population
-	local prob = Random_SyncGetRange( 30 + settlement * 35, 50 + settlement * 35 )
+	local prob = 100--Random_SyncGetRange( 25 + settlement * 50, 35 + settlement * 50 )
 	local living = CalcPlotPopulation( self._livingSpace )
 	local supply = CalcPlotSupply( self:GetAsset( PlotAssetType.AGRICULTURE ) )	
 	local population = math.min( living, math.floor( prob * supply * 0.01 ) )
@@ -149,9 +150,11 @@ function Plot:Update( elapsedTime )
 	local rate = elapsedTime / GlobalConst.TIME_PER_YEAR
 	local population = self:GetAsset( PlotAssetType.POPULATION )
 	--population born
-	local birth = math.ceil( population * ( PlotParams.PLOT_POPULATION_GROWTH_RATE * rate ) )
+	local growthRate = Random_SyncGetRange( PlotParams.PLOT_POPULATION_GROWTH_RATE - PlotParams.PLOT_POPULATION_FLUCTUATION_RATE, PlotParams.PLOT_POPULATION_GROWTH_RATE + PlotParams.PLOT_POPULATION_FLUCTUATION_RATE )
+	local birth = math.ceil( population * ( growthRate * rate * 0.001 ) )
 	--population die
-	local dead = math.ceil( population * ( PlotParams.PLOT_POPULATION_DEATH_RATE * rate ) )
+	local diedRate = Random_SyncGetRange( PlotParams.PLOT_POPULATION_DEATH_RATE - PlotParams.PLOT_POPULATION_FLUCTUATION_RATE, PlotParams.PLOT_POPULATION_DEATH_RATE + PlotParams.PLOT_POPULATION_FLUCTUATION_RATE )
+	local dead = math.ceil( population * ( diedRate * rate * 0.001 ) )	
 	population = population + birth + dead 
 	self:SetAsset( PlotAssetType.POPULATION, population )
 	--ShowText( "Plot("..self.x..","..self.y..") born="..birth..",die="..dead..",now="..population )

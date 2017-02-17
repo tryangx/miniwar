@@ -108,6 +108,7 @@ function Diplomacy:UpdateContract( elapsedTime, relation )
 				return
 			end
 		end
+		relation:RemoveDetail( GroupRelationDetail.ALLIANCE_TIME_REMAINS, nil )
 		relation:EndAlliance()
 	elseif relation.type == GroupRelationType.TRUCE then		
 		local detail = relation:GetDetail( GroupRelationDetail.TRUCE_TIME_REMAINS )
@@ -116,11 +117,15 @@ function Diplomacy:UpdateContract( elapsedTime, relation )
 				detail.value = detail.value - elapsedTime
 				return
 			end
-		end		
+		end	
+		relation:RemoveDetail( GroupRelationDetail.BELLIGERENT_DURATION, nil )
+		relation:RemoveDetail( GroupRelationDetail.TRUCE_TIME_REMAINS, nil )
 		relation:EndTruce()
-	elseif relation.type == GroupRelationType.BELLIGERENT then		
+	elseif relation.type == GroupRelationType.BELLIGERENT then
 		relation:AppendDetail( GroupRelationDetail.BELLIGERENT_DURATION, nil, elapsedTime )
-	end	
+		return		
+	end
+	relation:AppendDetail( GroupRelationDetail.TRUCE_TIME_DURATION, nil, elapsedTime )
 end
 
 function Diplomacy:Update( elapsedTime )

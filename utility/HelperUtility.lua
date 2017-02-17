@@ -1,12 +1,15 @@
 ---------------------------
 -- Helper
 
-quickSimulate = false
+quickSimulate = true
 debugMeeting = false
 
+function IsSimulating()
+	return quickSimulate and not g_game:IsGameEnd()
+end
+
 function ShowText( ... )
-	if quickSimulate and not g_game:IsGameEnd() then  return end
-	print( ... )
+	if not IsSimulating() then print( ... ) end
 end
 
 -- Randomizer
@@ -96,6 +99,15 @@ function Helper_SumIf( datas, itemName, itemValue, countName, itemNameEnum )
 	return ret
 end
 
+function Helper_Count( datas, itemName )
+	local number = 0
+	for k, v in pairs( datas ) do
+		local value = v[itemName] or 0
+		number = number + value
+	end
+	return number
+end
+
 function Helper_CountIf( datas, condition )
 	local number = 0
 	for k, v in pairs( datas ) do
@@ -146,6 +158,8 @@ function Helper_RemoveRelation( relations, relationType, id, value )
 				else
 					table.remove( relations, k )
 				end
+			else
+				table.remove( relations, k )
 			end
 			return
 		end
@@ -265,4 +279,43 @@ function Helper_AbbreviateString( str, length )
 		ret = ret .. " "
 	end
 	return ret
+end
+
+-----------------------------------------
+
+function Helper_FindPathBetweenCity( location, destination )
+	local closeList = {}
+	local openList = {}
+	local parentList = {}
+	local costList = {}
+	table.insert( openList, destination )
+	
+	--print( "find way ", location.name, destination.name )
+	
+	--bfs
+	while #openList > 0 do
+		local current = openList[1]
+		table.remove( openList, 1 )
+		closeList[current] = 1
+		for k, adja in ipairs( current.adjacentCities ) do
+			if adja == location then
+				--reverse to get path
+				path = { destination }
+				local parent = parentList[current]
+				while parent do
+					--print( "parent", parent.name )
+					table.insert( path, parent )
+					parent = parentList[parent]
+				end
+				--InputUtility_Pause( "Find path=" .. #path )
+				return path
+			else
+				if not closeList[adja] then
+					parentList[adja] = current
+					table.insert( openList, adja )
+				end
+			end
+		end
+	end
+	return nil
 end

@@ -343,7 +343,7 @@ local function NeedLeadTroop()
 	--idle chara & idle troop
 	local idleCharaList = {}
 	for k, chara in ipairs( _group.charas ) do
-		if not chara:IsLeadTroop() then
+		if not chara:GetTroop() then
 			table.insert( idleCharaList, chara )
 		end
 	end

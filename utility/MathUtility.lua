@@ -24,8 +24,11 @@ MathCompareMethod =
 ]]
 function MathUtility_Clamp( value, min, max, default )
 	if not value then return default end
-	if value < min then value = min
-	elseif value > max then value = max end
+	if min and value < min then
+		value = min
+	elseif max and value > max then
+		value = max
+	end
 	return value
 end
 

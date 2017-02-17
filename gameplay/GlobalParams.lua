@@ -74,7 +74,13 @@ end
 
 GlobalConst = 
 {
-	--time
+	------------------------	
+	-- Time
+	--
+	-- Elapsed Time  : Use to elpase Time, minimum unit per turn.
+	-- Unit Time     : Standard Time, use to evaluate all functions.
+	-- Time Per Year : Standard Time, use to implement some functions.
+	-- Move Time     : Standard Time, use to move entity like characters, corps.	
 	ELPASED_TIME  = 30,
 	UNIT_TIME     = 30,
 	TIME_PER_YEAR = 360,
@@ -86,6 +92,9 @@ GlobalConst =
 	
 	--troop
 	DEFAULT_TROOP_NUMBER = 1000,
+	
+	--Gender
+	MALE_PROPORTION = 0.55,
 }
 
 PlotParams =
@@ -93,23 +102,28 @@ PlotParams =
 	MAX_PLOT_SECURITY    = 100,
 	SAFETY_PLOT_SECURITY = 80,
 
+	-------------------------
 	--Population
-	PLOT_POPULATION_CONSTANT = 100,
-	PLOT_POPULATION_GROWTH_RATE = 0.025,
-	PLOT_POPULATION_DEATH_RATE  = 0.015,
+	-- How many people lived in livingspace unit
+	PLOT_POPULATION_CONSTANT         = 100,
+	-- Growth & Death Rate Per Year
+	PLOT_POPULATION_GROWTH_RATE      = 24,
+	PLOT_POPULATION_DEATH_RATE       = 16,
+	PLOT_POPULATION_FLUCTUATION_RATE = 6,
 	
 	--Agriculture -> Supply
-	PLOT_SUPPLY_OUTPUT_CONSTANT      = 90,
+	PLOT_SUPPLY_OUTPUT_CONSTANT      = 120,
 	
 	--Economy -> Income
 	PLOT_INCOME_CAPITATION_CONSTNAT = 1,
 	PLOT_INCOME_ECONOMY_CONSTANT    = 100,
 	
 	--Minimum population need
-	PLOT_NEED_POPULATION_MINMODULUS  = 0.5,
-	PLOT_AGRICULTURE_NEED_POPULATION = 100,
-	PLOT_ECONOMY_NEED_POPULATION     = 30,
-	PLOT_PRODUCTION_NEED_POPULATION  = 50,
+	-- Consider age structure of population, so minimum workforce rate is set to 0.7
+	PLOT_NEED_POPULATION_MODULUS     = 0.7,
+	PLOT_AGRICULTURE_NEED_POPULATION = 60,
+	PLOT_ECONOMY_NEED_POPULATION     = 20,
+	PLOT_PRODUCTION_NEED_POPULATION  = 40,
 }
 
 RandomParams = 
@@ -245,10 +259,11 @@ TroopParams =
 {
 	LEVEL_UP_EXP = 1000,
 	
-	REINFORCE_UNDER_PROPORTION   = 0.8,
+	MAX_LEVEL    = 10,
 
 	TRAINING = 
 	{
+		TRAINING_PER_LEVEL   = 10,
 		UNTRAINED_VALUE      = 100,
 		TRAIN_STANDARD_VALUE = 5,
 		TRAIN_DIFF_MODULUS   = 0.25,
@@ -273,6 +288,8 @@ CorpsParams =
 	
 	--
 	REINFORCE_NEED_TIME          = 5,
+	
+	TRAIN_CORPS_MINIMUM_UNITTIME = 1,
 }
 
 ----------------------------------------
@@ -412,11 +429,11 @@ CityParams =
 	
 	MILITARY = 
 	{
-		REQUIRE_MILITARYPOWER_LIMITATION_MODULUS   = 5,
-		SAFETY_MILITARYPOWER_PER_PLOT      = 500,
-		SECURITY_MILITARYPOWER_PER_PLOT    = 800,
-		FRONTIER_MILITARYPOWER_PER_PLOT    = 1200,
-		BATTLEFRONT_MILITARYPOWER_PER_PLOT = 2000,		
+		REQUIRE_MILITARYPOWER_LIMITATION_MODULUS   = 4,
+		SAFETY_MILITARYPOWER_PER_PLOT      = 100,
+		SECURITY_MILITARYPOWER_PER_PLOT    = 200,
+		FRONTIER_MILITARYPOWER_PER_PLOT    = 400,
+		BATTLEFRONT_MILITARYPOWER_PER_PLOT = 600,		
 		SAFETY_ADJACENT_SINGLE_MILITARY_POWER_RATE = 0.5,
 		SAFETY_ADJACENT_TOTAL_MILITARY_POWER_RATE  = 0.35,
 	},
@@ -580,7 +597,8 @@ GroupParams =
 {
 	RECRUIT = 
 	{
-		MAX_NUMBER_MODULUS = 1.5,
+		NUMBER_STANDARD_MODULUS = 0.5,
+		MAX_NUMBER_MODULUS = 1,
 	},
 }
 
@@ -695,6 +713,7 @@ GroupTag =
 	{
 		--Relation
 		MULTIPLE_FRONT = 100,
+		AT_WAR         = 101,
 		
 		--Growth
 		UNDEVELOPED = 110,
@@ -949,6 +968,8 @@ GroupRelationDetail =
 	DECLINATURE           = 5,	
 	-- In law
 	IN_LAW                = 6,
+	-- Who declared the war first.
+	WAR_DECLARER          = 7,
 	
 	------------------------
 	-- Evaluation Category		
@@ -963,11 +984,13 @@ GroupRelationDetail =
 	-- Truce time remains
 	TRUCE_TIME_REMAINS    = 21,
 	
+	TRUCE_TIME_DURATION   = 22,
+	
 	-- Alliance time remains
-	ALLIANCE_TIME_REMAINS = 22,
+	ALLIANCE_TIME_REMAINS = 23,
 	
 	-- event leads, effects determined in the future
-	IN_LAW_REMAINS        = 23,	
+	IN_LAW_REMAINS        = 24,	
 }
 
 GroupRelationParam = 
@@ -1026,11 +1049,11 @@ GroupRelationParam =
 			FRIEND_BELLIGERENT     = -1,
 			TARGET_MULTIPLE_FRONTS = 1,
 			SELF_MULTIPLE_FRONTS   = 1.5,
-			DISTANCE = 3,
+			DISTANCE = 2,
 		},
 		MAKE_PEACE = 
 		{
-			POWER_MODULUS = 5000,
+			POWER_MODULUS = 10000,
 			DETAIL_MODULUS =
 			{
 				LAST_TARGET     = 0,
@@ -1054,7 +1077,7 @@ GroupRelationParam =
 			FRIEND_BELLIGERENT     = -1,
 			TARGET_MULTIPLE_FRONTS = -1,
 			SELF_MULTIPLE_FRONTS   = 2,
-			DISTANCE = 3,
+			DISTANCE = 2,
 		},
 		FRIENDLY = 
 		{
@@ -1090,7 +1113,7 @@ GroupRelationParam =
 			TARGET_MULTIPLE_FRONTS = 0,
 			SELF_MULTIPLE_FRONTS   = 1,			
 			SELF_IS_DEPENDENCY     = -3,
-			DISTANCE   = 2,
+			DISTANCE   = 0,
 			SELF_GOALS = 
 			{
 				SURVIVAL    = 3,
@@ -1106,12 +1129,14 @@ GroupRelationParam =
 		},
 		THREATEN =
 		{
-			POWER_MODULUS = 6500,
-			[3] = 2,  --DEPENDENCE	
-			[5] = 1,  --FRIEND
-			[6] = -1, --HOSTILITY			
-			[7] = -2, --ENEMY	
-			[9] = -3, --BELLIGERENT
+			POWER_PENALTY_MODULUS = 20000,
+			NATIVE_POWER_MODULUS = 5000,
+			--POWER_MODULUS = 10000,
+			[3] = -3,  --DEPENDENCE	
+			[5] = -1,  --FRIEND
+			[6] = -2, --HOSTILITY			
+			[7] = -3, --ENEMY	
+			[9] = -4, --BELLIGERENT
 			DETAIL_MODULUS =
 			{
 				LAST_TARGET     = 0,
@@ -1132,9 +1157,9 @@ GroupRelationParam =
 				MILITANT     = -0.15,
 				BETRAYER     = 0,
 			},
-			TARGET_MULTIPLE_FRONTS   = 3,
+			TARGET_MULTIPLE_FRONTS   = 2,
 			SELF_MULTIPLE_FRONTS     = -1.5,
-			DISTANCE                 = -5,
+			DISTANCE                 = -10,
 			SELF_GOALS = 
 			{
 				SURVIVAL    = -2,
@@ -1150,6 +1175,7 @@ GroupRelationParam =
 		},		
 		SURRENDER =
 		{
+			POWER_PENALTY_MODULUS = -10000,
 			POWER_MODULUS = -5000,
 			[1] = -2, 	--NEUTRAL
 			[5] = -3,	--FRIEND			
@@ -1197,6 +1223,7 @@ GroupRelationParam =
 		},
 		DECLARE_WAR =
 		{
+			POWER_PENALTY_MODULUS = 20000,
 			POWER_MODULUS = 6000,
 			[1] = -2, 	--NEUTRAL		
 			[5] = -4, 	--FRIEND			
@@ -1243,7 +1270,8 @@ GroupRelationParam =
 		},
 		BREAK_CONTRACT =
 		{
-			POWER_MODULUS = 6000,
+			POWER_PENALTY_MODULUS = 5000,
+			POWER_MODULUS = 8000,
 			[2] = -3, --VASSAL
 			[3] = -2, --DEPENDENCE
 			[4] = -6, --ALLIANCE
@@ -1256,7 +1284,7 @@ GroupRelationParam =
 				BETRAYER        = 0.15,
 				DECLINATURE     = 0,
 				IN_LAW          = 0,
-				HOSTILITY_LEVEL = 0.1
+				HOSTILITY_LEVEL = 0.1,
 			},
 			SELF_TAG_MODULUS = 
 			{
@@ -1288,6 +1316,7 @@ GroupRelationParam =
 		},
 		SEPARATE =
 		{
+			POWER_PENALTY_MODULUS = 10000,
 			POWER_MODULUS = 8000,
 			[2] = 4, --VASSAL
 			[3] = 2, --DEPENDENCE
@@ -1356,11 +1385,14 @@ GroupRelationParam =
 	MAKE_PEACE_DAYS_POW_MODULUS  = 10,
 	MAKE_PEACE_BELLIGERENT_TIME  = 180,	
 	MAKE_PEACE_PROFIT_NEED       = 10000,
-	MAKE_PEACE_PROFIT_MODULUS    = 0.2,
+	MAKE_PEACE_PROFIT_MODULUS    = 0.35,
+	MAKE_PEACE_DECLARER_PENALTY  = -6000,
 	
 	--Declare war
 	DECLARE_WAR_PROFIT_NEED      = 10000,
 	DECLARE_WAR_PROFIT_MODULUS   = 0.1,
+	
+	DECLARE_WAR_TRUCE_DURATION_MODULUS = 1,
 }
 
 -----------------------------------
@@ -1470,6 +1502,8 @@ CharacterStatus =
 	LEAVE      = 3,
 	--Appeared in the game, but character is dead
 	DEAD       = 4,
+	--Captured in war
+	PRISONER   = 5,
 }
 
 CharacterGoal = 
@@ -1828,7 +1862,7 @@ CharacterProposalTendency =
 		--OFFICER
 		[10] = 
 		{
-			SUCCESS_CRITERIA = { DEFAULT=3500, },
+			SUCCESS_CRITERIA = { DEFAULT=5000, },
 			PROPOSAL = { TECH=3000,FRIENDLY=3000,THREATEN=3000,ALLY=4000,DECLARE_WAR=4000,MAKE_PEACE=3000,BREAK_CONTRACT=2000,SURRENDER=3000,},
 		},		
 		--General
@@ -1840,7 +1874,7 @@ CharacterProposalTendency =
 		--DIPLOMATIC
 		[100] = 
 		{
-			SUCCESS_CRITERIA = { DEFAULT=3500, },
+			SUCCESS_CRITERIA = { DEFAULT=5000, },
 			PROPOSAL = { TECH=0,FRIENDLY=5000,THREATEN=3000,ALLY=4000,DECLARE_WAR=2500,MAKE_PEACE=3500,BREAK_CONTRACT=1500,SURRENDER=2500,},
 		},		
 		--CABINET_MINISTER
@@ -1857,7 +1891,7 @@ CharacterProposalTendency =
 		},
 		[402] =
 		{
-			SUCCESS_CRITERIA = { DEFAULT=4000, },
+			SUCCESS_CRITERIA = { DEFAULT=5000, },
 			PROPOSAL = { TECH=4000,FRIENDLY=3000,THREATEN=6000,ALLY=3000,DECLARE_WAR=5000,MAKE_PEACE=0,BREAK_CONTRACT=2500,SURRENDER=0,},			
 		}
 	},

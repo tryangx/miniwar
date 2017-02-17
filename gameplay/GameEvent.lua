@@ -18,6 +18,7 @@ local function AllCityRecruitImmediate( params )
 	local troop = g_troopTableMng:GetData( id )	
 	if troop then
 		g_cityDataMng:Foreach( function ( city )
+			city:PrepareRecruit( troop.maxNumber * GroupParams.RECRUIT.NUMBER_STANDARD_MODULUS )
 			CityRecruitTroop( city, troop )
 		end )
 	end
@@ -39,7 +40,7 @@ local All_Event =
 {
 	type = "SELECTOR", children = 
 	{
-		Event_100,
+		--Event_100,
 	},
 }
 

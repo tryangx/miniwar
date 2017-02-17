@@ -116,61 +116,61 @@ function Meeting:CreateProposalDesc( proposal, needChara, needDate )
 	local content = ""
 	--Tech
 	if proposal.type == CharacterProposal.TECH_RESEARCH then
-		content = "Research [" .. proposal.target.name .. "]" .. " By [" .. proposal.proposer.name .. "]"
+		content = "Research [" .. NameIDToString( proposal.target ) .. "]" .. " By [" .. proposal.proposer.name .. "]"
 
 	--Diplomacy Relative
 	elseif proposal.type == CharacterProposal.FRIENDLY_DIPLOMACY then
-		content = "Friendly with [" .. proposal.target.name .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
+		content = "Friendly with [" .. NameIDToString( proposal.target ) .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
 	elseif proposal.type == CharacterProposal.THREATEN_DIPLOMACY then
-		content = "Threaten with [" .. proposal.target.name .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
+		content = "Threaten with [" .. NameIDToString( proposal.target ) .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
 	elseif proposal.type == CharacterProposal.ALLY_DIPLOMACY then
-		content = "Ally with [" .. proposal.target.name .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
+		content = "Ally with [" .. NameIDToString( proposal.target ) .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
 	elseif proposal.type == CharacterProposal.MAKE_PEACE_DIPLOMACY then
-		content = "Make peace with [" .. proposal.target.name .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
+		content = "Make peace with [" .. NameIDToString( proposal.target ) .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
 	elseif proposal.type == CharacterProposal.DECLARE_WAR_DIPLOMACY then
-		content = "Declare war to [" .. proposal.target.name .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
+		content = "Declare war to [" .. NameIDToString( proposal.target ) .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
 	elseif proposal.type == CharacterProposal.BREAK_CONTRACT_DIPLOMACY then
-		content = "Break contract with [" .. proposal.target.name .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
+		content = "Break contract with [" .. NameIDToString( proposal.target ) .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
 	elseif proposal.type == CharacterProposal.SURRENDER_DIPLOMACY then
-		content = "Surrender to [" .. proposal.target.name .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
+		content = "Surrender to [" .. NameIDToString( proposal.target ) .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
 	
 	--Internal affairs
 	elseif proposal.type == CharacterProposal.CITY_INVEST then
-		content = "Invest " .. " in ["..proposal.target.name.."]" 
+		content = "Invest " .. " in ["..NameIDToString( proposal.target ).."]" 
 	elseif proposal.type == CharacterProposal.CITY_FARM then
-		content = "Farm " .. " in ["..proposal.target.name.."]" 
+		content = "Farm " .. " in ["..NameIDToString( proposal.target ).."]" 
 	elseif proposal.type == CharacterProposal.CITY_PATROL then
-		content = "Patrol " .. " in ["..proposal.target.name.."]" 
+		content = "Patrol " .. " in ["..NameIDToString( proposal.target ).."]" 
 	elseif proposal.type == CharacterProposal.CITY_LEVY_TAX then
-		content = "Collect Tax" .. " in ["..proposal.target.name.."]" 
+		content = "Collect Tax" .. " in ["..NameIDToString( proposal.target ).."]" 
 	elseif proposal.type == CharacterProposal.CITY_BUILD then	
-		content = "Build [" .. proposal.data.name .. "]" .. " in ["..proposal.target.name.."]" 
+		content = "Build [" .. proposal.data.name .. "]" .. " in ["..NameIDToString( proposal.target ).."]" 
 	elseif proposal.type == CharacterProposal.CITY_INSTRUCT then
-		content = "Instruct [" .. proposal.target.name .. "]" .. " to [".. MathUtility_FindEnumName( CityInstruction, proposal.data ) .."]" 
+		content = "Instruct [" .. NameIDToString( proposal.target ) .. "]" .. " to [".. MathUtility_FindEnumName( CityInstruction, proposal.data ) .."]" 
 		
 	--Human resource
 	elseif proposal.type == CharacterProposal.HR_DISPATCH then
-		content = "Dispatch [" .. proposal.target.name .. "] to [".. proposal.data.name .. "]" 
+		content = "Dispatch [" .. NameIDToString( proposal.target ) .. "] to [".. proposal.data.name .. "]" 
 	elseif proposal.type == CharacterProposal.HR_CALL then
-		content = "Call [" .. proposal.target.name .. "] to [".. proposal.data.name .. "]" 
+		content = "Call [" .. NameIDToString( proposal.target ) .. "] to [".. proposal.data.name .. "]" 
 	elseif proposal.type == CharacterProposal.HR_HIRE then
-		content = "Hire [" .. proposal.target.name .. "] in [".. proposal.data.name .. "]" 
+		content = "Hire [" .. NameIDToString( proposal.target ) .. "] in [".. proposal.data.name .. "]" 
 	elseif proposal.type == CharacterProposal.HR_EXILE then
-		content = "Exile [" .. proposal.target.name .. "] in [".. proposal.data.name .. "]" 
+		content = "Exile [" .. NameIDToString( proposal.target ) .. "] in [".. proposal.data.name .. "]" 
 	elseif proposal.type == CharacterProposal.HR_PROMOTE then
-		content = "Promote [" .. proposal.target.name .. "] in [".. proposal.data.name .. "]" 
+		content = "Promote [" .. NameIDToString( proposal.target ) .. "] in [".. proposal.data.name .. "]" 
 		
 	--War preparedness
 	elseif proposal.type == CharacterProposal.ESTABLISH_CORPS then
 		content = "Establish Corps " .. " in ["..proposal.data.name.."]" 	
 	elseif proposal.type == CharacterProposal.LEAD_TROOP then
-		content = "Lead [" .. proposal.target.name .. "] with [".. proposal.data.name .. "]" 
+		content = "Lead [" .. NameIDToString( proposal.target ) .. "] with [".. proposal.data.name .. "]" 
 	elseif proposal.type == CharacterProposal.RECRUIT_TROOP then
-		content = "Recruit [".. proposal.target.name .. "]" .. " in ["..proposal.data.name.."]" 
+		content = "Recruit [".. NameIDToString( proposal.target ) .. "]" .. " in ["..proposal.data.name.."]" 
 	elseif proposal.type == CharacterProposal.REINFORCE_CORPS then
-		content = "Reinforce Corps [".. proposal.target.name .. "]" 
+		content = "Reinforce Corps [".. NameIDToString( proposal.target ) .. "]" 
 	elseif proposal.type == CharacterProposal.TRAIN_CORPS then
-		content = "Train Corps [".. proposal.target.name .. "]" 
+		content = "Train Corps [".. NameIDToString( proposal.target ) .. "]" 
 	elseif proposal.type == CharacterProposal.REGROUP_CORPS then
 		local troopName = ""
 		for k, troop in ipairs( proposal.target ) do
@@ -178,13 +178,13 @@ function Meeting:CreateProposalDesc( proposal, needChara, needDate )
 		end
 		content = "Regroup Corps [".. proposal.data.name .. "]" .. " with [".. troopName .."]" 
 	elseif proposal.type == CharacterProposal.DISPATCH_CORPS then
-		content = "Dispatch Corps [".. proposal.target.name .. "]" .. " to ["..proposal.city.name.."]" 
+		content = "Dispatch Corps [".. NameIDToString( proposal.target ) .. "]" .. " to ["..proposal.city.name.."]" 
 		
 	--Military
 	elseif proposal.type == CharacterProposal.ATTACK_CITY then
-		content = "Send [" .. proposal.data.name .. "] Attack [".. proposal.target.name .. "]" 		
+		content = "Send [" .. NameIDToString( proposal.data ) .. "] Attack [".. NameIDToString( proposal.target ) .. "]"
 	elseif proposal.type == CharacterProposal.EXPEDITION then
-		content = "Send [" .. proposal.data.name .. "] Go on expedition to [".. proposal.target.name .. "] " 		
+		content = "Send [" .. NameIDToString( proposal.data ) .. "] Go on expedition to [".. NameIDToString( proposal.target ) .. "] " 		
 	
 	else
 		content = "unknown " .. MathUtility_FindEnumName( CharacterProposal, proposal.type )	
@@ -470,6 +470,7 @@ function Meeting:ConfirmProposalFlow( proposal )
 				self._leader:ProposalAccepted()
 				if debugMeeting then InputUtility_Pause( "["..self._leader.name.."] made proposal " .. self:CreateProposalDesc( proposal ) ) end
 			end
+			self.acceptProposals = self.acceptProposals + 1
 			self._group:ExecuteProposal( self:CreateProposalDesc( proposal, true, true ) )
 			if self.collectProposals then self:ReselectProposal( self._leader ) end
 		else
@@ -1406,10 +1407,17 @@ function Meeting:HoldGroupMeeting( game, group )
 	MathUtility_Shuffle( charaList )
 	group:Dump()
 	group:GetCapital():Dump()
-	--ShowText( "GroupMeeting Attend=", #charaList )
+	if #charaList == 0 then
+		--print( "GroupMeeting Attend=", #charaList, group.name )
+	end
 	--ShowText( "++++++++++ Group Meeting Start ++++++++++++++++" )	
-	self.flow = MeetingFlow.GROUP_DISCUSS_FLOW
-	self:UpdateStatus( MeetingStatus.START )		
+	self.acceptProposals = 0
+	self.flow = MeetingFlow.GROUP_DISCUSS_FLOW	
+	self:UpdateStatus( MeetingStatus.START )
+	if self.acceptProposals == 0 then
+		--print( group.name .. " noproposal" )
+		g_statistic:NoProposal( self._group )
+	end
 	--ShowText( "++++++++++ Group Meeting End ++++++++++++++++" )
 	--ShowText( "" )	
 	if not self._game:IsPlayer( self._leader ) and self._game.player and self._game.player:GetGroup() == group then

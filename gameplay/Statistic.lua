@@ -14,15 +14,17 @@ function Statistic:__init()
 	--Group
 	self.activateGroups = {}
 	self.numOfIndependenceGroup = 0
-	self.fallenGroups = {}
+	self.fallenGroups = {}	
 	
 	--City
 	self.cities = {}
+	self.fallenCities = {}
 	
 	--Character
 	self.activateCharaList  = {}
 	self.outCharacterList   = {}
 	self.otherCharacterList = {}
+	self.prisonerCharacterList = {}
 
 	--Population
 	self.numOfDieNatural = 0
@@ -43,6 +45,10 @@ function Statistic:__init()
 	
 	--Proposal
 	self.submitProposals = {}
+	self.noProposals = {}
+	
+	--Tasks
+	self.cancelTasks= {}
 end
 
 function Statistic:ClearCharaList()
@@ -52,8 +58,20 @@ function Statistic:ClearCharaList()
 end
 
 
+-------------------------------------
+-- Proposal & Task
+
 function Statistic:SubmitProposal( desc )
 	table.insert( self.submitProposals, desc )
+end
+
+function Statistic:NoProposal( group )
+	local desc = group.name .. " " .. g_calendar:CreateCurrentDateDesc()
+	table.insert( self.noProposals, desc )
+end
+
+function Statistic:CancelTask( desc )
+	table.insert( self.cancelTasks, desc )
 end
 
 -------------------------------------
@@ -73,6 +91,12 @@ function Statistic:RemoveActivateChara( chara )
 end
 function Statistic:RemoveOutChara( chara )	
 	MathUtility_Remove( self.outCharacterList, chara.id, "id" )
+end
+function Statistic:AddPrisonerChara( chara )
+	table.insert( self.prisonerCharacterList, chara )
+end
+function Statistic:RemovePrisonerChara( chara )
+	MathUtility_Remove( self.prisonerCharacterList, chara.id, "id" )
 end
 
 function Statistic:QueryNumberOfCharaInCity( city )
@@ -169,13 +193,13 @@ end
 
 function Statistic:CountPopulation( population )	
 	if not population then
-		--InputUtility_Pause( self.totalPopulation )
 		if self.totalPopulation > 0 and self.minTotalPopulation > self.totalPopulation then
 			self.minTotalPopulation = self.totalPopulation
 		end
 		self.totalPopulation = 0
 	else
 		self.totalPopulation = self.totalPopulation + population
+		
 		if self.totalPopulation > self.maxTotalPopulation then
 			self.maxTotalPopulation = self.totalPopulation
 		end
@@ -196,7 +220,11 @@ function Statistic:CountSoldier( number )
 end
 
 function Statistic:GroupFall( group )
-	table.insert( self.fallenGroups, group.name )
+	table.insert( self.fallenGroups, group.name .. g_calendar:CreateCurrentDateDesc() )
+end
+
+function Statistic:CityFall( city, group )
+	table.insert( self.fallenCities, city.name .. " by " .. group.name .. " " .. g_calendar:CreateCurrentDateDesc() )
 end
 
 function Statistic:Update()
@@ -214,7 +242,7 @@ end
 function Statistic:DumpCharaDetail()	
 	function DumpList( list )
 		for k, item in ipairs( list ) do
-			ShowText( "", NameIDToString( item ), item.location.name, MathUtility_FindEnumName( CharacterStatus, item.status ) )
+			--ShowText( "", NameIDToString( item ), item.location.name, MathUtility_FindEnumName( CharacterStatus, item.status ) )
 		end
 	end
 	ShowText( "ActChara      = ".. #self.activateCharaList )
@@ -223,46 +251,75 @@ function Statistic:DumpCharaDetail()
 	DumpList( self.outCharacterList )
 	ShowText( "OtherChara    = ".. #self.otherCharacterList )	
 	DumpList( self.otherCharacterList )
+	ShowText( "PrisonerChara = ".. #self.prisonerCharacterList )	
+	DumpList( self.prisonerCharacterList )
 end
 
 function Statistic:Dump()
-	ShowText( "Tech          = " .. self.numOfReserachTech .. "/" .. self.maxNumOfResearchTech .. "/" .. self.minNumOfResearchTech )
+	ShowText( "Tech          = " .. self.numOfReserachTech .. "(tot)/" .. self.maxNumOfResearchTech .. "(max)/" .. self.minNumOfResearchTech .. "(min)" )
 	
 	ShowText( "Activate Group=" .. #self.activateGroups )
 	for k, group in ipairs( self.activateGroups ) do
-		ShowText( "", group.name, " city=" .. #group.cities, " chara="..#group.charas .. "/" .. QueryGroupCharaLimit( group ), " corps="..#group.corps.."/"..#group.troops, " soldier=" .. group:GetMilitaryPower(), " popu=" .. group:GetPopulation(), " sup="..group:GetSupply() )
+		ShowText( "", group.name, " city=" .. #group.cities.."("..group:GetPlotNumber()..")", " chara="..#group.charas .. "/" .. QueryGroupCharaLimit( group ), " corps="..#group.corps.. " troops="..#group.troops, " soldier=" .. group:GetMilitaryPower(), " popu=" .. group:GetPopulation() )
+		local deps = group:GetDependencyRelations()
+		if #deps > 0 then 
+			ShowText( "    Dep=" )
+			for k, relation in ipairs( deps ) do
+				if relation._targetGroup then
+					ShowText( "        " .. relation._targetGroup.name .. "+" .. relation._targetGroup:GetPower() .. " " .. MathUtility_FindEnumName( GroupRelationType, relation.type ) )
+				end
+			end		
+		end
 		ShowText( "  proposals(".. #group.proposals ..")" )
-		--group:Dump()
+		group:Dump()
 		for k, desc in ipairs( group.proposals ) do
 			--ShowText( "", "", desc )
 		end
 	end	
-	ShowText( "Fallen   Group:" )
-	for k, name in ipairs( self.fallenGroups ) do
-		ShowText( "", name )
+	
+	ShowText( "No Proposal   = " .. #self.noProposals )
+	for k, desc in ipairs( self.noProposals ) do
+		--ShowText( "    " .. desc )
+	end
+	
+	ShowText( "Cancel Task   = " .. #self.cancelTasks )
+	for k, desc in ipairs( self.cancelTasks ) do
+	--	ShowText( "    " .. desc )
 	end
 	
 	ShowText( "City          = " .. #self.cities )
 	for k, city in ipairs( self.cities ) do
-		--city:Dump()
+	--	city:Dump()
+	end
+		
+	self:DumpCharaDetail()
+
+	ShowText( "Fallen   Group:" )
+	for k, desc in ipairs( self.fallenGroups ) do
+		ShowText( "", desc )
 	end
 	
-	--self:DumpCharaDetail()
+	ShowText( "Fallen   City:" )
+	for k, desc in ipairs( self.fallenCities ) do
+		ShowText( "", desc )
+	end
 	
 	ShowText( "Combat Occured= " .. self.numOfCombatOccured )
 	for k, desc in ipairs( self.combatDetails ) do
 		ShowText( "", desc )
 	end	
 	ShowText( "Die in Combat = " .. self.numOfDieInCombat )
-	ShowText( "Soldier       = " .. self.numOfSoldier .. "/" .. self.maxNumOfSoldier )
+	ShowText( "Soldier       = " .. self.numOfSoldier .. "(cur)/" .. self.maxNumOfSoldier .. "(max)" )
 	ShowText( "Corps         = " .. self.numOfCorps )
 	ShowText( "Troop         = " .. self.numOfTroop )
 	
 	ShowText( "Die Natural   = " .. self.numOfDieNatural )
 	ShowText( "Born Natural  = " .. self.numOfBornNatural )	
-	ShowText( "Tot Population= " .. self.totalPopulation .. "/" .. self.maxTotalPopulation .. "/" .. self.minTotalPopulation .. "/" .. self.pouplationUnderRule )
+	ShowText( "Tot Population= " .. self.totalPopulation .. "/" .. self.maxTotalPopulation .. "(max)/" .. self.minTotalPopulation .. "(min)/" .. self.pouplationUnderRule .. "(city)" )
 	
 	ShowText( "Pass time     = " .. math.floor( self.elapsedTime / 360 ) .. "Y" .. math.floor( ( self.elapsedTime % 360 ) / 30 ) .. "M" .. math.floor( self.elapsedTime % 30 ) .. "D" )
+	
+	ShowText( "Cur Time      = " .. g_calendar:CreateCurrentDateDesc() )
 	
 	--MathUtility_Dump( self.submitProposals )
 end

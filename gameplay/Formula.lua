@@ -36,7 +36,7 @@ function QueryCityNeedChara( city )
 	local ret = math.max( 1, math.floor( numPlot ^ 0.5 ) + CityParams.NONCAPITAL_EXTRA_CHARA_REQUIREMENT )
 	if city:IsCapital() then ret = ret + CityParams.CAPITAL_EXTRA_CHARA_REQUIREMENT end
 	--fortress modification?
-	--print( city.name, " need ", ret, numPlot ^ 0.5 )
+	--print( city.name, " need=", ret )
 	return ret
 end
 
@@ -70,10 +70,12 @@ end
 --------------------------
 -- Plot
 
+-- How many people can lved in the plot
 function CalcPlotPopulation( livingSpace )
 	return math.ceil( livingSpace * PlotParams.PLOT_POPULATION_CONSTANT )
 end
 
+-- How many people can raised by agriculture unit
 function CalcPlotSupply( agriculture )
 	return math.ceil( agriculture * PlotParams.PLOT_SUPPLY_OUTPUT_CONSTANT )
 end
@@ -86,15 +88,29 @@ end
 
 --------------------------
 -- City
+
+-- How many people required for each work position 
 function CalcCityMinPopulation( city )
 	local agr, maxAgr, ecn, maxEcn, prd, maxPrd = city:GetGrowthData()
 	local farmer   = city.agriculture * PlotParams.PLOT_AGRICULTURE_NEED_POPULATION
 	local merchant = city.economy * PlotParams.PLOT_ECONOMY_NEED_POPULATION
 	local worker   = city.production * PlotParams.PLOT_PRODUCTION_NEED_POPULATION
-	local rate = PlotParams.PLOT_NEED_POPULATION_MINMODULUS
-	--local total = math.ceil( ( farmer + merchant + worker ) * MathUtility_Clamp( 1.1 - 0.004 * city.security, 0.2, 1 ) )
-	local total = math.ceil( ( farmer + merchant + worker ) * MathUtility_Clamp( 1 - 0.005 * city.security, 0.2, 1 ) )
-	--InputUtility_Pause( city.name .. " need population=" .. total .. " now=" .. city.population )
+	local rate = PlotParams.PLOT_NEED_POPULATION_MODULUS
+	local total = math.ceil( ( farmer + merchant + worker ) * rate )
+	--InputUtility_Pause( city.name .. " need population=" .. total .. " now=" .. city.population .. " productivity=" .. productivity )
+	return total
+end
+
+-- How many people required for normal working status
+function CalcCityReqPopulation( city )
+	local agr, maxAgr, ecn, maxEcn, prd, maxPrd = city:GetGrowthData()
+	local farmer   = city.agriculture * PlotParams.PLOT_AGRICULTURE_NEED_POPULATION
+	local merchant = city.economy * PlotParams.PLOT_ECONOMY_NEED_POPULATION
+	local worker   = city.production * PlotParams.PLOT_PRODUCTION_NEED_POPULATION
+	--Temporary, use security as a factor to calculate rpoductivity
+	local productivity = MathUtility_Clamp( 1.1 - 0.004 * city.security, 0.2, 1 )
+	local total = math.ceil( ( farmer + merchant + worker ) * productivity )
+	--InputUtility_Pause( city.name .. " need population=" .. total .. " now=" .. city.population .. " productivity=" .. productivity )
 	return total
 end
 
@@ -130,6 +146,10 @@ end
 
 --------------------------
 -- Group Situation Tag
+
+function CheckGroupStuAtWar( group )
+	return #group:GetBelligerentRelations() > 0
+end
 
 function CheckGroupStuMultipleFronts( group )
 	local enemies = #group:GetBelligerentRelations()

@@ -90,25 +90,18 @@ end
 --
 --------------------------
 function CityRecruitTroop( city, troopData )
-	--[[
-	local tableData = g_troopTableMng:GetData( troop.id )
-	if not tableData then
-		InputUtility_Wait( "Wrong troop table id=" .. troop.id )
-		return
-	end
-	]]
 	local troop = g_troopDataMng:GenerateData( troopData.id, g_troopTableMng )
 	troop.name    = ( city:GetGroup() and city:GetGroup().name .. "-" or "" ) .. troop.name
 	troop.tableId = troopData.id
 	troop.table   = troopData
-	troop.maxNumber = troop.maxNumber * GroupParams.RECRUIT.MAX_NUMBER_MODULUS
-	troop.number  = troop.maxNumber * 0.5
+	troop.maxNumber = troop.maxNumber
+	troop.number  = troop.maxNumber * GroupParams.RECRUIT.NUMBER_STANDARD_MODULUS
 	city:RecruitTroop( troop )
 	
 	--maybe decrease at first
 	city.population = city.population - troop.number
 	
-	Debug_Normal( "Recruit troop [" .. NameIDToString( troop ) .."] in city [" .. city.name .. "]" )
+	Debug_Normal( "Recruit troop [" .. NameIDToString( troop ) .."] in city [" .. city.name .. "]" .. city.population .. "/" .. city:GetMSPopulation() )
 end
 
 function CityRecruit( city )
@@ -231,7 +224,6 @@ function CharaEstablishCorps( city )
 
 	local idleTroopList = {}
 	for k, troop in ipairs( city.troops ) do
-		print( troop.name, troop:GetCorps() )
 		if not troop:GetCorps() then
 			ShowText( NameIDToString( troop ) )
 			table.insert( idleTroopList, troop )
@@ -303,7 +295,7 @@ function CorpsRegroup( corps, troops )
 	
 	Debug_Normal( "Regroup ["..corps.name.."] with ["..content .."]" )
 end
-function CorpsReinforce( corps )
+function CorpsReinforce( corps, militaryService )
 	local city = corps:GetLocation()
 	if not city then
 		ShowText( a.b )
@@ -317,8 +309,9 @@ function CorpsReinforce( corps )
 	end	
 	local minPopulation = city:GetMinPopulation()
 	local reinforcement = needPeople
-	city.population = city.population - reinforcement
-	corps:Reinforce( reinforcement )	
+	city:CancelRecruit( militaryService )
+	city.population = city.population - reinforcement	
+	corps:Reinforce( reinforcement )
 	Debug_Normal( "Reinforce ["..corps.name.."] with soldier ["..reinforcement.."] from " .. totalNumber .. " to " .. totalNumber + reinforcement )
 end
 
@@ -332,6 +325,7 @@ function CorpsTrain( corps )
 		local delta = MathUtility_Clamp( ( TroopTag.MAX_VALUE[TroopTag.TRAINING] - current ) * TroopParams.TRAINING.TRAIN_DIFF_MODULUS + TroopParams.TRAINING.TRAIN_STANDARD_VALUE, 0, TroopTag.MAX_VALUE[TroopTag.TRAINING] )
 		training = training + current + delta
 		troop:AppendAsset( TroopTag.TRAINING, delta, TroopTag.MAX_VALUE[TroopTag.TRAINING] )
+		tag = troop:GetAsset( TroopTag.TRAINING )
 	end
 	oldValue = math.floor( oldValue / #corps.troops )
 	training = math.floor( training / #corps.troops )
@@ -365,6 +359,15 @@ end
 
 ---------------------------------------------
 --
+-- Troop execution
+--
+---------------------------------------------
+function TroopDispatchToCity( troop, city )
+	troop:DispatchToCity( city )
+end
+
+---------------------------------------------
+--
 -- Character execution
 --
 ---------------------------------------------
@@ -379,45 +382,47 @@ function CharaHire( chara, city )
 	end
 	city:GetGroup():CharaJoin( chara )
 	city:CharaLive( chara )
-	chara:JoinGroup( city:GetGroup() )
+	chara:JoinGroup( city:GetGroup(), city )
 	chara.job = CharacterJob.OFFICER
 	
 	g_statistic:RemoveOutChara( chara )
 	g_statistic:AddActivateChara( chara )
 	Debug_Normal( "Hire " .. chara.name .. " in [" .. city.name .. "]" )	
 	--g_statistic:DumpCharaDetail()
-	--InputUtility_Pause( "hire")
 	return true
 end
 
-function CharaDie( chara )
-	local group = chara:GetGroup()
-	local isLeader = chara:IsGroupLeader()
+function CharaBackHome( chara )
+	g_taskMng:IssueTaskCharaBackHome( chara )
+end
 
+function CharaCapture( chara )
 	local city = chara:GetHome()
-	city:GetGroup():CharaLeave( chara )
-	city:CharaLeave( chara )
-	chara:Die()
+	city:GetGroup():CharaOut( chara )
+	chara:CharaOut( chara )
+	chara:Captured()
+	g_statistic:RemoveActivateChara( chara )
+	g_statistic:AddPrisonerChara( chara )
+end
+
+function CharaDie( chara )
+	local city = chara:GetHome()
+	city:GetGroup():CharaOut( chara )
+	city:CharaOut( chara )
 	
+	chara:Die()
 	g_statistic:RemoveActivateChara( chara )
 	g_statistic:AddOtherChara( chara )
-	
-	Debug_Normal( chara.name .. " died" )
-	
-	if not isLeader then return end
-	if #group.charas == 0 then
-		--group fallen
-		group:Fall()
-		return
+
+	local group = chara:GetGroup()
+	if group and group:GetLeader() == chara then
+		group:SelectLeader( nil )
 	end
-	local index = Random_SyncGetRange( 1, #group.charas )
-	group.leader = group.charas[index]
-	--InputUtility_Pause( "Find new heri", group.leader.name )
 end
 
 function CharaExile( chara, city )
-	city:GetGroup():CharaLeave( chara )
-	city:CharaLeave( chara )
+	city:GetGroup():CharaOut( chara )
+	city:CharaOut( chara )
 	chara:Out( city:GetGroup() )
 	
 	g_statistic:RemoveActivateChara( chara )
@@ -429,18 +434,12 @@ function CharaExile( chara, city )
 end
 
 function CharaCall( chara, city )
-	local home = chara:GetHome()
-	
-	home:CharaLeave( chara )
-	city:CharaLive( chara )
-	
+	chara:DispatchToCity( city )	
 	Debug_Normal( "Call" .. chara.name .. " to [" .. home.name .. "]" )
 end
 
 function CharaDispatch( chara, city )
-	chara:GetHome():CharaLeave( chara )
-	city:CharaLive( chara )	
-	
+	chara:DispatchToCity( city )	
 	Debug_Normal( "Dispatch " .. chara.name .. " to [" .. city.name .. "]" )
 end
 

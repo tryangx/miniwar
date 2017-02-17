@@ -836,8 +836,8 @@ end
 
 function Combat:GetSideGroup( side )
 	for k, data in ipairs( self.sides ) do
-		if data.side == side then			
-			return data.corps:GetEncampment():GetGroup()
+		if data.side == side then
+			return data.corps:GetGroup()
 		end
 	end
 	return nil
@@ -2060,7 +2060,7 @@ function Combat:AffectSideMorale( troop, description )
 	end
 	self:ForEachTroop( function ( target )
 		if target:IsFriend( troop ) then
-			self:LostMorale( target, target.level >= troop.level and percentage * CombatParams.MORALE_EFFECTION_REDUCTION_BY_LEVEL or percentage, description )
+			self:LostMorale( target, target.lgevel >= troop.level and percentage * CombatParams.MORALE_EFFECTION_REDUCTION_BY_LEVEL or percentage, description )
 		end
 	end )
 end

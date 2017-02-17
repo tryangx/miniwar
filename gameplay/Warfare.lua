@@ -13,6 +13,12 @@ function Warfare:AddWarfarePlan( corps, city )
 		self.plans[city] = locationPlan
 	end
 	
+	if corps:GetGroup() == city:GetGroup() then
+		print( "No need to attack", corps.name, city.name )
+		g_taskMng:TerminateTask( corps )
+		return
+	end
+	
 	-- only support siege combat now
 	local plan     = {}
 	plan.from     = plan.from
@@ -167,9 +173,13 @@ function Warfare:ProcessCombatResult( combat )
 	local winner = combat:GetWinner()
 	local atkGroup = combat:GetSideGroup( CombatSide.ATTACKER )
 	local defGroup = combat:GetSideGroup( CombatSide.DEFENDER )
-	local relation = atkGroup:GetGroupRelation( defGroup.id )	
-	relation:GainProfit( atkGroup, combat.atkKill )
-	relation:GainProfit( defGroup, combat.defKill )
+	local relation = atkGroup:GetGroupRelation( defGroup.id )
+	if relation then
+		relation:GainProfit( atkGroup, combat.atkKill )
+		relation:GainProfit( defGroup, combat.defKill )
+	else
+		InputUtility_Pause( atkGroup.name, defGroup.name )
+	end
 	if combat.type == CombatType.SIEGE_COMBAT then
 		if winner == CombatSide.ATTACKER then
 			-- Determine the ownership of the city if it's a siege combat
@@ -181,7 +191,7 @@ function Warfare:ProcessCombatResult( combat )
 			combat:ForeachCorps( function ( corps )	
 				if corps:GetGroup() == combat:GetSideGroup( CombatSide.ATTACKER ) then
 					local task = g_taskMng:GetTaskByActor( corps )
-					if task then					
+					if task then
 						task:Fail()
 					end
 				end
@@ -197,6 +207,22 @@ function Warfare:ProcessCombatResult( combat )
 		end )
 	end
 	g_statistic:CombatOccured( combat:CreateDesc() )
+end
+
+function Warfare:EndCombat( combat )
+	self.combats[combat:GetLocation()] = nil
+	self:ProcessCombatResult( combat )
+	--InputUtility_Pause( "Remove Combat=", combat.location.name )
+end
+
+--Use when group is fallen
+function Warfare:EndCombatByGroup( group )
+	for k, combat in ipairs( self.combats ) do
+		local atkGroup = combat:GetSideGroup( CombatSide.ATTACKER )
+		if atkGroup == group then
+			self:EndCombat( combat )
+		end
+	end
 end
 
 ---------------------------------------
@@ -232,9 +258,7 @@ function Warfare:RunOneDay()
 	
 	g_combatDataMng:RemoveDataByCondition( function ( combat ) 
 		if combat:IsCombatEnd() then
-			self.combats[combat:GetLocation()] = nil
-			self:ProcessCombatResult( combat )
-			--InputUtility_Pause( "!!!!!!!!!!!!!!!! Remove Combat", "end combat" )
+			self:EndCombat( combat )
 			return true
 		end
 		return false

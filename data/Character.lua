@@ -84,9 +84,10 @@ function Character:Load( data )
 	self.action   = data.action or CharacterAction.NONE
 	
 	------------------------------------
-	-- Dynamic Data		
-	self._group   = nil	
-	self._troop   = nil		
+	-- Dynamic Data
+	self.troop    = data.troop or 0
+	
+	self._group   = nil
 	self._corps   = nil	
 	self._submitProposal = nil
 end
@@ -115,6 +116,8 @@ function Character:SaveData()
 	Data_OutputValue( "action", self )
 	Data_OutputValue( "location", self, "id" )
 	
+	Data_OutputValue( "troop", self, "id" )
+	
 	Data_IncIndent( -1 )
 	Data_OutputEnd()
 	
@@ -137,6 +140,8 @@ function Character:ConvertID2Data()
 		end
 	end
 	self.traits = traits
+	
+	self.troop = g_troopDataMng:GetData( self.troop )
 end
 
 function Character:Dump( indent )
@@ -168,7 +173,7 @@ function Character:IsGroupLeader()
 	if not self._group then
 		ShowText( self.name )
 	end
-	return self._group:GetLeader() == self
+	return self._group and self._group:GetLeader() == self
 end
 
 function Character:IsAtHome()
@@ -179,8 +184,8 @@ function Character:IsStayCity( city )
 	return self.location == city
 end
 
-function Character:IsLeadTroop()
-	return self._troop ~= nil
+function Character:GetTroop()
+	return self.troop
 end
 
 -- Job Relative
@@ -238,22 +243,50 @@ end
 -- Operation
 
 function Character:MoveToLocation( location )
+	if not location then
+		print( self.name, self:GetTroop() )
+		p.name = 1
+	end
 	self.location = location
 end
 
-function Character:LeadTroop( troop )
-	self._troop = troop	
-	
-	troop:Lead( self )
-	
-	if troop:GetCorps() and not troop:GetCorps():GetLeader() then
-		troop:GetCorps():Lead( self )
+function Character:DispatchToCity( city )
+	if self.home then
+		self.home:CharaOut( self )
+	end
+	self.home = city
+	city:CharaLive( self )	
+end
+
+function Character:LeadTroop( troop )	
+	local corps = self.troop and self.troop:GetCorps() or nil
+	if troop then
+		troop:LeadByChara( self )
+		self.troop = troop
+		if corps and not corps:GetLeader() then
+			corps:LeadByChara( self )
+		end
+	else	
+		self.troop:LeadByChara( nil )
+		self.troop = nil
+		if corps and corps:GetLeader() == self then
+			corps:LeadByChara( nil )
+		end
 	end
 end
 
-function Character:JoinGroup( group )	
+function Character:JoinCity( city )
+	self.home = city
+end
+
+function Character:JoinGroup( group, city )
+	--leave past group & city
+	if self.home then
+		self.home:CharaLeave( self )
+	end
+	--join new group
 	self._group = group
-	InputUtility_Pause( self.name, group.name )
+	self.home = city
 end
 
 -- When the group which character works in is fallen,
@@ -275,6 +308,10 @@ function Character:Die()
 	self.job = CharacterJob.NONE
 end
 
+function Character:Captured()
+	self.status = CharacterStatus.PRISONER
+end
+
 ----------------------------------------
 -- Meeting Relative
 
@@ -291,7 +328,7 @@ function Character:CanAcceptProposal()
 end
 
 function Character:CanLead()
-	return not self:IsLeadTroop() and self:IsAtHome()
+	return not self:GetTroop() and self:IsAtHome()
 end
 
 function Character:GetPromoteList()
@@ -321,7 +358,7 @@ function Character:GetPromoteList()
 end
 
 function Character:IsFree()
-	return not self:IsLeadTroop() and not self:IsImportant() and self:IsAtHome() and not g_taskMng:GetTaskByActor( self )
+	return not self:GetTroop() and not self:IsImportant() and self:IsAtHome() and not g_taskMng:GetTaskByActor( self )
 end
 
 function Character:SubmitProposal( proposal )

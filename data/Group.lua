@@ -331,6 +331,14 @@ end
 
 ----------------------------------------------
 --Goals Relative
+function Group:GetPlotNumber()
+	local number = 0
+	for k, city in ipairs( self.cities ) do
+		number = number + #city.plots
+	end
+	return number
+end
+
 function Group:GetTerritoryRate()
 	local cityCount = #self.cities
 	for k, relation in ipairs( self.relations ) do
@@ -402,6 +410,17 @@ function Group:GetPower()
 	return self:GetMilitaryPower()
 end
 
+function Group:GetDependencePower()
+	local power = 0
+	for k, relation in ipairs( self.relations ) do
+		if relation.sid == self.id and ( relation.type == GroupRelationType.DEPENDENCE or relation.type == GroupRelationType.VASSAL ) then
+			local group = relation:GetOppGroup( relation.sid )
+			power = power + group:GetPower()
+		end
+	end
+	return power
+end
+
 function Group:GetPopulation()
 	local population = 0
 	for k, city in ipairs( self.cities ) do
@@ -410,6 +429,7 @@ function Group:GetPopulation()
 	return population
 end
 
+--[[
 function Group:GetSupply()
 	local num = 0
 	for k, city in ipairs( self.cities ) do
@@ -424,6 +444,7 @@ function Group:GetMaxSupply()
 	end
 	return num
 end
+]]
 
 function Group:GetMoney()
 	return self.money
@@ -715,7 +736,7 @@ end
 
 function Group:CanResearch()
 	if self.researchTechId ~= 0 then return false end
-	if g_taskMng:IsTaskConflict( TaskType.TECH_RESEARCH, nil ) then return false end	
+	if g_taskMng:IsTaskConflictWithCity( TaskType.TECH_RESEARCH, nil ) then return false end	
 	return #self._canResearchTechs > 0
 end
 
@@ -773,52 +794,167 @@ end
 function Group:LoseCity( city )
 	Debug_Normal( "Group " .. NameIDToString( self ) .. " Lose city " .. NameIDToString( city ) )	
 	MathUtility_Remove( self.cities, city.id, "id" )
+	
+	if #self.cities == 0 then
+		self:Fall()
+	end
 end
 
-function Group:AcceptSurrenderChara( chara )
-	Debug_Normal( "Group " .. NameIDToString( self ) .. " Accept Surrender Chara " .. NameIDToString( chara ) )
-	table.insert( self.charas, chara )
+function Group:AddChara( chara )
+	table.insert( self.charas, chara)
 end
 
-function Group:AcceptSurrenderTroop( troop )
-	Debug_Normal( "Group " .. NameIDToString( self ) .. " Accept Surrender troop " .. NameIDToString( troop ) )
+function Group:AddTroop( troop )
 	table.insert( self.troops, troop )
 end
 
-function Group:AcceptSurrenderCorps( corps )
-	local pastGroup = corps:GetEncampment():GetGroup()
-	corps:ForeachTroop( function ( troop )	
-		local leader = troop:GetLeader()
-		if leader then
-			pastGroup:LoseChara( leader )
-			self:AcceptSurrenderChara( chara )
-		end
-		
-		pastGroup:LoseTroop( troop )
-		self:AcceptSurrenderTroop( troop )		
-	end )
-	
-	Debug_Normal( "Group " .. NameIDToString( self ) .. " Accept Surrender Corps " .. NameIDToString( corps ) )	
+function Group:AddCorps( corps )
 	table.insert( self.corps, corps )
 end
 
-function Group:BuryCorps( corps )
-	Debug_Normal( "Group " .. NameIDToString( self ) .. " Bury corps " .. NameIDToString( corps ) )	
+function Group:AcceptSurrenderChara( chara, city )
+	if not chara then return end
 	
-	local pastGroup = corps:GetGroup():GetGroup()
-	corps:ForeachTroop( function ( troop )
-		local leader = troop:GetLeader()
-		if leader then
-			pastGroup:LoseChara( leader )
-		end
-		pastGroup:LoseTroop( troop )		
+	local limit = QueryCityCharaLimit( city )
+	if limit >= #city.charas then
+		--cann't accept surrender chara, dismiss from troop
+		CharaCapture( chara )
+		chara:LeadTroop( nil )
+		InputUtility_Pause( chara.name .. " is prisoner" )
+		return
+	end
+	
+	InputUtility_Pause( "Group " .. NameIDToString( self ) .. " Accept Surrender Chara " .. NameIDToString( chara ) )
+	
+	local group = chara:GetGroup()
+	if group ~= self then
+		group:LoseChara( chara )
+	end
+	
+	--chara data
+	chara:JoinGroup( self, city )
+	--city data
+	city:CharaLive( chara )
+	--group data
+	self:AddChara( chara )
+end
+
+function Group:AcceptSurrenderTroop( troop, city )
+	InputUtility_Pause( "Group " .. NameIDToString( self ) .. " Accept Surrender troop " .. NameIDToString( troop ) )	
+
+	local group = troop:GetEncampment() and troop:GetEncampment():GetGroup() or nil
+	if group and group ~= self then
+		group:LoseTroop( troop )
+	end
+	
+	--chara leave
+	self:AcceptSurrenderChara( chara, city )
+	
+	--troop data
+	troop:JoinCity( city )
+	--city data
+	city:AddTroop( troop )
+	--group data
+	self:AddTroop( troop )
+end
+
+function Group:AcceptSurrenderCorps( corps, city )
+	InputUtility_Pause( "Group " .. NameIDToString( self ) .. " Accept Surrender Corps " .. NameIDToString( corps ) )	
+	
+	local group = corps:GetEncampment() and corps:GetEncampment():GetGroup() or nil
+	if group and group ~= self then
+		group:LoseCorps( corps )
+	end
+	
+	--all troops
+	corps:ForeachTroop( function ( troop )	
+		self:AcceptSurrenderTroop( troop )
 	end )
+	--corps data
+	corps:JoinGroup( self, city )
+	--city data
+	city:AddCorps( corps )
+	--group data
+	self:AddCorps( corps )
+end
+
+function Group:SelectLeader( leader )
+	self.leader = leader
+end
+
+function Group:VoteLeader( oldLeader )
+	local index = Random_SyncGetRange( 1, #group.charas )
+	group.leader = group.charas[index]
+end
+	
+function Group:SelectCapital( capital )
+	self.capital = capital
+end
+
+function Group:VoteCapital( oldCapital )
+	local maxLv = 0
+	local cities = nil
+	for k, city in ipairs( self.cities ) do
+		if city ~= oldCapital then
+			if maxLv < city.level then
+				cities = { city }
+				maxLv = city.level
+			elseif maxLv == city.level then
+				table.insert( cities, city )
+			end
+		end
+	end
+	local index = Random_SyncGetRange( 1, #cities )
+	local newCapital = cities[index]
+	self.capital = newCapital
+end
+
+function Group:CaptureCorps( corps, prisonCity, isAcceptSurrender )
+	if not isAcceptSurrender then
+		local treate = self:GetPolicyTendency( PolicyType.TREAT_SURRENDER_SOLDIER )
+		isAcceptSurrender = Random_SyncGetRange( 1, PolicyParams.RANGE ) < treate
+	end
+	if isAcceptSurrender then
+		self:AcceptSurrenderCorps( corps, prisonCity )
+	else
+		local treateChara = self:GetPolicyTendency( PolicyType.TREAT_SURRENDER_CHARACTER )
+		local isAcceptSurrenderChara = Random_SyncGetRange( 1, PolicyParams.RANGE ) < treateChara
+		corps:Neutralize( not isAcceptSurrenderChara, true )
+	end
+end
+
+function Group:CaptureTroop( troop, prisonCity, isAcceptSurrender )
+	if not isAcceptSurrender then
+		local treate = self:GetPolicyTendency( PolicyType.TREAT_SURRENDER_SOLDIER )
+		isAcceptSurrender = Random_SyncGetRange( 1, PolicyParams.RANGE ) < treate
+	end
+	if isAcceptSurrender then
+		--surrender
+		self:AcceptSurrenderTroop( troop )
+	else
+		local treateChara = self:GetPolicyTendency( PolicyType.TREAT_SURRENDER_CHARACTER )
+		local isAcceptSurrenderChara = Random_SyncGetRange( 1, PolicyParams.RANGE ) < treateChara
+		troop:Neutralize( not isAcceptSurrenderChara, true )
+	end
+end
+
+function Group:CaptureChara( chara, prisonCity )
+	local isSurrender = Random_SyncGetRange( 1, PolicyParams.RANGE ) < chara.trust
+	local treateChara = self:GetPolicyTendency( PolicyType.TREAT_SURRENDER_CHARACTER )
+	local isAcceptSurrender = Random_SyncGetRange( 1, PolicyParams.RANGE ) < treateChara
+	
+	if isAcceptSurrender and isSurrender then
+		self:AcceptSurrenderChara( chara )
+	else
+		CharaDie( chara )
+	end
 end
 
 function Group:CaptureCity( combat )
 	local city = combat:GetLocation()
 	
-	Debug_Normal( "Group " .. NameIDToString( self ) .. " Capture city " .. NameIDToString( city ) )
+	g_statistic:CityFall( city, self )
+	--InputUtility_Pause( "Group " .. NameIDToString( self ) .. " Capture city " .. NameIDToString( city ) )
 	
 	--Remove city from original group
 	local originalGroup = city:GetGroup()
@@ -827,56 +963,109 @@ function Group:CaptureCity( combat )
 	--Add city to owner group
 	table.insert( self.cities, city )
 	city:JoinGroup( self )
+
+	local isGroupFallen = #self.cities == 0
+	
+	--Select new capital if necessary
+	if not isGroupFallen and city:IsCapital() then
+		--first select new capital
+		originalGroup:VoteCapital( city )
+	end
 	
 	--Corps from Original group
 	-- 1. Retreat to the latest city
 	-- 2. Surrender or eliminate by the attacker's strategy
-	local cities = {}
-	city:ForeachAdjacentCity( function ( adjCity )
-		if adjCity:IsBelongToGroup( originalGroup ) then
-			table.insert( cities, adjCity )
-		end
-	end )
-	local numberOfCity = #cities
+	local adjaCities = {}
+	if not isGroupFallen then
+		city:ForeachAdjacentCity( function ( adjCity )
+			if adjCity:IsBelongToGroup( originalGroup ) then
+				table.insert( adjaCities, adjCity )
+			end
+		end )
+	end
+	local numberOfCity = #adjaCities
 	if numberOfCity == 0 then
-		local tendency = self:GetPolicyTendency( PolicyType.TREAT_SURRENDER_SOLDIER )
-		if tendency == TreatSurrednerSoldier.BURY_SURRENDER_SOLDIER then
-			-- de-buff will support in the future
-			for k, corps in ipairs( city.corps ) do
-				self:BuryCorps( corps )
+		--capture or fall
+		local prisonCity = city		
+		for k, corps in ipairs( city.corps ) do
+			self:CaptureCorps( corps, prisonCity )
+		end
+		city.corps = {}
+		
+		for k, troop in ipairs( city.troops ) do
+			if not troop:GetCorps() then
+				self:CaptureTroop( troop, prisonCity )
 			end
-		elseif tendency == TreatSurrednerSoldier.ACCEPT_SURRENDER_SOLDIER then			
-			for k, corps in ipairs( city.corps ) do				
-				self:AcceptSurrenderCorps( corps )
+		end		
+		city.troops = {}
+		
+		for k, chara in ipairs( city.charas ) do
+			if chara:GetTroop() then
+				self:CaptureChara( chara, prisonCity )
 			end
 		end
+		city.charas = {}
+
+		--InputUtility_Pause( city.name .. " from " .. originalGroup.name .. " Surrender to " .. self.name )		
 	else
 		for k, corps in ipairs( city.corps ) do
-			local index = Random_SyncGetRange( 1, numberOfCity )
-			local city = cities[index]
-			if city then
-				CorpsDispatchToCity( corps, city )
+			if corps:GetLocation() == city then
+				--in the city
+				local index = Random_SyncGetRange( 1, numberOfCity )
+				local retreatCity = adjaCities[index]
+				corps:JoinCity( retreatCity )
+				g_taskMng:IssueTaskCorpsBackEncampment( corps )
 			else
-				--no city
+				--!!! it's more complex than what I did now.
+				--There're some many situation should consider about
+				--1.encampment supply
+				--2.attack failed
+				local index = Random_SyncGetRange( 1, numberOfCity )
+				local retreatCity = adjaCities[index]
+				print( corps.name .. " need to retreat to " .. retreatCity.name )
+				corps:JoinCity( retreatCity )
+				local task = g_taskMng:GetTaskByActor( corps )
+				if task then
+					if task.type ~= TaskType.ATTACK_CITY and task.type ~= TaskType.EXPENDITION then
+						task:Terminate()
+					end
+				else
+					g_taskMng:IssueTaskCorpsBackEncampment( corps )
+				end
 			end
 		end
+		for k, troop in ipairs( city.troops ) do
+			if not troop:GetCorps() then
+				--in city
+				local index = Random_SyncGetRange( 1, numberOfCity )
+				local retreatCity = adjaCities[index]
+				print( NameIDToString( troop ) .. " need to retreat to " .. retreatCity.name )
+				--!!!should issue task
+				troop:JoinCity( retreatCity )
+				g_taskMng:IssueTaskTroopBackEncampment( troop )
+			end
+		end
+		for k, chara in ipairs( city.charas ) do
+			if not chara:GetTroop() then
+				local index = Random_SyncGetRange( 1, numberOfCity )
+				local retreatCity = adjaCities[index]
+				chara:JoinCity( retreatCity )
+				g_taskMng:IssueTaskCharaBackHome( chara )
+			end
+		end
+		--InputUtility_Pause( city.name .. " from " .. originalGroup.name .. " Retreat to nearest city, attacked by " .. self.name )				
 	end
 	
-	--Corps from Owner group
+	--Garrisson into the city
 	for k, corps in ipairs( combat.corps ) do
 		if corps:GetGroup() == self then
-			--Remove from original encampment
-			corps:GetEncampment():RemoveCorps( corps )
-			
-			--Add to capture city
-			city:AddCorps( corps )
-			
 			corps:DispatchToCity( city )
+			city:AddCorps( corps )
 		end
 	end
 	
 	--Whether group is dead
-	if #originalGroup.cities == 0 then
+	if isGroupFallen then
 		originalGroup:Fall()
 	end
 end
@@ -885,14 +1074,15 @@ function Group:Fall()
 	if self.government == GroupGovernment.GUERRILLA then
 		--never fall
 		return
-	end
+	end	
 	
-	Debug_Normal( NameIDToString( self ) .. " is fallen" )
+	print( NameIDToString( self ) .. " is fallen" )
 	
 	self.government = GroupGovernment.NONE
 	
 	--characters out
 	for k, chara in ipairs( self.charas ) do
+		print( chara.name .. " group is fallen" )
 		chara:Out()
 	end
 	--dismiss all troop and corps
@@ -912,17 +1102,24 @@ function Group:Fall()
 		end
 	end
 	self.relations = {}
+	
+	--Remove task from group
+	g_taskMng:TerminateTaskFromGroup( self )
+	
+	--Remove combat from group
+	g_warfare:EndCombatByGroup( group )
+	
 	--remove group
 	g_groupDataMng:RemoveData( self.id )
 	
-	ShowText( "group fall=" .. self.name, "next" )
+	print( "group fall=" .. self.name, "next" )
 end
 
 function Group:CharaJoin( chara )
 	table.insert( self.charas, chara )
 end
 
-function Group:CharaLeave( chara )
+function Group:CharaOut( chara )
 	if not MathUtility_Remove( self.charas, chara.id, "id" ) then
 		ShowText( "Remove chara ["..chara.name.."] failed!" )
 	end
@@ -1014,7 +1211,7 @@ function Group:Dump()
 	self:DumpCharaDetail()
 	ShowText( "Tech Num     =" .. #self.techs )
 	ShowText( "Relation     =" .. #self.relations )
-	self:DumpRelationDetail()
+	--self:DumpRelationDetail()
 	self:DumpDiplomacyMethod()
 	ShowText( "<<<<<<<<<<< Group <<<<<<<<<<<<<<<<<<" )
 end
@@ -1040,6 +1237,10 @@ function Group:UpdateSituationTag( tagType, condition )
 end
 
 function Group:Update()
+	if self.leader == nil then
+		self:VoteLeader()
+	end
+
 	self:InvalidateData()
 	--[[
 	-- Income
@@ -1047,6 +1248,7 @@ function Group:Update()
 		self.money = self.money + city:GetIncome()
 	end
 	]]
+	self:UpdateSituationTag( GroupTag.SITUATION.AT_WAR, CheckGroupStuAtWar )
 	self:UpdateSituationTag( GroupTag.SITUATION.MULTIPLE_FRONT, CheckGroupStuMultipleFronts )
 	self:UpdateSituationTag( GroupTag.SITUATION.UNDEVELOPED, CheckGroupUndeveloped )
 	self:UpdateSituationTag( GroupTag.SITUATION.WEAK, CheckGroupStuWeak )

@@ -12,7 +12,8 @@ local function Selector( behavior, node )
 	end
 	for k, child in ipairs( node.children ) do
 		behavior:SetCurrentNode( node )
-		if behavior.functions[child.type]( behavior, child ) then return true end
+		local fn = behavior.functions[child.type]
+		if fn and fn( behavior, child ) then return true end
 	end	
 	return false
 end
@@ -24,7 +25,8 @@ local function RandomSelector( behavior, node )
 	behavior:Shuffle( children )
 	for k, child in pairs( children ) do		
 		behavior:SetCurrentNode( node )
-		if behavior.functions[child.type]( behavior, child ) then return true end
+		local fn = behavior.functions[child.type]
+		if fn and fn( behavior, child ) then return true end
 	end
 	return false
 end
@@ -34,7 +36,8 @@ local function Sequence( behavior, node )
 	end
 	for k, child in pairs( node.children ) do		
 		behavior:SetCurrentNode( node )
-		if behavior.functions[child.type]( behavior, child ) == false then return false end
+		local fn = behavior.functions[child.type]
+		if fn and fn( behavior, child ) == false then return false end
 	end
 	return true
 end
