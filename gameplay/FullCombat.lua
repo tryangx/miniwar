@@ -560,8 +560,12 @@ function Combat:NextDay()
 	self.day = self.day + 1
 	
 	self.result = CombatResult.DRAW	
-	
 	self:Embattle()
+	
+	--undefended
+	if self.atkNumber <= 0 or self.defNumber <= 0 then
+		
+	end
 	
 	self:DumpPhase()
 	self:DumpMap()

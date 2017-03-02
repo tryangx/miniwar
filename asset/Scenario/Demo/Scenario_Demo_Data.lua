@@ -213,7 +213,7 @@ local CharaData =
 	{
 		name = "ZHONGSHAN WANG",
 		birth = -550,
-		location    = 70,		
+		location    = 80,		
 		ca          = 50,
 		ap          = 90,		
 		purpose     = 0,	
@@ -226,10 +226,11 @@ local CharaData =
 		name = "ZHOU TIANZI",
 		birth = -550,
 		life  = 65,
-		location    = 70,
+		location    = 90,
 		ca          = 50,
 		ap          = 90,		
-		purpose     = 0,		
+		purpose     = 0,	
+		job         = "KING",
 		traits = { 1001, 1010, 1040 },
 	},
 }
@@ -414,7 +415,7 @@ local CorpsData =
 	{	
 		id=1,
 		name="Qin Jun",
-		encampment=10,
+		home=10,
 		location=10,
 		formation=1,
 		troops={ 1 },--, 2, 3, 4, 5, 300, 301 },
@@ -424,7 +425,7 @@ local CorpsData =
 	[2] = {	
 		id=2,
 		name="Qin Jun2",
-		encampment=10,
+		home=10,
 		location=10,
 		formation=1,
 		--troops={ 13 },
@@ -435,7 +436,7 @@ local CorpsData =
 	[3] = {	
 		id=3,
 		name="Wei Jun2",
-		encampment=40,
+		home=40,
 		location=40,
 		formation=1,
 		--troops={ 13 },
@@ -722,7 +723,7 @@ local GroupData =
 		cities = { 40 },
 		charas = { 400 },
 		troops = {},
-		corps = { 3 },		
+		corps = {},
 		relations = { 12, 21, 30, 40, 41, 42, 43, 44 },
 	},
 	--]]

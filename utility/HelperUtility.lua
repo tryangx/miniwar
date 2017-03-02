@@ -1,6 +1,7 @@
 ---------------------------
 -- Helper
 
+debugAddRemoveData = true
 quickSimulate = true
 debugMeeting = false
 
@@ -46,6 +47,23 @@ function NameIDToString( data )
 		if data.id then
 			content = content .. "(" .. data.id .. ")"
 		end
+	end
+	return content
+end
+
+function Helper_DumpName( list, fn )
+	for k, item in pairs( list ) do
+		local content = NameIDToString( item )
+		if fn then content = content .. fn( item ) end
+		print( content )
+	end
+end
+
+function Helper_ConcatListName( list, fn )
+	local content = ""
+	for k, item in pairs( list ) do
+		content = content .. NameIDToString( item ) .. "/"
+		if fn then content = content .. fn( item ) end		
 	end
 	return content
 end
@@ -139,7 +157,7 @@ end
 ---------------------------------------------
 --Relation & Tag
 function Helper_AppendRelation( relations, relationType, id, value, range )
-	for k, relation in ipairs( relations ) do
+	for k, relation in pairs( relations ) do
 		if relation.type == relationType and ( not id or relation.id == 0 or relation.id == id ) then
 			if value and ( not range or relation.value <= range - value ) then
 				relation.value = relation.value + value
@@ -150,7 +168,7 @@ function Helper_AppendRelation( relations, relationType, id, value, range )
 	table.insert( relations, { type = relationType, id = id or 0, value = value or 0 } )
 end
 function Helper_RemoveRelation( relations, relationType, id, value )
-	for k, relation in ipairs( relations ) do
+	for k, relation in pairs( relations ) do
 		if relation.type == relationType and ( not id or relation.id == 0 or relation.id == id ) then
 			if value then
 				if relation.value and relation.value > value then
@@ -167,7 +185,7 @@ function Helper_RemoveRelation( relations, relationType, id, value )
 end
 function Helper_GetRelation( relations, relationType, id1, id2 )
 	if not relations then return nil end
-	for k, relation in ipairs( relations ) do
+	for k, relation in pairs( relations ) do
 		if relation.type == relationType and ( relation.id == 0 or relation.id == id1 or relation.id == id2 ) then
 			return relation
 		end
@@ -177,7 +195,7 @@ end
 
 function Helper_GetVarb( varbs, varbType )	
 	if not varbs then return nil end
-	for k, varb in ipairs( varbs ) do		
+	for k, varb in pairs( varbs ) do		
 		if varb.type == varbType then
 			return varb
 		end
@@ -185,7 +203,7 @@ function Helper_GetVarb( varbs, varbType )
 	return nil
 end
 function Helper_SetVarb( varbs, varbType, value )
-	for k, varb in ipairs( varbs ) do
+	for k, varb in pairs( varbs ) do
 		if varb.type == varbType then
 			varb.value = varb.value + value
 			return
@@ -194,7 +212,7 @@ function Helper_SetVarb( varbs, varbType, value )
 	table.insert( varbs, { type = varbType, value = value } )
 end
 function Helper_AppendVarb( varbs, varbType, value, maximum )
-	for k, varb in ipairs( varbs ) do
+	for k, varb in pairs( varbs ) do
 		if varb.type == varbType then
 			if not maximum or varb.value <= maximum - value then
 				varb.value = varb.value + value
@@ -209,10 +227,14 @@ end
 ]]
 function Helper_RemoveVarb( varbs, varbType, value, minimum )
 	minimum = minimum or 0
-	for k, varb in ipairs( varbs ) do
-		if varb.type == varbType then
-			if varb.value and varb.value ~= -1 and varb.value > value + minimum then
-				varb.value = varb.value - value
+	for k, varb in pairs( varbs ) do
+		if varb.type == varbType then			
+			if value then
+				if varb.value and varb.value ~= -1 and varb.value > value + minimum then
+					varb.value = varb.value - value
+				else
+					table.remove( varbs, k )
+				end
 			else
 				table.remove( varbs, k )
 			end
@@ -318,4 +340,25 @@ function Helper_FindPathBetweenCity( location, destination )
 		end
 	end
 	return nil
+end
+
+-----------------------------------------------
+
+function Helper_AddDataSafety( list, data )
+	if debugAddRemoveData and MathUtility_IndexOf( list, data ) then
+		InputUtility_Pause( "data " .. NameIDToString( data ) .. " already in" )
+		k.p = 1
+		return
+	end
+	table.insert( list, data )
+end
+
+function Helper_RemoveDataSafety( list, data )
+	if debugAddRemoveData and not MathUtility_IndexOf( list, data ) then
+		InputUtility_Pause( "data " .. NameIDToString( data ) .. " not in" )
+		k.p = 1
+		return
+	end
+	print( "removed " .. NameIDToString( data ) )
+	MathUtility_Remove( list, data )
 end

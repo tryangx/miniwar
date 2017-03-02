@@ -198,38 +198,43 @@ function Group:ConvertID2Data()
 	end
 	self.relations = relations	
 
+	--cities
 	local cities = {}
 	for k, id in ipairs( self.cities ) do	
 		local city = g_cityDataMng:GetData( id )
 		--ShowText( "set city group", city.id, city.name )
 		if not city then Debug_Error( "Invalid city" .. id ) end		
-		city._group = self		
+		city:JoinGroup( self )
 		table.insert( cities, city )
 	end
 	self.cities = cities
 	
+	--corps
 	local corpsList = {}
 	for k, id in ipairs( self.corps ) do
 		local corps = g_corpsDataMng:GetData( id )
-		if not corps:GetEncampment() then
-			ShowText( "!!! No corps encampment data" )
+		if not corps:GetHome() then
+			ShowText( "!!! No corps home data" )
 		else
-			local encampment = corps:GetEncampment()
-			if typeof( encampment ) == "number" then
-				encampment = g_cityDataMng:GetData( encampment )
+			local home = corps:GetHome()
+			if typeof( home ) == "number" then
+				home = g_cityDataMng:GetData( home )
 			end
-			if not encampment or not MathUtility_IndexOf( encampment.corps, corps.id ) then
-				ShowText( "!!! Invalid corps encampment data", encampment.name, corps.id )
+			if not home or not MathUtility_IndexOf( home.corps, corps.id ) then
+				ShowText( "!!! Invalid corps home data", home.name, corps.id )
 			end
 		end
-		corps._group = self
+		corps:JoinGroup( self )
 		table.insert( corpsList, corps )
 	end
 	self.corps = corpsList
-	
+
+	--troops
 	local troops = {}
-	for k, id in ipairs( self.troops ) do		
-		table.insert( troops, g_troopDataMng:GetData( id ) )
+	for k, id in ipairs( self.troops ) do
+		local troop = g_troopDataMng:GetData( id )
+		troop:JoinGroup( self )
+		table.insert( troops, troop )
 		--ShowText( g_troopDataMng:GetData( id ).name, g_troopDataMng:GetData( id ).number )
 	end
 	self.troops = troops
@@ -244,13 +249,14 @@ function Group:ConvertID2Data()
 		end
 	end
 	
+	--characters
 	local charas = {}
 	for k, id in ipairs( self.charas ) do
 		local chara = g_charaDataMng:GetData( id )
 		if not chara then
 			Debug_Error( "Chara is invalid [" .. id .. "]" )
 		else
-			chara._group = self
+			chara:JoinGroup( self )
 			table.insert( charas, chara )
 		end
 	end
@@ -262,6 +268,8 @@ function Group:ConvertID2Data()
 	else
 		self.leader = temp
 	end
+	
+	if not self.leader then InputUtility_Pause( self.name, " no leader" ) end
 	
 	local techs = {}
 	for k, id in ipairs( self.techs ) do
@@ -467,6 +475,7 @@ end
 function Group:GetGroupRelation( id )
 	if id == self.id then
 		ShowText( "None relation to self", id )
+		k.a = 2
 		return nil
 	end
 	for k, relation in ipairs( self.relations ) do
@@ -612,6 +621,21 @@ end
 
 ---------------------------
 
+function Group:CheckIsFallen()
+	if #self.cities > 0 and #self.charas > 0 then
+		--[[
+		for k, chara in ipairs( self.charas ) do
+			print( chara.name, chara:GetLocation().name )
+			local task = g_taskMng:GetTaskByActor( chara )
+			if task then print( chara.name .. " execute task " .. task:CreateDesc() ) end			
+		end
+		--InputUtility_Pause( self.name, "not fallen", #self.cities, #self.charas )
+		]]
+		return false
+	end
+	return self.government ~= GroupGovernment.GUERRILLA
+end
+
 function Group:IsFallen()
 	return self.government == GroupGovernment.NONE
 end
@@ -743,12 +767,39 @@ end
 
 
 ----------------------------------------------
--- Iteration Method
 
 function Group:ForeachChara( fn )
 	for k, chara in ipairs( self.charas ) do
 		fn( chara )
 	end
+end
+
+function Group:AddTroop( troop )
+	Helper_AddDataSafety( self.troops, troop )
+end
+function Group:RemoveTroop( troop )
+	Helper_RemoveDataSafety( self.troops, troop )
+end
+
+function Group:AddCorps( corps )
+	Helper_AddDataSafety( self.corps, corps )
+end
+function Group:RemoveCorps( corps )
+	Helper_RemoveDataSafety( self.corps, corps )
+end
+
+function Group:AddCity( city )
+	Helper_AddDataSafety( self.cities, city )
+end
+function Group:RemoveCity( city )
+	Helper_RemoveDataSafety( self.cities, city )
+end
+
+function Group:AddChara( chara )
+	Helper_AddDataSafety( self.charas, chara )
+end
+function Group:RemoveChara( chara )	
+	Helper_RemoveDataSafety( self.charas, chara )
 end
 
 ----------------------------------------------
@@ -768,6 +819,7 @@ end
 
 function Group:RecruitTroop( troop )
 	--Debug_Normal( "Group " .. NameIDToString( self ) .. " Recruit Troop " .. NameIDToString( troop ) )
+	troop:JoinGroup( self )
 	table.insert( self.troops, troop )
 end
 
@@ -776,124 +828,41 @@ function Group:EstablishCorps( corps )
 	table.insert( self.corps, corps )
 end
 
-function Group:LoseChara( chara )
-	Debug_Normal( "Group " .. NameIDToString( self ) .. " Lose Chara " .. NameIDToString( chara ) )
-	MathUtility_Remove( self.charas, chara.id, "id" )
-end
-
-function Group:LoseTroop( troop )
-	Debug_Normal( "Group " .. NameIDToString( self ) .. " Lose troop " .. NameIDToString( troop ) )
-	MathUtility_Remove( self.troops, troop.id, "id" )
-end
-
-function Group:LoseCorps( corps )
-	Debug_Normal( "Group " .. NameIDToString( self ) .. " Lose corps " .. NameIDToString( corps ) )
-	MathUtility_Remove( self.corps, corps.id, "id" )
-end
-
-function Group:LoseCity( city )
-	Debug_Normal( "Group " .. NameIDToString( self ) .. " Lose city " .. NameIDToString( city ) )	
-	MathUtility_Remove( self.cities, city.id, "id" )
-	
-	if #self.cities == 0 then
-		self:Fall()
-	end
-end
-
-function Group:AddChara( chara )
-	table.insert( self.charas, chara)
-end
-
-function Group:AddTroop( troop )
-	table.insert( self.troops, troop )
-end
-
-function Group:AddCorps( corps )
-	table.insert( self.corps, corps )
-end
-
-function Group:AcceptSurrenderChara( chara, city )
-	if not chara then return end
-	
-	local limit = QueryCityCharaLimit( city )
-	if limit >= #city.charas then
-		--cann't accept surrender chara, dismiss from troop
-		CharaCapture( chara )
-		chara:LeadTroop( nil )
-		InputUtility_Pause( chara.name .. " is prisoner" )
-		return
-	end
-	
-	InputUtility_Pause( "Group " .. NameIDToString( self ) .. " Accept Surrender Chara " .. NameIDToString( chara ) )
-	
-	local group = chara:GetGroup()
-	if group ~= self then
-		group:LoseChara( chara )
-	end
-	
-	--chara data
-	chara:JoinGroup( self, city )
-	--city data
-	city:CharaLive( chara )
-	--group data
-	self:AddChara( chara )
-end
-
-function Group:AcceptSurrenderTroop( troop, city )
-	InputUtility_Pause( "Group " .. NameIDToString( self ) .. " Accept Surrender troop " .. NameIDToString( troop ) )	
-
-	local group = troop:GetEncampment() and troop:GetEncampment():GetGroup() or nil
-	if group and group ~= self then
-		group:LoseTroop( troop )
-	end
-	
-	--chara leave
-	self:AcceptSurrenderChara( chara, city )
-	
-	--troop data
-	troop:JoinCity( city )
-	--city data
-	city:AddTroop( troop )
-	--group data
-	self:AddTroop( troop )
-end
-
-function Group:AcceptSurrenderCorps( corps, city )
-	InputUtility_Pause( "Group " .. NameIDToString( self ) .. " Accept Surrender Corps " .. NameIDToString( corps ) )	
-	
-	local group = corps:GetEncampment() and corps:GetEncampment():GetGroup() or nil
-	if group and group ~= self then
-		group:LoseCorps( corps )
-	end
-	
-	--all troops
-	corps:ForeachTroop( function ( troop )	
-		self:AcceptSurrenderTroop( troop )
-	end )
-	--corps data
-	corps:JoinGroup( self, city )
-	--city data
-	city:AddCorps( corps )
-	--group data
-	self:AddCorps( corps )
-end
-
 function Group:SelectLeader( leader )
+	if self.leader then
+		quickSimulate = false
+		self.leader:Dump()
+		InputUtility_Pause( "oldleader" )
+	end
+	print( NameIDToString( self ) .. " select leader=" .. NameIDToString( leader ) .. " old=" .. NameIDToString( self.leader ) )
 	self.leader = leader
 end
 
 function Group:VoteLeader( oldLeader )
-	local index = Random_SyncGetRange( 1, #group.charas )
-	group.leader = group.charas[index]
+	--find new leader
+	local reference = nil
+	for k, chara in ipairs( self.charas ) do
+		if chara:IsInService() and ( not reference or chara:IsMoreImportant( reference ) ) then
+			reference = chara
+		end
+	end
+	return reference
+end
+
+function Group:CheckLeader()
+	if not self:IsFallen() and ( not self.leader or self.leader:GetGroup() ~= self or not self.leader:IsInService() ) then
+		self:SelectLeader( self:VoteLeader( self.leader ) )
+	end
 end
 	
 function Group:SelectCapital( capital )
+	print( self.name .. " set new capital=" .. ( capital and capital.name or "none" ) )
 	self.capital = capital
 end
 
 function Group:VoteCapital( oldCapital )
 	local maxLv = 0
-	local cities = nil
+	local cities = {}
 	for k, city in ipairs( self.cities ) do
 		if city ~= oldCapital then
 			if maxLv < city.level then
@@ -909,188 +878,37 @@ function Group:VoteCapital( oldCapital )
 	self.capital = newCapital
 end
 
-function Group:CaptureCorps( corps, prisonCity, isAcceptSurrender )
-	if not isAcceptSurrender then
-		local treate = self:GetPolicyTendency( PolicyType.TREAT_SURRENDER_SOLDIER )
-		isAcceptSurrender = Random_SyncGetRange( 1, PolicyParams.RANGE ) < treate
-	end
-	if isAcceptSurrender then
-		self:AcceptSurrenderCorps( corps, prisonCity )
-	else
-		local treateChara = self:GetPolicyTendency( PolicyType.TREAT_SURRENDER_CHARACTER )
-		local isAcceptSurrenderChara = Random_SyncGetRange( 1, PolicyParams.RANGE ) < treateChara
-		corps:Neutralize( not isAcceptSurrenderChara, true )
-	end
-end
-
-function Group:CaptureTroop( troop, prisonCity, isAcceptSurrender )
-	if not isAcceptSurrender then
-		local treate = self:GetPolicyTendency( PolicyType.TREAT_SURRENDER_SOLDIER )
-		isAcceptSurrender = Random_SyncGetRange( 1, PolicyParams.RANGE ) < treate
-	end
-	if isAcceptSurrender then
-		--surrender
-		self:AcceptSurrenderTroop( troop )
-	else
-		local treateChara = self:GetPolicyTendency( PolicyType.TREAT_SURRENDER_CHARACTER )
-		local isAcceptSurrenderChara = Random_SyncGetRange( 1, PolicyParams.RANGE ) < treateChara
-		troop:Neutralize( not isAcceptSurrenderChara, true )
-	end
-end
-
-function Group:CaptureChara( chara, prisonCity )
-	local isSurrender = Random_SyncGetRange( 1, PolicyParams.RANGE ) < chara.trust
-	local treateChara = self:GetPolicyTendency( PolicyType.TREAT_SURRENDER_CHARACTER )
-	local isAcceptSurrender = Random_SyncGetRange( 1, PolicyParams.RANGE ) < treateChara
-	
-	if isAcceptSurrender and isSurrender then
-		self:AcceptSurrenderChara( chara )
-	else
-		CharaDie( chara )
-	end
-end
-
-function Group:CaptureCity( combat )
-	local city = combat:GetLocation()
-	
-	g_statistic:CityFall( city, self )
-	--InputUtility_Pause( "Group " .. NameIDToString( self ) .. " Capture city " .. NameIDToString( city ) )
-	
-	--Remove city from original group
-	local originalGroup = city:GetGroup()
-	originalGroup:LoseCity( city )
-
-	--Add city to owner group
-	table.insert( self.cities, city )
-	city:JoinGroup( self )
-
-	local isGroupFallen = #self.cities == 0
-	
-	--Select new capital if necessary
-	if not isGroupFallen and city:IsCapital() then
-		--first select new capital
-		originalGroup:VoteCapital( city )
-	end
-	
-	--Corps from Original group
-	-- 1. Retreat to the latest city
-	-- 2. Surrender or eliminate by the attacker's strategy
-	local adjaCities = {}
-	if not isGroupFallen then
-		city:ForeachAdjacentCity( function ( adjCity )
-			if adjCity:IsBelongToGroup( originalGroup ) then
-				table.insert( adjaCities, adjCity )
-			end
-		end )
-	end
-	local numberOfCity = #adjaCities
-	if numberOfCity == 0 then
-		--capture or fall
-		local prisonCity = city		
-		for k, corps in ipairs( city.corps ) do
-			self:CaptureCorps( corps, prisonCity )
-		end
-		city.corps = {}
-		
-		for k, troop in ipairs( city.troops ) do
-			if not troop:GetCorps() then
-				self:CaptureTroop( troop, prisonCity )
-			end
-		end		
-		city.troops = {}
-		
-		for k, chara in ipairs( city.charas ) do
-			if chara:GetTroop() then
-				self:CaptureChara( chara, prisonCity )
-			end
-		end
-		city.charas = {}
-
-		--InputUtility_Pause( city.name .. " from " .. originalGroup.name .. " Surrender to " .. self.name )		
-	else
-		for k, corps in ipairs( city.corps ) do
-			if corps:GetLocation() == city then
-				--in the city
-				local index = Random_SyncGetRange( 1, numberOfCity )
-				local retreatCity = adjaCities[index]
-				corps:JoinCity( retreatCity )
-				g_taskMng:IssueTaskCorpsBackEncampment( corps )
-			else
-				--!!! it's more complex than what I did now.
-				--There're some many situation should consider about
-				--1.encampment supply
-				--2.attack failed
-				local index = Random_SyncGetRange( 1, numberOfCity )
-				local retreatCity = adjaCities[index]
-				print( corps.name .. " need to retreat to " .. retreatCity.name )
-				corps:JoinCity( retreatCity )
-				local task = g_taskMng:GetTaskByActor( corps )
-				if task then
-					if task.type ~= TaskType.ATTACK_CITY and task.type ~= TaskType.EXPENDITION then
-						task:Terminate()
-					end
-				else
-					g_taskMng:IssueTaskCorpsBackEncampment( corps )
-				end
-			end
-		end
-		for k, troop in ipairs( city.troops ) do
-			if not troop:GetCorps() then
-				--in city
-				local index = Random_SyncGetRange( 1, numberOfCity )
-				local retreatCity = adjaCities[index]
-				print( NameIDToString( troop ) .. " need to retreat to " .. retreatCity.name )
-				--!!!should issue task
-				troop:JoinCity( retreatCity )
-				g_taskMng:IssueTaskTroopBackEncampment( troop )
-			end
-		end
-		for k, chara in ipairs( city.charas ) do
-			if not chara:GetTroop() then
-				local index = Random_SyncGetRange( 1, numberOfCity )
-				local retreatCity = adjaCities[index]
-				chara:JoinCity( retreatCity )
-				g_taskMng:IssueTaskCharaBackHome( chara )
-			end
-		end
-		--InputUtility_Pause( city.name .. " from " .. originalGroup.name .. " Retreat to nearest city, attacked by " .. self.name )				
-	end
-	
-	--Garrisson into the city
-	for k, corps in ipairs( combat.corps ) do
-		if corps:GetGroup() == self then
-			corps:DispatchToCity( city )
-			city:AddCorps( corps )
-		end
-	end
-	
-	--Whether group is dead
-	if isGroupFallen then
-		originalGroup:Fall()
-	end
-end
-
 function Group:Fall()
-	if self.government == GroupGovernment.GUERRILLA then
-		--never fall
-		return
-	end	
-	
-	print( NameIDToString( self ) .. " is fallen" )
-	
+	print( self.name, "fall" )
 	self.government = GroupGovernment.NONE
 	
 	--characters out
-	for k, chara in ipairs( self.charas ) do
-		print( chara.name .. " group is fallen" )
+	for k, chara in ipairs( self.charas ) do		
+		local home = chara:GetHome()
+		if home then
+			InputUtility_Pause( "fall leftchara=", chara.name, chara:GetHome() and chara:GetHome().name or "" )
+			home:RemoveChara( chara )
+		end
+		chara:JoinGroup( nil )
 		chara:Out()
 	end
 	--dismiss all troop and corps
 	for k, troop in ipairs( self.troops ) do
+		local home = troop:GetHome()
+		if home then
+			InputUtility_Pause( "fall lefttroop=", troop.name, troop:GetHome() and troop:GetHome().name or "" )
+			home:RemoveTroop( troop )
+		end
 		g_troopDataMng:RemoveData( troop.id )
 	end
 	self.troops = {}
 	for k, corps in ipairs( self.corps ) do
+		local home = corps:GetHome()
+		if home then
+			InputUtility_Pause( "fall leftcorps=", corps.name, corps:GetHome() and corps:GetHome().name or "" )
+			home:RemoveCorps( troop )
+		end
+		print( "fall leftcorps=", corps.name )
 		g_corpsDataMng:RemoveData( corps.id )
 	end
 	self.corps = {}
@@ -1104,7 +922,7 @@ function Group:Fall()
 	self.relations = {}
 	
 	--Remove task from group
-	g_taskMng:TerminateTaskFromGroup( self )
+	g_taskMng:TerminateTaskToGroup( self, "target group fall" )
 	
 	--Remove combat from group
 	g_warfare:EndCombatByGroup( group )
@@ -1112,17 +930,7 @@ function Group:Fall()
 	--remove group
 	g_groupDataMng:RemoveData( self.id )
 	
-	print( "group fall=" .. self.name, "next" )
-end
-
-function Group:CharaJoin( chara )
-	table.insert( self.charas, chara )
-end
-
-function Group:CharaOut( chara )
-	if not MathUtility_Remove( self.charas, chara.id, "id" ) then
-		ShowText( "Remove chara ["..chara.name.."] failed!" )
-	end
+	--InputUtility_Pause( NameIDToString( self ) .. " is fallen=", self:IsFallen() )	
 end
 
 function Group:ReceiveTax( tax, city )
@@ -1191,8 +999,8 @@ function Group:DumpDiplomacyMethod()
 	end
 end
 
-function Group:Dump()
-	if 1 then return end
+function Group:Dump( force )
+	if not force and 1 then return end
 	ShowText( '>>>>>>>>>>>  Group >>>>>>>>>>>>>>>>>' )
 	ShowText( '[Group] #' .. self.id .. ' Name=' .. self.name )
 	ShowText( "Govement     =" .. MathUtility_FindEnumName( GroupGovernment, self.government ) )
@@ -1227,19 +1035,19 @@ function Group:InventTech( tech )
 end
 
 function Group:UpdateSituationTag( tagType, condition )
+	if self:IsFallen() then return end
+	
 	if condition( self ) then
 		--InputUtility_Pause( self.name .. " Set asset=" .. MathUtility_FindEnumName( GroupTag.SITUATION, tagType ) )
 		self:SetAsset( tagType, 1 )
 	else
 		--InputUtility_Pause( self.name .. " Remove asset=" .. MathUtility_FindEnumName( GroupTag.SITUATION, tagType ) )
-		self:RemoveAsset( tagType, -1 )
+		self:RemoveAsset( tagType )
 	end
 end
 
 function Group:Update()
-	if self.leader == nil then
-		self:VoteLeader()
-	end
+	self:CheckLeader()
 
 	self:InvalidateData()
 	--[[

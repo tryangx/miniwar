@@ -29,6 +29,13 @@ function DataManager:Clear()
 	self.alloateId = 0
 end
 
+function DataManager:Dump()
+	print( "Data Container=" .. self.name )
+	for k, data in pairs( self.datas ) do
+		print( "Data=" .. k, data.name )
+	end
+end
+
 function DataManager:LoadFromData( datas )
 	if not datas then Debug_Log( "Load from data failed, datas invalid" ) return end
 	--clear old datas
@@ -55,7 +62,7 @@ function DataManager:LoadFromFile( fileName )
 	local loadFile = LoadFileUtility()
 	loadFile:OpenFile( fileName )
 	local datas = {}
-	loadFile:ParseTable( datas )	
+	loadFile:ParseTable( datas )
 	self:LoadFromData( datas )
 	loadFile:CloseFile()
 end
@@ -116,10 +123,11 @@ end
 
 function DataManager:RemoveData( id )
 	if self.datas[id] then	
+		--print( self.name, " remove data=", id )
 		self.datas[id] = nil
 		self.count = self.count - 1
 	else
-		ShowText( "Cann't remove data,  id is invalid" )
+		print( self.name .. " cann't remove data from=" .. ", id="..id.." is invalid" )
 	end
 end
 

@@ -95,6 +95,11 @@ GlobalConst =
 	
 	--Gender
 	MALE_PROPORTION = 0.55,
+	
+	--Random Out Chara Limit
+	LIMIT_OUTCHARA_BY_PLOT_MODULUS = 0.35,
+	MIN_GENERATE_OUTCHARA_PER_TURN = 0,
+	MAX_GENERATE_OUTCHARA_PER_TURN = 3,
 }
 
 PlotParams =
@@ -150,6 +155,15 @@ PlotResourceBonusType =
 	SUPPLY_FOOD       = 30,
 	SUPPLY_MODULUS    = 31,
 }
+
+-----------------------------------------
+-- WarfarePlan
+
+WarfarePlanParams = 
+{
+	MAX_TARGETCITY_POWER_MODULUS = 2,
+}
+
 
 -----------------------------------------
 -- Combat
@@ -375,6 +389,8 @@ CityTag =
 	--Bad : Less Tax
 	DEPRESSED   = 21,
 	
+	BANKRUPT    = 22,
+	
 	--Supply not enough
     --Bad : People died, troop power down
 	STARVATION  = 30,
@@ -389,6 +405,7 @@ CityTag =
 		BATTLEFRONT = 1,
 		PROSPERITY  = 3,
 		DEPRESSED   = 3,
+		BANKRUPT    = 3,
 		STARVATION  = 10,
 		DESTRUCTION = 3,
 	},
@@ -463,8 +480,8 @@ CityParams =
 	
 	PATROL = 
 	{
-		MINIMUM_EFFECT  = 3,
-		MAXIMUM_EFFECT  = 6,
+		MINIMUM_EFFECT  = 1,
+		MAXIMUM_EFFECT  = 3,
 	},
 	
 	ECONOMY = 
@@ -597,8 +614,8 @@ GroupParams =
 {
 	RECRUIT = 
 	{
-		NUMBER_STANDARD_MODULUS = 0.5,
-		MAX_NUMBER_MODULUS = 1,
+		--Determine the number of soldier when recruit an new troop
+		RECRUIT_NUMBER_MODULUS = 0.8,
 	},
 }
 
@@ -1498,11 +1515,11 @@ CharacterStatus =
 	OUT        = 1,
 	--Not appear in the game, means it's deactivate
 	NOT_APPEAR = 2,
-	--Appeared in the game, but now it's deactivate
+	--Appeared in the game, it's deactivate now
 	LEAVE      = 3,
-	--Appeared in the game, but character is dead
+	--Appeared in the game, it's dead
 	DEAD       = 4,
-	--Captured in war
+	--Captured in war, reserved
 	PRISONER   = 5,
 }
 
@@ -1589,9 +1606,9 @@ CharacterProposal =
 	NONE             = 0,
 	
 	-- Personal
-	BACK_HOME        = 1,
-	BACK_ENCAMPMENT  = 2,
-	MOVETO           = 3,
+	CHARA_BACKHOME   = 1,
+	CORPS_MOVETO     = 2,
+	TROOP_MOVETO     = 3,
 	
 	AFFAIRS_PROPOSAL = 10,
 	
@@ -1697,19 +1714,19 @@ CharacterParams =
 	
 	SUBORDINATE_LIMIT = 
 	{
-		DEFAULT = 20,
+		DEFAULT = 10,
 		--Emperor
-		[400] = 30,
+		[400] = 80,
 		--King
-		[401] = 12,
+		[401] = 40,
 		--Lord
-		[402] = 8,
+		[402] = 20,
 		--Leader
-		[403] = 6,
+		[403] = 16,
 		--Chief
-		[404] = 6,
+		[404] = 16,
 		--President
-		[405] = 25,
+		[405] = 40,
 	},
 	
 	PRIVIAGE = 

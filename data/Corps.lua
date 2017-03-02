@@ -14,7 +14,7 @@ function Corps:Load( data )
 	self.id = data.id or 0	
 	self.name = data.name or ""		
 	------------------------------			
-	self.encampment = data.encampment or 0		
+	self.home = data.home or 0		
 	self.location   = data.location or 0	
 	self.leader     = data.leader or 0	
 	------------------------------	
@@ -38,7 +38,7 @@ function Corps:SaveData()
 	Data_IncIndent( 1 )
 	Data_OutputValue( "id", self )
 	Data_OutputValue( "name", self )
-	Data_OutputValue( "encampment", self, "id" )
+	Data_OutputValue( "home", self, "id" )
 	Data_OutputValue( "location", self, "id" )
 	Data_OutputValue( "leader", self, "id", 0 )
 	
@@ -67,15 +67,15 @@ function Corps:ConvertID2Data()
 			--ShowText( "!!! Fix troop corps error 2" )
 			troop.corps = self.id
 		end
-		if troop.encampment == 0 then
-			--ShowText( "!!! Fix troop corps encampment error" )
-			troop.encampment = self.encampment
+		if troop.home == 0 then
+			--ShowText( "!!! Fix troop corps home error" )
+			troop.home = self.home
 		end
 	end
 	self.troops    = troops
 	
 	self.leader     = g_charaDataMng:GetData( self.leader )	
-	self.encampment = g_cityDataMng:GetData( self.encampment )	
+	self.home		= g_cityDataMng:GetData( self.home )	
 	self.location   = g_cityDataMng:GetData( self.location )
 	
 	self.formation = g_formationTableMng:GetData( self.formation )
@@ -83,11 +83,12 @@ end
 
 function Corps:Dump( indent )
 	if not indent then indent = "" end
-	local content = indent .. "Corps=".. NameIDToString( self ).." Stay=".. self.location.name .. " LD=" .. ( self.leader and self.leader.name or "" ) .. " num=" .. #self.troops .. ">>>"
-	for k2, troop in ipairs( self.troops ) do
-		content = content .. NameIDToString( troop ) .. "+"..troop.number..","
-	end
+	local content = indent .. "Corps=".. NameIDToString( self ).." Stay=".. self.location.name .. " LD=" .. ( self.leader and self.leader.name or "" ) .. " num=" .. #self.troops .. ">>>"	
 	ShowText( content )
+	for k2, troop in ipairs( self.troops ) do
+		content = NameIDToString( troop ) .. "+"..troop.number.."+"..troop.morale..","..( troop:GetLeader() and troop:GetLeader().name or "NO-LD" )
+		ShowText( "	" .. content )
+	end
 end
 
 ------------------------------------------
@@ -95,15 +96,45 @@ end
 function Corps:AddTroop( troop )
 	table.insert( self.troops, troop )
 	
-	troop:AddToCorps( self )
+	troop:JoinCorps( self )
 	
 	if #self.troops == 1 then
-		self.name = troop.name or ""
+		self:RefreshName()		
+	end	
+	if not self.leader and troop:GetLeader() then
+		self.leader = troop:GetLeader()
 	end
 end
 
 function Corps:RemoveTroop( troop )
 	MathUtility_Remove( self.troops, troop )
+end
+
+function Corps:VoteLeader()
+	--find new leader
+	local reference = nil
+	for k, troop in ipairs( self.troops ) do
+		local leader = troop:GetLeader()
+		if leader then
+			if not reference or chara:IsMoreImportant( reference ) then
+				reference = chara
+			end
+		end
+	end
+	return reference
+end
+
+function Corps:RefreshName()
+	local oldName = self.name
+	self.name = self.troops[1].name
+	for k, troop in ipairs( self.troops ) do
+		if troop:GetLeader() == self.leader then			
+			self.name = troop.name
+			break
+		end
+	end
+	self.name = self.name .. "-" .. "corps"		
+	print( "corps rename=" .. ( oldName or "" ) .."->" ..self.name )
 end
 
 function Corps:GetAsset( tagType )
@@ -139,8 +170,8 @@ function Corps:GetLeader()
 	return self.leader
 end
 
-function Corps:GetEncampment()
-	return self.encampment
+function Corps:GetHome()
+	return self.home
 end
 
 function Corps:GetLocation()
@@ -148,7 +179,7 @@ function Corps:GetLocation()
 end
 
 function Corps:GetGroup()
-	return self._group
+	return self.group
 end
 
 function Corps:GetPower()
@@ -194,6 +225,10 @@ function Corps:GetTrainingEval()
 	return training
 end
 
+function Corps:IsAtHome()
+	return self.location == self.home and not g_movingActorMng:HasActor( MovingActorType.CORPS, self )
+end
+
 function Corps:IsStayCity( city )
 	--ShowText( "check stay", self.location.name, city.name )
 	return self.location == city
@@ -207,6 +242,7 @@ function Corps:IsPreparedToAttack()
 			return false
 		end
 		if troop.morale < troop.maxMorale * rate then
+			--InputUtility_Pause( "morale not enough", troop.morale, troop.maxMorale )
 			return false
 		end
 	end
@@ -249,30 +285,14 @@ end
 -- Operation
 
 function Corps:MoveToLocation( location )
-	--ShowText( "move to location", location.name )
+	print( NameIDToString( self ) .. " move to location", location.name )
 	self.location = location
-	for k, troop in ipairs( self.troops ) do
-		troop:MoveToLocation( location )
-	end
-end
-
-function Corps:DispatchToCity( city )
-	if self.encampment then
-		self.encampment:RemoveCorps( self )
-	end
-
-	self.encampment = city
-	for k, troop in ipairs( self.troops ) do
-		troop:DispatchToCity( city )
-	end
-	
-	Debug_Normal( "Corps [".. self.name.. "] set up an encampment in [".. city.name .. "]" )
+	g_movingActorMng:RemoveActor( MovingActorType.CORPS, self )
 end
 
 function Corps:LeadByChara( chara )
-	self.leader = chara
-	
-	--InputUtility_Pause( "Corps [".. self.name.. "] lead by [".. chara.name .. "]" )
+	self.leader = chara	
+	--InputUtility_Pause( "Corps [".. NameIDToString( self ) .. "] lead by [".. ( chara and chara.name or "" ).. "]" )
 end
 
 function Corps:Reinforce( reinforcement )
@@ -301,29 +321,19 @@ function Corps:Reinforce( reinforcement )
 	end
 end
 
-function Corps:JoinGroup( group, city )
-	self._group = group
-	self.encampment = city
+function Corps:JoinGroup( group )
+	self.group = group
 end
 
-function Corps:JoinCity( city )
-	self.encampment = city
-end
-
---killed after captured
-function Corps:Neutralize( isLeaderKilled, isLeaderBackHome )
-	for k, troop in ipairs( self.troops ) do
-		local leader = troop:GetLeader()
-		if leader then
-			if isLeaderKilled then
-				CharaDie( leader )
-			elseif isLeaderBackHome then
-				CharaBackHome( leader )
-			end
-		end
-		self._group:LoseTroop( troop )
-		g_troopDataMng:RemoveData( troop )
+function Corps:JoinCity( city, includeAll )
+	if city and city:GetGroup() ~= self:GetGroup() then
+		InputUtility_Pause( city.name .. "["..city:GetGroup().name.."] is not ", self:GetGroup().name )
+		k.p = 1
 	end
-	self._group:LoseCorps( self )
-	g_corpsDataMng:RemoveData( self )
+	self.home = city
+	if includeAll then
+		for k, troop in ipairs( self.troops ) do
+			troop:JoinCity( city, includeAll )
+		end
+	end
 end

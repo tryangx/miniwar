@@ -332,7 +332,7 @@ function Order_CharacterExecute( actor )
 	elseif type == OrderType.DECALRE_WAR then
 	elseif type == OrderType.MAKE_TRUCE then
 	elseif type == OrderType.DISPATCH_CHARA then
-		CharaDispatch( actor, args.city )
+		CharaDispatchToCity( actor, args.city )
 	elseif type == OrderType.MOVE then
 	elseif type == OrderType.REST then
 	end

@@ -1,5 +1,7 @@
 require 'randomizer'
 
+MathUtility_Randomizer = Randomizer()
+
 MathCompareMethod =
 {
 	EQUALS = 0,
@@ -41,8 +43,7 @@ end
 ]]
 function MathUtility_Shuffle( table, randomizer, desc )
 	if not randomizer then
-		randomizer = Randomizer()
-		randomizer:SetSeed( 1 )--os.time() )	
+		randomizer = MathUtility_Randomizer
 	end
 	local length = #table
 	if length > 1 then
@@ -104,19 +105,14 @@ function MathUtility_DumpWithTab( content, indent )
 	--print( str )
 end
 
-function MathUtility_DumpName( table )
-	for k, item in pairs( table ) do
-		print( item.name )
-	end
-end
-
-function MathUtility_Dump( table, indent )
+function MathUtility_Dump( table, indent, depth )
+	if not depth then depth = 3 end
 	if not indent then indent = 0 end
 	if not table then
 		print( "Dump table is invalid!" )
 		return
 	end
-	if indent > 3 then
+	if indent > depth then
 		return
 		--print( "Depth too high" )
 	end
@@ -124,7 +120,7 @@ function MathUtility_Dump( table, indent )
 	for k, v in pairs( table ) do
 		if type( v ) == "table" then
 			MathUtility_DumpWithTab( k .. "=", indent + 1 )
-			MathUtility_Dump( v, indent + 1 )
+			MathUtility_Dump( v, indent + 1, depth )
 		elseif type( v ) == "string" then
 			MathUtility_DumpWithTab( k .. "=\"" .. v .. "\"", indent + 1 )
 		elseif type( v ) == "boolean" then
@@ -406,10 +402,20 @@ function MathUtility_FindMedian( list, keyName )
 		for k, v in pairs( list ) do
 			MathUtility_Insert( list, v )
 		end
-	end	
+	end
 	local number = #list
 	if number == 0 then return 0 end
 	return list[math.ceil(number/2)]
+end
+
+function MathUtility_Filter( list, condition )
+	local ret = {}
+	for k, data in ipairs( list ) do
+		if condition( data ) then
+			table.insert( ret, data )
+		end
+	end
+	return ret
 end
 
 --[[

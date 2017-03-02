@@ -37,13 +37,12 @@ end
 
 function MovingActor:Init( type )
 	self.status      = MovingActorStatus.MOVING
-	
+	self.remainTime  = -1
 	if type == MovingActorType.CHARACTER then
 	elseif type == MovingActorType.CORPS then
 	elseif type == MovingActorType.TROOP then
 	elseif type == MovingActorType.REFUGEE then	
-		self.location = self.data.location
-		self.remainTime = -1
+		self.location = self.data.location		
 	elseif type == MovingActorType.BARBARIAN then
 	elseif type == MovingActorType.CASH_TRUCK then
 		self.location    = self.data.location
@@ -108,10 +107,37 @@ function MovingActorManager:GetList( type )
 	return list
 end
 
-function MovingActorManager:AddMovingActor( actorType, data )
+function MovingActorManager:HasActor( actorType, actor )
+	local list = self:GetList( actorType )
+	return list and list[actor.id] ~= nil
+end
+
+function MovingActorManager:RemoveActor( actorType, actor )
+	local list = self:GetList( actorType )
+	if list and actor then
+		list[actor.id] = nil
+	end
+end
+
+function MovingActorManager:AddActor( actorType, actor, data )
+	local m
+	local list = self:GetList( actorType )
+	m = list[actor.id]
+	if actor.id and m then
+		print( "exist moving actor=", m.data and m.data.reason or "" )
+		InputUtility_Pause( "Add id=" .. NameIDToString( actor ), ( data and data.reason or "" ) )
+		return
+	end
+	m = MovingActor()
+	m.id = actor.id
+	m.data = data
+	list[m.id] = m
+end
+
+function MovingActorManager:CreateActor( actorType, data )
 	local list = self:GetList( actorType )
 	if data.id and list[data.id] then
-		--InputUtility_Wait( "Moving actor is exist! id=" .. data.id )
+		InputUtility_Pause( "Create Moving actor is exist! id=" .. data.id )
 		return
 	end
 	local actor = MovingActor()	
@@ -123,7 +149,7 @@ function MovingActorManager:AddMovingActor( actorType, data )
 	end
 	list[actor.id] = actor
 	
-	ShowText( "new moving actor=".. actor.id, MathUtility_FindEnumName( MovingActorType, actorType ), actor.location and actor.location.name or "", actor.destination and actor.destination.name or "" )
+	--ShowText( "create moving actor=".. actor.id, MathUtility_FindEnumName( MovingActorType, actorType ), actor.location and actor.location.name or "", actor.destination and actor.destination.name or "" )
 end
 
 function MovingActorManager:Dump()
@@ -139,18 +165,13 @@ end
 
 function MovingActorManager:Update( elapsedTime )
 	for actorType, list in pairs( self.lists ) do
-		local removeList = {}
 		for id, actor in pairs( list ) do
 			actor:Update( actorType, elapsedTime )
 			if actor:IsFinished() then
-				table.insert( removeList, actor )
+				--ShowText( MathUtility_FindEnumName( MovingActorType, actorType ) .. " id=" .. actor.id .. " finished" )
+				list[id] = nil
 			end
 		end
-		for k, actor in ipairs( removeList ) do
-			ShowText( MathUtility_FindEnumName( MovingActorType, actorType ) .. " id=" .. actor.id .. " finished" )
-			MathUtility_RemoveAndReserved( list, actor )
-		end		
-		removeList = nil
 	end
 	
 	self:Dump()

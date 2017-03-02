@@ -192,7 +192,7 @@ function Game:Init()
 	Debug_SetFileMode( false )	
 
 	self.turn = 0
-	self.maxTurn = 200
+	self.maxTurn = 120
 	
 	g_gameEvent:InitData()
 	
@@ -296,7 +296,6 @@ function Game:PreprocessGameData()
 	-- 2. generate list
 	-- 3. set default value
 	
-	self._troopList = {}
 	g_troopDataMng:Foreach( function ( data )
 		data:ConvertID2Data()
 		
@@ -316,8 +315,6 @@ function Game:PreprocessGameData()
 				elseif not hasMelee and not data:IsSiegeUnit() then Debug_Log( "["..data.name.."] don't have melee weapon" ) end
 			end
 		end
-		
-		table.insert( self._troopList, data )
 	end )
 	
 	self._combatList = {}
@@ -375,7 +372,7 @@ function Game:Run()
 				city:Dump()
 			end
 		end
-		--g_taskMng:DumpResult()
+		g_taskMng:DumpResult()
 		g_diplomacy:DumpResult()
 		g_statistic:Dump()
 	end
@@ -434,13 +431,13 @@ function Game:NextTurn()
 	if self.winner then Debug_Normal( "Winner is " .. NameIDToString( self.winner ) ) return end
 	
 	self.turn = self.turn + 1
-	ShowText( "####################################" )
-	print( "############# Turn=" .. self.turn .. " ##############" )
+	ShowText( "####################################" )	
+	
 		
 	local elapsedTime = GlobalConst.ELPASED_TIME
 	g_statistic:ElapseTime( elapsedTime )	
-	g_calendar:ElapseDay( elapsedTime )	
-	print( g_calendar:CreateCurrentDateDesc( true ) )
+	g_calendar:ElapseDay( elapsedTime )		
+	print( "############# Turn=" .. self.turn .. " " .. g_calendar:CreateCurrentDateDesc( true ) )
 	
 	-- Event Flow	
 	g_gameEvent:Trigger()
@@ -487,6 +484,7 @@ function Game:DrawMap()
 			return "       "
 		end )
 	end
+	g_taskMng:Dump()
 	--InputUtility_Pause()
 end
 
@@ -530,7 +528,7 @@ function Game:ActionFlow()
 				self.winner = group
 			end
 			--group:DumpDiplomacyMethod()
-			g_meeting:HoldGroupMeeting( self, group )
+			--g_meeting:HoldGroupMeeting( self, group )
 			--InputUtility_Pause( "Group meeting... " )
 			--break
 			if group:IsIndependence() then
@@ -551,9 +549,8 @@ function Game:ActionFlow()
 	
 	-- Hold City Meeting
 	for k, city in ipairs( self._cityList ) do
-		--ShowText( city.name, city ~= city:GetGroup():GetCapital(), city:GetNumOfIdleChara() )
-		if city:GetGroup() and city ~= city:GetGroup():GetCapital() and city:GetNumOfIdleChara() > 0 then						
-			--g_meeting:HoldCityMeeting( self, city )
+		if city:GetGroup() and not city:GetGroup():IsFallen() then
+			g_meeting:HoldCityMeeting( self, city )
 		end
 	end	
 
@@ -584,20 +581,16 @@ function Game:Update( elpasedTime )
 	for k, city in ipairs( self._cityList ) do		
 		city:Update()
 		g_statistic:CountCity( city )
-		g_charaTemplate:CheckCity( city )
+		g_charaTemplate:CheckNumOfCharaInCity( city )
 	end
-	--[[
-	for k, corps in ipairs( self._corpsList ) do		
-		corps:Update()
-		g_statistic:CountCorps( corps )
-	end
-	]]
-	--[[
-	for k, troop in ipairs( self._troopList ) do		
-		troop:Update()
-		g_statistic:CountTroop( troop )
-	end
-	]]	
+	g_corpsDataMng:Foreach( function ( data )
+		data:Update()
+		g_statistic:CountCorps( data )
+	end )
+	g_troopDataMng:Foreach( function ( data )
+		data:Update()
+		g_statistic:CountTroop( data )
+	end )
 	for k, chara in ipairs( g_statistic.activateCharaList ) do
 		chara:Update( elapsedTime )
 	end

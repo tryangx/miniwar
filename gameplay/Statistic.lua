@@ -45,13 +45,13 @@ function Statistic:__init()
 	
 	--Proposal
 	self.submitProposals = {}
-	self.noProposals = {}
 	
 	--Tasks
 	self.cancelTasks= {}
 end
 
 function Statistic:ClearCharaList()
+	InputUtility_Pause( "clear chara lsit" )
 	self.activateCharaList  = {}
 	self.outCharacterList   = {}
 	self.otherCharacterList = {}
@@ -63,11 +63,6 @@ end
 
 function Statistic:SubmitProposal( desc )
 	table.insert( self.submitProposals, desc )
-end
-
-function Statistic:NoProposal( group )
-	local desc = group.name .. " " .. g_calendar:CreateCurrentDateDesc()
-	table.insert( self.noProposals, desc )
 end
 
 function Statistic:CancelTask( desc )
@@ -89,7 +84,7 @@ end
 function Statistic:RemoveActivateChara( chara )	
 	MathUtility_Remove( self.activateCharaList, chara.id, "id" )
 end
-function Statistic:RemoveOutChara( chara )	
+function Statistic:RemoveOutChara( chara )
 	MathUtility_Remove( self.outCharacterList, chara.id, "id" )
 end
 function Statistic:AddPrisonerChara( chara )
@@ -143,13 +138,6 @@ function Statistic:CountCity( city )
 	table.insert( self.cities, city )
 	
 	self.pouplationUnderRule = self.pouplationUnderRule + city.population
-	
-	for k, corps in ipairs( city.corps ) do
-		self:CountCorps( corps )
-	end
-	for k, troop in ipairs( city.troops ) do
-		self:CountTroop( troop )
-	end
 end
 
 -------------------------------------
@@ -220,7 +208,7 @@ function Statistic:CountSoldier( number )
 end
 
 function Statistic:GroupFall( group )
-	table.insert( self.fallenGroups, group.name .. g_calendar:CreateCurrentDateDesc() )
+	table.insert( self.fallenGroups, group.name .. " " .. g_calendar:CreateCurrentDateDesc() )
 end
 
 function Statistic:CityFall( city, group )
@@ -273,15 +261,10 @@ function Statistic:Dump()
 		ShowText( "  proposals(".. #group.proposals ..")" )
 		group:Dump()
 		for k, desc in ipairs( group.proposals ) do
-			--ShowText( "", "", desc )
+			ShowText( "", "", desc )
 		end
 	end	
-	
-	ShowText( "No Proposal   = " .. #self.noProposals )
-	for k, desc in ipairs( self.noProposals ) do
-		--ShowText( "    " .. desc )
-	end
-	
+
 	ShowText( "Cancel Task   = " .. #self.cancelTasks )
 	for k, desc in ipairs( self.cancelTasks ) do
 	--	ShowText( "    " .. desc )
@@ -289,7 +272,10 @@ function Statistic:Dump()
 	
 	ShowText( "City          = " .. #self.cities )
 	for k, city in ipairs( self.cities ) do
-	--	city:Dump()
+		print( city.name )
+		local corpsList = city:GetPreparedToAttackCorpsList()
+		local tarList = city:GetAdjacentBelligerentCityList()
+		print( "	ready corps="..#corpsList .."/" .. #city.corps, " tar=" .. Helper_ConcatListName( tarList ) )
 	end
 		
 	self:DumpCharaDetail()
@@ -320,6 +306,8 @@ function Statistic:Dump()
 	ShowText( "Pass time     = " .. math.floor( self.elapsedTime / 360 ) .. "Y" .. math.floor( ( self.elapsedTime % 360 ) / 30 ) .. "M" .. math.floor( self.elapsedTime % 30 ) .. "D" )
 	
 	ShowText( "Cur Time      = " .. g_calendar:CreateCurrentDateDesc() )
+	
+	ShowText( "Seed          = " .. g_syncRandomizer:GetSeed() .. "," .. g_asyncRandomizer:GetSeed() )
 	
 	--MathUtility_Dump( self.submitProposals )
 end

@@ -9,9 +9,14 @@ end
 
 function QueryGroupCharaLimit( group )
 	local leader = group:GetLeader()
-	local params = CharacterParams.SUBORDINATE_LIMIT[leader:GetJob()]
-	if not params then params = CharacterParams.SUBORDINATE_LIMIT.DEFAULT end
-	return params
+	if not leader then
+		InputUtility_Pause( "chara limit with no leader")
+	end
+	local number = CharacterParams.SUBORDINATE_LIMIT[leader:GetJob()]	
+	if not number then
+		number = CharacterParams.SUBORDINATE_LIMIT.DEFAULT
+	end
+	return number
 end
 
 ------------------------------
@@ -124,7 +129,7 @@ end
 
 function CalcSpendTimeOnRoad( currentCity, targetCity )
 	if not currentCity or not targetCity then
-		ShowText( "invalid city, cann't calculate time spend on the road" .. currentCity, targetCity )
+		ShowText( "invalid city, cann't calculate time spend on the road", currentCity, targetCity )
 		return 0
 	end
 	local pos1 = currentCity:GetCoordinate()
@@ -255,4 +260,9 @@ function EvaluateDiplomacySuccessRate( method, relation, group, target )
 		end
 	end
 	return math.floor( prob )
+end
+------------------------------
+-- Troop relative
+function QueryRecruitTroopNumber( troop )
+	return troop.maxNumber * GroupParams.RECRUIT.RECRUIT_NUMBER_MODULUS
 end

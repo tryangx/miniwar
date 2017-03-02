@@ -74,7 +74,7 @@ function Character:Load( data )
 	self.status   = CharacterStatus[data.status] or CharacterStatus.NORMAL
 	
 	--Current location( city )
-	self.location = data.location or 0	
+	self.location = data.location or 0		
 	
 	--Stay location( city )
 	self.home     = data.home or 0
@@ -83,11 +83,11 @@ function Character:Load( data )
 	
 	self.action   = data.action or CharacterAction.NONE
 	
-	------------------------------------
-	-- Dynamic Data
-	self.troop    = data.troop or 0
+	self.troop    = data.troop or nil
+	self.group    = data.group or nil
 	
-	self._group   = nil
+	------------------------------------
+	-- Dynamic Data	
 	self._corps   = nil	
 	self._submitProposal = nil
 end
@@ -127,7 +127,6 @@ end
 
 function Character:ConvertID2Data()
 	self.location = g_cityDataMng:GetData( self.location )
-	
 	self.home     = self.home == 0 and self.location or g_cityDataMng:GetData( self.home )
 	
 	local traits = {}
@@ -145,8 +144,17 @@ function Character:ConvertID2Data()
 end
 
 function Character:Dump( indent )
-	if not indent then indent = "" end
-	local content = indent .. "Chara [".. self.name .. "] Stay [".. self.location.name .. "] st=" .. self.stamina .. " job=" .. MathUtility_FindEnumName( CharacterJob, self.job ) .. " Task=" .. ( g_taskMng:GetTaskByActor( self ) and "True" or "False" )
+	if not indent then indent = "" end	
+	local content = indent .. "Chara " .. NameIDToString( self )
+	content = content .. " Stay=".. self.location.name .. " st=" .. self.stamina .. " job=" .. MathUtility_FindEnumName( CharacterJob, self.job )
+	local task = g_taskMng:GetTaskByActor( self )
+	if task then
+		content = content .. " Task=" .. MathUtility_FindEnumName( TaskType, task.type )
+	end
+	if self.troop then
+		content = content .. " Troop=" .. self.troop.name
+	end
+	content = content .. " sts=" .. MathUtility_FindEnumName( CharacterStatus, self.status )
 	ShowText( content )
 end
 
@@ -165,19 +173,27 @@ function Character:HasPriviage( checkPriviage )
 	return false
 end
 
+function Character:IsMoreImportant( chara )
+	if self:GetJob() % 100 > chara:GetJob() % 100 then return true end
+	if self.trust > reference.trust then return true end
+	if self.contribution > reference.contribution  then return true end
+	return false
+end
+
+function Character:IsInService()
+	return self.status == CharacterStatus.NORMAL
+end
+
 function Character:IsAlive()
 	return self.status ~= Characterstatus.DEAD
 end
 
 function Character:IsGroupLeader()
-	if not self._group then
-		ShowText( self.name )
-	end
-	return self._group and self._group:GetLeader() == self
+	return self.group and self.group:GetLeader() == self
 end
 
 function Character:IsAtHome()
-	return self.location == self.home
+	return self.location == self.home and not g_movingActorMng:HasActor( MovingActorType.CHARACTER, self )
 end
 
 function Character:IsStayCity( city )
@@ -189,7 +205,7 @@ function Character:GetTroop()
 end
 
 -- Job Relative
-function Character:IsImportant()
+function Character:IsMoreImportant()
 	return self.job >= CharacterJob.IMPORTANT_JOB
 end
 function Character:IsCivialOfficial()
@@ -207,7 +223,7 @@ end
 -- Getter
 
 function Character:GetGroup()
-	return self._group
+	return self.group
 end
 
 function Character:GetHome()
@@ -243,72 +259,52 @@ end
 -- Operation
 
 function Character:MoveToLocation( location )
-	if not location then
-		print( self.name, self:GetTroop() )
-		p.name = 1
-	end
+	--print( NameIDToString( self ) .. " move from " .. ( self.location and self.location.name or "" ) .. "->" .. ( location and location.name or "" ) )
 	self.location = location
+	g_movingActorMng:RemoveActor( MovingActorType.CHARACTER, self )
 end
 
-function Character:DispatchToCity( city )
-	if self.home then
-		self.home:CharaOut( self )
-	end
-	self.home = city
-	city:CharaLive( self )	
-end
-
-function Character:LeadTroop( troop )	
-	local corps = self.troop and self.troop:GetCorps() or nil
-	if troop then
-		troop:LeadByChara( self )
-		self.troop = troop
-		if corps and not corps:GetLeader() then
-			corps:LeadByChara( self )
-		end
-	else	
-		self.troop:LeadByChara( nil )
-		self.troop = nil
-		if corps and corps:GetLeader() == self then
-			corps:LeadByChara( nil )
-		end
-	end
+function Character:LeadTroop( troop )
+	self.troop = troop
 end
 
 function Character:JoinCity( city )
+	if city and city:GetGroup() ~= self:GetGroup() then
+		print( self.name, city:GetGroup(), self:GetGroup(), city.name )
+		InputUtility_Pause( city.name .. "["..( city:GetGroup() and city:GetGroup().name or "" ).."] is not ", ( self:GetGroup() and self:GetGroup().name or "" ) )
+		k.p = 1
+	end
 	self.home = city
+	print( NameIDToString( self ), "join=" .. ( city and city.name or "" ) )	
 end
 
-function Character:JoinGroup( group, city )
-	--leave past group & city
-	if self.home then
-		self.home:CharaLeave( self )
-	end
-	--join new group
-	self._group = group
-	self.home = city
+function Character:JoinGroup( group )
+	if group and self.group and self.group ~= group then print( self.name .. "	join ", group.name ) end
+	self.group = group
+	--if self.id == 800 then InputUtility_Pause( "join", self.name, group and group.name or "" ) end
 end
 
 -- When the group which character works in is fallen,
 function Character:Out()
-	self._group = nil	
+	print( self.name, "chara out" )
 	self.status = CharacterStatus.OUT
 	self.job = CharacterJob.NONE
 end
 
 function Character:Leave()
-	self._group = nil
+	print( self.name, "chara leave")
 	self.status = CharacterStatus.LEAVE
 	self.job = CharacterJob.NONE
 end
 
 function Character:Die()
-	self._group = nil
+	print( self.name .. " die" )
 	self.status = CharacterStatus.DEAD
 	self.job = CharacterJob.NONE
 end
 
 function Character:Captured()
+	print( self.name .. " captured" )
 	self.status = CharacterStatus.PRISONER
 end
 
@@ -358,7 +354,7 @@ function Character:GetPromoteList()
 end
 
 function Character:IsFree()
-	return not self:GetTroop() and not self:IsImportant() and self:IsAtHome() and not g_taskMng:GetTaskByActor( self )
+	return not self:GetTroop() and not self:IsMoreImportant() and self:IsAtHome() and not g_taskMng:GetTaskByActor( self )
 end
 
 function Character:SubmitProposal( proposal )

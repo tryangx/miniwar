@@ -454,6 +454,7 @@ function Meeting:ConfirmProposalFlow( proposal )
 			self.subFlow = MeetingSubFlow["SUB_" .. MathUtility_FindEnumKey( CharacterProposal, proposal.type )]
 			--ShowText( "subflow=" .. MathUtility_FindEnumName( MeetingSubFlow, self.subFlow ), self.subFlow, proposal.type, MathUtility_FindEnumKey( CharacterProposal, proposal.type )  )			
 		else
+			--print( "!!!" .. self:CreateProposalDesc( proposal ) .. proposal.proposer.name )
 			g_taskMng:IssueTaskByProposal( proposal )
 		end
 	end
@@ -1395,7 +1396,7 @@ function Meeting:HoldGroupMeeting( game, group )
 	if group:GetCapital() and group:GetCapital():GetGroup() == group then
 		--ShowText( "check group", group.name, group:GetCapital().name, #group:GetCapital().charas )
 		group:GetCapital():ForeachChara( function ( chara )	
-			if chara:IsStayCity( group:GetCapital() ) and not chara:IsGroupLeader() and not g_taskMng:GetTaskByActor( chara ) then
+			if chara:IsAtHome() and not chara:IsGroupLeader() and not g_taskMng:GetTaskByActor( chara ) then
 				-- In further, we should consider about no presence by ill or other reason
 				table.insert( charaList, chara )
 			end
@@ -1412,11 +1413,11 @@ function Meeting:HoldGroupMeeting( game, group )
 	end
 	--ShowText( "++++++++++ Group Meeting Start ++++++++++++++++" )	
 	self.acceptProposals = 0
-	self.flow = MeetingFlow.GROUP_DISCUSS_FLOW	
+	self.flow = MeetingFlow.GROUP_DISCUSS_FLOW
 	self:UpdateStatus( MeetingStatus.START )
 	if self.acceptProposals == 0 then
-		--print( group.name .. " noproposal" )
-		g_statistic:NoProposal( self._group )
+		--	print( group.name .. " noproposal", #charaList, #group:GetCapital().charas )
+		--self._group:ExecuteProposal( group.name .. " No Proposal " .. g_calendar:CreateCurrentDateDesc() )
 	end
 	--ShowText( "++++++++++ Group Meeting End ++++++++++++++++" )
 	--ShowText( "" )	
@@ -1426,9 +1427,15 @@ function Meeting:HoldGroupMeeting( game, group )
 	self.collectProposals = {}
 end
 
-function Meeting:HoldCityMeeting( game, city )	
+function Meeting:HoldCityMeeting( game, city )
+	if city:IsInSiege() then
+		--print( city.name .. " in siege, cann't hold meeting" )
+		return
+	end
+
 	self.type = MeetingType.CITY_DISCUSS
 	self._game = game
+	self._group  = city:GetGroup()
 	self._city = city
 	self._leader = city:GetLeader()
 	self._chara  = nil
@@ -1436,30 +1443,38 @@ function Meeting:HoldCityMeeting( game, city )
 	self._hasCollectProposal = false
 	self._entrust = false
 
-	local leader = nil
 	local charaList = {}	
 	for k, chara in ipairs( city.charas ) do
-		if chara:IsStayCity( city ) and chara ~= city:GetLeader() then			
+		if chara:IsAtHome() and chara ~= city:GetLeader() then
+			--print( chara.name .. " attend" )
 			table.insert( charaList, chara )
 			if chara == city:GetLeader() then
 				self._leader = chara
 			end
-			if not leader or leader.contribution < chara.contribution then
-				leader = chara
-			end
 		end
-	end	
+	end
+	
 	if not self._leader then
-		self._leader = leader
-	end	
+		--print( city.name .. " no leader="..#city.charas )
+		return
+	end
+	
+	--if not self._leader then self._leader = leader end
 	self._participants = charaList
 	MathUtility_Shuffle( charaList )
 	
 	city:Dump()	
-	--ShowText( "CityMeeting Attend=", #charaList )
+	self.acceptProposals = 0
+	--print( city.name .. " CityMeeting Attend=", #charaList )
 	--ShowText( "++++++++++ City Meeting Start ++++++++++++++++" )
 	self.flow = MeetingFlow.CITY_DISCUSS_FLOW
 	self:UpdateStatus( MeetingStatus.START )
+	if self.acceptProposals == 0 then
+		--	print( group.name .. " noproposal", #charaList, #group:GetCapital().charas )
+		local cityList = city:GetAdjacentBelligerentCityList()
+		local corpsList = city:GetPreparedToAttackCorpsList()
+		--self._group:ExecuteProposal( "[" .. city.name .. "] NoProposal " .. " chara=" .. #charaList .. " adjaBelli="..#cityList .. " readyCorp=" ..#corpsList  .. " " .. g_calendar:CreateCurrentDateDesc( true, true ) )
+	end
 	--ShowText( "++++++++++ City Meeting End ++++++++++++++++" )
 	--ShowText( "" )
 	if not self._game:IsPlayer( self._leader ) and self._game.player and city:GetGroup() == self._game.player:GetGroup() then

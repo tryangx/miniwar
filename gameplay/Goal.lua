@@ -54,6 +54,7 @@ function CancelGroupShortTermGoal( group )
 		end
 	end
 	if shortTermGoal then
+		--decrease reputation 10
 		group:RemoveAsset( GroupTag.REPUTATION, 10 )
 	end
 end

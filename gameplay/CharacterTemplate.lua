@@ -65,6 +65,7 @@ function CharacterTemplate:__init()
 	self.familyNameProb = 0
 	self.givenNameProb  = 0
 	self.retryTime = 0
+	self.generateChara = 0
 end
 
 function CharacterTemplate:GenerateName()
@@ -114,14 +115,12 @@ function CharacterTemplate:GenerateName()
 	return finalName
 end
 
-function CharacterTemplate:CheckCity( city )
-	if Random_SyncGetRange( 1, 10000 ) > 3500 then return end
+function CharacterTemplate:CheckNumOfCharaInCity( city )
 	local need = QueryCityNeedChara( city )
-	if #city.charas >= need then return end	
 	local has = g_statistic:QueryNumberOfCharaInCity( city )
-	if has >= need then return end
-	
-	--ShowText( city.name, " need chara=", has .. "/" .. need )
+	--print( city.name .. " chara=" .. has .."/" .. need, #city.charas )	
+	if #city.charas >= need then return end	
+	if has >= math.ceil( need * 0.5 ) then return end
 	table.insert( self.cityList, city )
 end
 
@@ -137,13 +136,16 @@ function CharacterTemplate:GenerateOutChara( city )
 	
 	g_statistic:AddOutChara( chara )
 	
-	ShowText( "generate chara ", NameIDToString( chara ) .. " in " .. city.name, "retry=" .. self.retryTime )
-	--InputUtility_Pause()
+	self.generateChara = self.generateChara + 1
+	
+	--InputUtility_Pause( "generate chara ", NameIDToString( chara ) .. " in " .. city.name, "retry=" .. self.retryTime, "tot=" .. self.generateChara )
 end
 
-function CharacterTemplate:Update( elapsedTime )	
-	local numberOfChara = Random_SyncGetRange( 1, 3 )
-	--MathUtility_Shuffle( self.cityList, g_syncRandomizer )
+function CharacterTemplate:Update( elapsedTime )
+	if #g_statistic.outCharacterList > math.ceil( g_plotMap:GetNumOfPlot() * GlobalConst.LIMIT_OUTCHARA_BY_PLOT_MODULUS ) then return end
+
+	local numberOfChara = Random_SyncGetRange( GlobalConst.MIN_GENERATE_OUTCHARA_PER_TURN, GlobalConst.MAX_GENERATE_OUTCHARA_PER_TURN )
+	MathUtility_Shuffle( self.cityList, g_syncRandomizer )
 	for k, city in ipairs( self.cityList ) do
 		if numberOfChara <= 0 then break end
 		self:GenerateOutChara( city )

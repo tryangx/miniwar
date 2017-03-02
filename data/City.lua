@@ -39,6 +39,9 @@ function City:Load( data )
 	
 	self.militaryService = self.militaryService or 0
 
+	--determine how many military soldier attend when it's in siege
+	self.defence     = data.defence or 0	
+
 	-----------------------------------
 	-- extension
 	
@@ -73,7 +76,7 @@ function City:Load( data )
 	
 	-----------------------------------
 	-- Dynamic Data
-	self._group         = nil
+	self.group         = nil
 		
 	self._militaryPower = -1	
 	self._canBuildConstructions = nil
@@ -133,8 +136,9 @@ function City:ConvertID2Data()
 		table.insert( constrs, g_constrTableMng:GetData( id ) )
 	end
 	self.constrs = constrs
-		
+
 	self.leader = g_charaDataMng:GetData( self.leader )
+	
 	local charas = {}
 	for k, id in ipairs( self.charas ) do
 		local chara = g_charaDataMng:GetData( id )		
@@ -152,9 +156,9 @@ function City:ConvertID2Data()
 			
 			--helper check
 			--ShowText( "check data", self.id, self.name, chara.name )
-			if self._group and not self._group:HasChara( chara ) then
-				self._group:CharaJoin( chara )
-				chara:JoinGroup( self._group, self )				
+			if self.group and not self.group:HasChara( chara ) then
+				self.group:AddChara( chara )
+				chara:JoinGroup( self )				
 				Debug_Assert( nil, "Chara is in the city, but not not in the group" )
 			end
 		end
@@ -164,10 +168,11 @@ function City:ConvertID2Data()
 	local troops = {}
 	for k, id in ipairs( self.troops ) do
 		local troop = g_troopDataMng:GetData( id )
-		if troop.encampment == 0 then
-			--ShowText( "Add missing encampment data for troop" )
-			troop.location   = self.id
-			troop.encampment = self.id
+		if troop.home == 0 then
+			--ShowText( "Add missing home data for troop" )
+			troop.location = self.id
+			troop.home     = self.id
+			troop:JoinGroup( self.group )
 		end
 		table.insert( troops, troop )
 	end
@@ -317,13 +322,9 @@ end
 
 function City:IsAdjacentGroup( group )
 	for k, city in ipairs( self.adjacentCities ) do
-		if city._group == group then return true end
+		if city:GetGroup() == group then return true end
 	end
 	return false
-end
-
-function City:IsBelongToGroup( group )
-	return self._group == group
 end
 
 ----------------------------------
@@ -331,11 +332,19 @@ end
 ----------------------------------
 
 function City:GetGroup()
-	return self._group
+	return self.group
 end
 
 function City:GetLeader()
 	return self.leader
+end
+
+function City:GetPower()
+	local power =  0
+	for k, troop in ipairs( self.corps ) do
+		power = troop:GetPower()
+	end
+	return power
 end
 
 function City:GetCoordinate()
@@ -375,7 +384,7 @@ end
 -- character who can attend meeting
 function City:GetNumOfIdleChara()
 	return Helper_CountIf( self.charas, function( chara )
-		return chara:IsStayCity( self ) and not g_taskMng:GetTaskByActor( chara )
+		return chara:IsAtHome() and not g_taskMng:GetTaskByActor( chara )
 	end )
 end
 
@@ -398,67 +407,67 @@ end
 
 function City:GetFreeMilitaryOfficerList()
 	return Helper_ListIf( self.charas, function( chara )
-		return not chara:GetTroop() and chara:IsStayCity( self ) and chara:IsMilitaryOfficer() and not g_taskMng:GetTaskByActor( chara )
+		return not chara:GetTroop() and chara:IsAtHome() and chara:IsMilitaryOfficer() and not g_taskMng:GetTaskByActor( chara )
 	end )
 end
 
 function City:GetIdleCorpsList()
 	return Helper_ListIf( self.corps, function( corps )
-		return corps:IsStayCity( self ) and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsAtHome() and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
 
-function City:GetPreparedToAttackCorpsList()
+function City:GetPreparedToAttackCorpsList( hint )
 	return Helper_ListIf( self.corps, function( corps )
-		return corps:IsStayCity( self ) and corps:IsPreparedToAttack() and not g_taskMng:GetTaskByActor( corps ) and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsAtHome() and corps:IsPreparedToAttack() and not g_taskMng:GetTaskByActor( corps ) and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
 
 -- Idle corps means Staying in city
 function City:GetNumOfIdleCorps()
 	return Helper_CountIf( self.corps, function( corps )
-		return not corps:IsStayCity( self ) and not g_taskMng:GetTaskByActor( corps )
+		return not corps:IsAtHome() and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
 
 function City:GetNumOfVacancyCorps()
 	return Helper_CountIf( self.corps, function ( corps )
-		return corps:IsStayCity( self ) and corps:GetVacancyNumber() > 0 and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsAtHome() and corps:GetVacancyNumber() > 0 and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
 function City:GetVacancyCorpsList()
 	return Helper_ListIf( self.corps, function ( corps )
-		return corps:IsStayCity( self ) and corps:GetVacancyNumber() > 0 and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsAtHome() and corps:GetVacancyNumber() > 0 and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
 function City:GetUnderstaffedCorpsList()
 	return Helper_ListIf( self.corps, function ( corps )
-		return corps:IsStayCity( self ) and corps:IsUnderstaffed() and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsAtHome() and corps:IsUnderstaffed() and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
 function City:GetNumOfUnderstaffedCorps()
 	return Helper_CountIf( self.corps, function ( corps )
-		return corps:IsStayCity( self ) and corps:IsUnderstaffed() and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsAtHome() and corps:IsUnderstaffed() and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
 function City:GetUntrainedCorpsList()
 	return Helper_ListIf( self.corps, function ( corps )
-		return corps:IsStayCity( self ) and corps:IsUntrained() and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsAtHome() and corps:IsUntrained() and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
 function City:GetNumOfUntrainedCorps()
 	return Helper_CountIf( self.corps, function ( corps )
-		return corps:IsStayCity( self ) and corps:IsUntrained() and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsAtHome() and corps:IsUntrained() and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
 function City:GetNumOfNonLeaderTroop()
 	return Helper_CountIf( self.troops, function ( troop )	
-		return ( not troop:GetCorps() or troop:GetCorps():IsStayCity( self ) ) and not troop:GetLeader() and not g_taskMng:GetTaskByActor( troop )
+		return ( not troop:GetCorps() or troop:GetCorps():IsAtHome() ) and not troop:GetLeader() and not g_taskMng:GetTaskByActor( troop )
 	end )
 end
 function City:GetNonLeaderTroopList()
 	return Helper_ListIf( self.troops, function( troop )
-		return ( not troop:GetCorps() or troop:GetCorps():IsStayCity( self ) ) and not troop:GetLeader() and not g_taskMng:GetTaskByActor( troop )
+		return ( not troop:GetCorps() or troop:GetCorps():IsAtHome() ) and not troop:GetLeader() and not g_taskMng:GetTaskByActor( troop )
 	end )
 end
 
@@ -590,7 +599,7 @@ end
 function City:GetBuildList()
 	if self._canBuildConstructions then return self._canBuildConstructions end
 	self._canBuildConstructions = {}	
-	for k, constr in ipairs( self._group._canBuildConstructions ) do				
+	for k, constr in ipairs( self.group._canBuildConstructions ) do				
 		local match = true		
 		if MathUtility_IndexOf( self.constrs, constr.id, "id" ) then
 			match = false
@@ -608,7 +617,7 @@ end
 function City:GetRecruitList()
 	if self._canRecruitTroops then return self._canRecruitTroops end
 	self._canRecruitTroops = {}
-	for k, troop in ipairs( self._group._canRecruitTroops ) do
+	for k, troop in ipairs( self.group._canRecruitTroops ) do
 		local match = self:CanRecruitTroop( troop )
 		if match then
 			table.insert( self._canRecruitTroops, troop )
@@ -684,7 +693,7 @@ function City:CanBuildConstruction( constr )
 	end
 	
 	if constr.prerequisites.money then
-		if self.city < constr.prerequisites.money and self._group:GetMoney() < constr.prerequisites.money then
+		if self.city < constr.prerequisites.money and self.group:GetMoney() < constr.prerequisites.money then
 			return false
 		end
 	end
@@ -711,7 +720,7 @@ function City:CanRecruitTroop( troop )
 			end
 		end
 	end	
-	if troop.prerequisites.money and self._group:GetMoney() < troop.prerequisites.money then
+	if troop.prerequisites.money and self.group:GetMoney() < troop.prerequisites.money then
 		return false
 	end	
 	return true
@@ -751,7 +760,11 @@ function City:DumpCharaDetail( indent )
 	if #self.charas == 0 then return end
 	local content = indent .. "    "
 	for k, chara in ipairs( self.charas ) do
-		content = content .. ( k > 1 and ", " or "" ) .. chara.name .. ( g_taskMng:GetTaskByActor( chara ) and "(busy)" or "" )
+		content = content .. ( k > 1 and ", " or "" ) .. chara.name
+		if g_taskMng:GetTaskByActor( chara ) then content = content .. "(busy)" end
+		if chara:GetTroop() then content = content .. "("..NameIDToString( chara:GetTroop() )..")" end
+		if chara:IsAtHome() then content = content .. "(home)" end
+		content = content .. ( chara:GetGroup() and chara:GetGroup().name or "" )
 	end
 	ShowText( content )
 end
@@ -764,10 +777,12 @@ function City:DumpTroopDetail( indent )
 	for k, troop in ipairs( self.troops ) do
 		if troop:GetCorps() then
 			inCorps = inCorps + 1
-			contentInCorps = contentInCorps .. NameIDToString( troop ).. "(".. troop.number..") "
+			contentInCorps = contentInCorps .. NameIDToString( troop ).. "+".. troop.number.." "
+			if troop:GetLeader() then contentInCorps = contentInCorps .. "LD=" .. troop:GetLeader().name end
 		else
 			nonCorps = nonCorps + 1
 			contentNonCorps = contentNonCorps .. NameIDToString( troop ).. "(".. troop.number..") "
+			if troop:GetLeader() then contentNonCorps = contentNonCorps .. "LD=" .. troop:GetLeader().name end
 		end		
 	end
 	ShowText( indent .. "    " .. "InGroup=" .. inCorps )
@@ -797,8 +812,17 @@ end
 function City:DumpAdjacentDetail( indent )
 	if #self.adjacentCities == 0 then return end
 	local content = indent .. "Adja="
+	local group = self:GetGroup()
 	for k, city in ipairs( self.adjacentCities ) do
-		content = content .. ( k > 1 and "," or "" ) .. city.name .. "(" .. (city:GetGroup() and city:GetGroup().name or "" ) .. ")"
+		content = content .. ( k > 1 and "," or "" ) .. city.name
+		local otherGroup = city:GetGroup()		
+		if otherGroup and otherGroup ~= group then
+			content = content .. "-" .. city:GetGroup().name
+			local relation = group:GetGroupRelation( otherGroup.id )
+			if relation then
+				content = content .. "+" .. MathUtility_FindEnumName( GroupRelationType, relation.type )
+			end
+		end
 	end
 	ShowText( content )
 end
@@ -826,12 +850,14 @@ function City:DumpSimple( indent )
 	ShowText( indent .. '[City] #' .. self.id .. ' Name=' .. self.name )
 end
 
-function City:Dump( indent )
-	if 1 then return end
-	if IsSimulating() then return end
+function City:Dump( indent, force )
+	if not force then
+		if 1 then return end
+		if IsSimulating() then return end
+	end
 	if not indent then indent = "" end	
 	ShowText( '>>>>>>>>>>>  City >>>>>>>>>>>>>>>>>' )
-	ShowText( indent .. '[City] #' .. self.id .. ' Name=' .. self.name .. ' Group=' .. ( self._group and self._group.name or "[none]" ) )
+	ShowText( indent .. '[City] #' .. self.id .. ' Name=' .. self.name .. ' Group=' .. ( self.group and self.group.name or "[none]" ) )
 	self:DumpAdjacentDetail( indent )
 	ShowText( indent .. 'Popu/Mil Serv  ', Helper_CreateNumberDesc( self.population ) .. "/" .. Helper_CreateNumberDesc( self:GetMSPopulation() ) .. "(Mil)+" .. self.militaryService )
 	ShowText( indent .. 'Agri+Ecom+Prod ', self.agriculture .. "/" .. self.maxAgriculture .. " " .. self.economy .. "/" .. self.maxEconomy .. " " .. self.production .. "/" .. self.maxProduction )
@@ -858,22 +884,23 @@ end
 -- Data operation for fixing problem
 ----------------------------------
 
-function City:AddCorps( corps )
-	table.insert( self.corps, corps )
-	for k, troop in ipairs( corps.troops ) do
-		if typeof( troop ) == "number" then
-			ShowText( "!!! troop data is number" )
-			troop = g_troopDataMng:GetData( troop )
-		end
-		table.insert( self.troops, troop )
-	end
+function City:AddCorps( corps )	
+	Helper_AddDataSafety( self.corps, corps )
 end
-
 function City:RemoveCorps( corps )
-	MathUtility_Remove( self.corps, corps.id, "id" )
-	for k, troop in ipairs( corps.troops ) do
-		MathUtility_Remove( self.troops, troop.id, "id" )
-	end
+	Helper_RemoveDataSafety( self.corps, corps )
+end
+function City:AddTroop( troop )
+	Helper_AddDataSafety( self.troops, troop )
+end
+function City:RemoveTroop( troop )
+	Helper_RemoveDataSafety( self.troops, troop )
+end
+function City:AddChara( chara )
+	Helper_AddDataSafety( self.charas, chara )
+end
+function City:RemoveChara( chara )
+	Helper_RemoveDataSafety( self.charas, chara )
 end
 
 ----------------------------------
@@ -900,10 +927,11 @@ end
 
 function City:EstablishCorps( corps )
 	table.insert( self.corps, corps )
+	corps:JoinGroup( self.group, self )
 	
 	--put corps into group
-	if self._group then
-		self._group:EstablishCorps( corps )
+	if self.group then
+		self.group:EstablishCorps( corps )
 	end
 end
 
@@ -918,7 +946,7 @@ function City:Patrol()
 		self.security = self.security + final
 	end
 	self.security = math.floor( self.security / #self.plots )
-	Debug_Normal( "Patrol result security=" .. oldSecurity .. "->" .. self.security )
+	--print( self.name, "Patrol result security=" .. oldSecurity .. "->" .. self.security )
 end
 
 function City:Farm()
@@ -978,7 +1006,7 @@ function City:ConsumeFood()
 	if self.food < 0 then
 		self:AppendTag( CityTag.STARVATION, 1, CityTag.MAX_VALUE["STARVATION"] )
 	else
-		self:RemoveTag( CityTag.STARVATION, CityTag.MAX_VALUE["STARVATION"] )
+		self:RemoveTag( CityTag.STARVATION )
 	end
 	--Corrupt
 	if self.food > 0 then
@@ -988,12 +1016,13 @@ function City:ConsumeFood()
 	end
 end
 
-function City:GetTroopSalary()
-
-end
-
 function City:Maintain()
-	local maintainTroop = self:GetTroopSalary()
+	local maintainTroop = self:CalcMaintenanceCost()
+	self.money = self.money - maintainTroop
+	if self.money < 0 then
+		self.money = 0
+		self:AppendTag( CityTag.BANKRUPT, 1, CityTag.MAX_VALUE["BANKRUPT"] )
+	end
 end
 
 function City:LevyTax( income )
@@ -1005,7 +1034,7 @@ function City:LevyTax( income )
 			if self:GetGroup() and self:GetGroup():GetCapital() == self then
 				self:GetGroup():ReceiveTax( turnOverMoney, self )
 			else
-				g_movingActorMng:AddMovingActor( MovingActorType.CASH_TRUCK, { number = turnOverMoney, group = self:GetGroup(), location = self } )
+				g_movingActorMng:CreateActor( MovingActorType.CASH_TRUCK, { number = turnOverMoney, group = self:GetGroup(), location = self } )
 			end
 		end
 	else
@@ -1033,7 +1062,7 @@ end
 function City:RecruitTroop( troop )
 	table.insert( self.troops, troop )
 	troop.location   = self
-	troop.encampment = self
+	troop.home = self
 	if self:GetGroup() then
 		self:GetGroup():RecruitTroop( troop )
 	end	
@@ -1048,55 +1077,49 @@ function City:BuildConstruction( constr )
 	table.insert( self.constrs, constr )
 end
 
-function City:FindBestLeader( condition1, condition2 )
-	if #self.charas == 0 then return nil end
-	local charas = {}
-	local reference = nil
-	for k, chara in ipairs( self.charas ) do
-		if condition1( chara, reference ) then
-			reference = chara
-			table.insert( charas, chara )
+function City:FindAdjacentCityByGroup( group )
+	local cities = {}
+	for k, city in ipairs( self.adjacentCities ) do
+		if city:GetGroup() == group then
+			table.insert( cities, city )
 		end
 	end
-	reference = nil
-	for k, chara in ipairs( charas ) do
-		if condition2( chara, reference ) then
+	if #cities == 0 then
+		if city:GetGroup() then
+			return city:GetGroup():GetCapital()
+		end
+	end
+	local index = Random_SyncGetRange( 1, #cities )
+	return cities[index]
+end
+
+function City:SelectLeader( leader )
+	--Helper_DumpName( self.charas, function ( chara ) return MathUtility_FindEnumName( CharacterStatus, chara.status ) end )
+	print( self.name, " vote leader=".. NameIDToString( leader ), " old=" .. NameIDToString( self.leader ), "chara=", #self.charas )
+	self.leader = leader
+	if #self.charas ~= 0 and not self.leader then
+		quickSimulate = false
+		self:Dump( nil, true )
+		InputUtility_Pause( "select leader" )
+		quickSimulate = true
+	end
+end
+
+function City:VoteLeader()
+	--find new leader
+	local reference = nil	
+	for k, chara in ipairs( self.charas ) do
+		if chara:IsInService() and ( not reference or chara:IsMoreImportant( reference ) ) then
 			reference = chara
 		end
 	end
 	return reference
 end
 
-function City:CharaLeave( chara )
-	MathUtility_Remove( self.charas, chara.id, "id" )
-	--need to process with troop & corps & task now ?
-end
-
-function City:CharaOut( chara )
-	MathUtility_Remove( self.charas, chara.id, "id" )
-	
-	if self.leader and self.leader.id == chara.id then
-		--find new leader
-		self.leader = self:FindBestLeader( 
-			function( chara, reference )
-				if not reference then return true end
-				return chara:GetJob() % 100 > reference:GetJob() % 100
-			end,
-			function( chara, reference )
-				if not reference then return true end
-				return chara.trust > reference.trust
-			end
-		)
+function City:CheckLeader()
+	if ( not self.leader or not self.leader:IsInService() ) and #self.charas > 0 then
+		self:SelectLeader( self:VoteLeader() )
 	end
-end
-
-function City:CharaLive( chara )
-	chara.location = self
-	chara.home     = self
-	table.insert( self.charas, chara )
-	
-	--no leader
-	if not self.leader then self.leader = chara end
 end
 
 --[[
@@ -1107,7 +1130,7 @@ end
 ]]
 
 function City:JoinGroup( group )
-	self._group = group
+	self.group = group
 	
 	--reset datas
 	self.instruction = CityInstruction.NONE
@@ -1124,8 +1147,43 @@ function City:UpdateDynamicData()
 	self._militaryPower = -1
 end
 
+function City:CheckData()
+	local hint = ""
+	function CheckData( datas, city )
+		for k, data in ipairs( datas ) do
+			if data:GetHome() ~= city then
+				local content = ( NameIDToString( data ) .. " isn't in " .. city.name .. ", now is in " .. data:GetHome().name ) .. "||"
+				hint = hint .. content
+			end
+		end
+	end
+	CheckData( self.corps, self )
+	CheckData( self.troops, self )
+	CheckData( self.charas, self )	
+	if string.len( hint ) > 0 then
+		quickSimulate = false
+		self:Dump( nil, true )
+		InputUtility_Pause( hint )
+	end
+end
+
 function City:Update()
-	--Starvation	
+	--check data is wrong?
+	self:CheckData()
+
+	self:CheckLeader()
+	
+	--Adjacent
+	for k, otherCity in ipairs( self.adjacentCities ) do		
+		if self.group and otherCity:GetGroup() ~= self.group then
+			self:AppendTag( CityTag.FRONTIER, 1, CityTag.MAX_VALUE["FRONTIER"] )
+			if otherCity:GetGroup() and self:GetGroup():IsBelligerent( otherCity:GetGroup() ) then
+				self:AppendTag( CityTag.BATTLEFRONT, 1, CityTag.MAX_VALUE["BATTLEFRONT"] )
+			end
+		end
+	end
+	
+	--Starvation
 	local tag = self:GetTag( CityTag.STARVATION )
 	if tag and tag.value > 1 then
 		local people = math.ceil( self.population * ( ( 1 + CityParams.POPULATION.STARVATION_DECREASE_MODULUS * tag.value ) ^ tag.value - 1 ) )		
@@ -1136,7 +1194,7 @@ function City:Update()
 				
 		--starve to become refugees
 		local refugee = people - dead
-		g_movingActorMng:AddMovingActor( MovingActorType.REFUGEE, { number = refugee, location = self } )
+		g_movingActorMng:CreateActor( MovingActorType.REFUGEE, { number = refugee, location = self } )
 		
 		ShowText( NameIDToString( self ) .. " in starvation, "..dead.." people die, " .. refugee .. " become refugee, left " .. self.population )
 	end
@@ -1152,19 +1210,11 @@ function City:Update()
 		self:LevyTax( income )
 	end
 	
+	--Consume food by troop
 	self:ConsumeFood()
 	
-	self:Maintain()
-	
-	--Adjacent	
-	for k, otherCity in ipairs( self.adjacentCities ) do		
-		if self._group and otherCity._group ~= self._group then
-			self:AppendTag( CityTag.FRONTIER, 1, CityTag.MAX_VALUE["FRONTIER"] )
-			if otherCity._group and self._group:IsBelligerent( otherCity._group ) then
-				self:AppendTag( CityTag.BATTLEFRONT, 1, CityTag.MAX_VALUE["BATTLEFRONT"] )
-			end
-		end
-	end
+	--Consume money to maintain troops and construction, etc
+	self:Maintain()	
 	
 	--Temp data
 	self:UpdateDynamicData()
@@ -1173,6 +1223,7 @@ function City:Update()
 	if self:IsInConflict() then
 		local plotNumber = #self.plots
 		self.security = MathUtility_Clamp( self.security - math.ceil( Random_SyncGetRange( 1, plotNumber ^ 0.5 ) ), 0, PlotParams.MAX_PLOT_SECURITY )
+		--if self.security < 40 then InputUtility_Pause( self.name  .. "="..self.security ) end
 	end
 	
 	--Development down

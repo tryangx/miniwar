@@ -211,6 +211,15 @@ function GroupRelation:IsFriend()
 	return false
 end
 
+function GroupRelation:IsAllyOrDependence()
+	if self.type == GroupRelationType.VASSAL 
+	or self.type == GroupRelationType.DEPENDENCE
+	or self.type == GroupRelationType.ALLIANCE then	
+		return true
+	end
+	return false
+end
+
 function GroupRelation:IsBelligerent()
 	return self.type == GroupRelationType.BELLIGERENT
 end
@@ -447,7 +456,7 @@ function GroupRelation:EvalThreatenProb( chara, group, target )
 	local prob = self:GetDipomacyMethodProb( "THREATEN", group, target )
 	local pow1 = group:GetPower()
 	local pow2 = target:GetPower()
-	if prob > 5000 and pow1 < pow2 then
+	if nil and prob > 5000 and pow1 < pow2 then
 		watchAction = "THREATEN"
 		prob = self:GetDipomacyMethodProb( "THREATEN", group, target )
 		InputUtility_Pause( group.name .. "+" .. pow1 .. "->" .. target.name .. "+" .. pow2 .. "=" .. prob )

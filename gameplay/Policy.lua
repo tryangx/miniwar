@@ -7,7 +7,8 @@ PolicyType =
 
 PolicyParams = 
 {
-	RANGE = 100,
+	MIN_PROB = -100,
+	MAX_PROB = 100,
 }
 
 TreatSurrednerSoldier = 

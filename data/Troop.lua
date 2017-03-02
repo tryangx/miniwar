@@ -8,7 +8,7 @@ end
 
 function Troop:Load( data )
 	self.id = data.id or 0	
-	self.name = data.name or ""	
+	self.name = data.name or ""
 	self.tableId  = data.tableId or 0
 	---------------------------------------
 	-- Growth
@@ -23,7 +23,7 @@ function Troop:Load( data )
 	self.leader     = data.leader or 0	
 	self.corps      = data.corps or 0	
 	self.location   = data.location or 0	
-	self.encampment = data.encampment or 0	
+	self.home = data.home or 0	
 	---------------------------------------
 	-- Attributes	
 	self.maxNumber = data.maxNumber or 0	
@@ -42,7 +42,7 @@ function Troop:Load( data )
 	self.disguise = data.disguise or 0	
 	---------------------------------------
 	-- Combat Temporary Data	
-	self._combatSide   = CombatSide.NETRUAL	
+	self._combatSide   = CombatSide.NEUTRAL	
 	self._combatAction = CombatAction and CombatAction.NONE	or 0
 	self._combatTarget = nil
 	self._combatCD     = 0
@@ -65,7 +65,7 @@ function Troop:SaveData()
 	Data_OutputValue( "leader", self, "id", 0 )	
 	Data_OutputValue( "corps", self, "id", 0 )	
 	Data_OutputValue( "location", self, "id", 0 )	
-	Data_OutputValue( "encampment", self, "id", 0 )	
+	Data_OutputValue( "home", self, "id", 0 )	
 	
 	Data_OutputValue( "level", self )
 	Data_OutputValue( "exp", self )
@@ -95,7 +95,7 @@ function Troop:ConvertID2Data()
 	self.leader = g_charaDataMng:GetData( self.leader )
 	self.corps = g_corpsDataMng:GetData( self.corps )	
 	self.location   = g_cityDataMng:GetData( self.location )
-	self.encampment = g_cityDataMng:GetData( self.encampment )
+	self.home = g_cityDataMng:GetData( self.home )
 	
 	local traits = {}
 	for k, id in ipairs( self.traits ) do
@@ -117,19 +117,22 @@ function Troop:Dump( indent )
 	local content = indent .. "Troop=".. self.name .. " Mor=" .. self.morale .. "/" .. self.maxMorale
 	content = content .. " Num=" .. self.number .. "/" .. self.maxNumber
 	if self:GetCorps() then
-		content = content .. " Corps=[" .. self:GetCorps().name .. "]"
+		content = content .. " Corps=" .. self:GetCorps().name
 	end		
 	if self:GetLeader() then
-		content = content .. " Leader=[" .. self:GetLeader().name .. "]"
+		content = content .. " LD=" .. self:GetLeader().name
 	end
-	if self:GetEncampment() then
-		content = content .. " Loc=[" .. self:GetEncampment().name .. "]"
+	if self:GetHome() then
+		content = content .. " Loc=" .. self:GetHome().name
 	end
 	ShowText( content )
 end
 
 -----------------------------------
 -- Getter
+function Troop:GetGroup()
+	return self.group
+end
 
 function Troop:GetLeader()
 	return self.leader ~= nil
@@ -143,8 +146,8 @@ function Troop:GetLocation()
 	return self.location
 end
 
-function Troop:GetEncampment()
-	return self.encampment
+function Troop:GetHome()
+	return self.home
 end
 
 function Troop:GetLevel()
@@ -154,23 +157,21 @@ end
 -----------------------------------
 -- Operation
 
-function Troop:AddToCorps( corps )	
+function Troop:JoinCorps( corps )	
 	self.corps = corps
 	--ShowText( "Add to corps", self.name, corps.name )
 end
 
--- Surrender to enemy
-function Troop:LeaveCorps()
-	self.corps = nil
-end
-
 function Troop:LeadByChara( chara )
 	self.leader = chara
-	Debug_Normal( "Troop [".. self.name.. "] lead by " .. NameIDToString( chara ) )
 end
 
 -----------------------------------
 -- Combat Getter
+
+function Troop:IsAtHome()
+	return self.location == self.home and not g_movingActorMng:HasActor( MovingActorType.TROOP, self )
+end
 
 function Troop:IsInCombat()
 	return self.number > 0 and self._combatFled ~= true and self._combatSurrendered ~= true
@@ -241,6 +242,9 @@ function Troop:CanMeleeFight()
 end
 
 function Troop:NewCombat()
+	self._combatFled        = false
+	self._combatSurrendered = false
+
 	self._combatDealDamage   = 0
 	self._combatSufferDamage = 0
 	self._combatAttackTimes  = 0
@@ -254,6 +258,11 @@ function Troop:NewCombat()
 	self._combatArmorWeight = 0
 	
 	self:NextCombatTurn()
+end
+
+function Troop:EndCombat()
+	self._combatSide = CombatSide.NEUTRAL
+	self._combatId   = 0
 end
 
 function Troop:NextCombatTurn()
@@ -485,12 +494,12 @@ function Troop:UseArmor( armor )
 end
 
 function Troop:RecoverMorale( value, desc, max )
-	self.morale = MathUtility_Clamp( self.morale + value, 0, limit or self.maxMorale )
-	--if desc then ShowText( self.name .. " recover morale " .. value .. " for=" .. desc ) end
+	self.morale = MathUtility_Clamp( self.morale + value, 0, self.maxMorale )
+	--if desc then print( NameIDToString( self ) .. " recover morale " .. value .."->" .. self.morale .. " for=" .. desc ) end
 end
 
 function Troop:LoseMorale( value, desc, min )
-	self.morale = MathUtility_Clamp( self.morale - value, limit or 0, self.maxMorale )
+	self.morale = MathUtility_Clamp( self.morale - value, 0, self.maxMorale )
 	--if desc then ShowText( self.name .. " lose morale " .. value .. " for=" .. desc ) end
 end
 
@@ -529,12 +538,12 @@ end
 
 function Troop:Flee()
 	self._combatFled = true
-	ShowText( NameIDToString( self ) .. " flee", self._combatFled )
+	--InputUtility_Pause( NameIDToString( self ) .. " flee", self._combatFled )
 end
 
 function Troop:Surrender()
 	self._combatSurrendered = true
-	ShowText( NameIDToString( self ) .. " surrender" )
+	--InputUtility_Pause( NameIDToString( self ) .. " surrender" )
 end
 
 function Troop:GainSkill()
@@ -622,8 +631,7 @@ function Troop:Update()
 			local restore = restoreRate * training.value
 			self:AppendAsset( TroopTag.ORGANIZATION, restore, training.value )
 		end
-		
-		--recover morale		
+		--recover moral		
 		if self.morale < self.maxMorale then
 			local recoverRate = 0.6
 			if not self:GetCorps() then recoverRate = recoverRate * 0.5 end
@@ -636,42 +644,29 @@ end
 
 -------------------------
 function Troop:MoveToLocation( location )
-	if self.leader then
-		self.leader:MoveToLocation( location )
+	self.location = location
+	g_movingActorMng:RemoveActor( MovingActorType.TROOP, self )
+end
+
+function Troop:JoinCity( city, includeAll )
+	--print( NameIDToString( self ) .. " join", city and city.name or "none")
+	if city and city:GetGroup() ~= self:GetGroup() then	
+		InputUtility_Pause( city.name .. "["..city:GetGroup().name.."] isn't belong to", self:GetGroup().name )
+		k.p = 1
 	end
-end
-
-function Troop:DispatchToCity( city )
-	self.encampment = city
-	if self.leader then
-		self.leader:DispatchToCity( city )
-	end
-end
-
-function Troop:JoinCity( group, city )
-	self.encampment = city
-end
-
-function Troop:Neutralize( isLeaderKilled, isLeaderBackHome )
-	local leader = self:GetLeader()
-	if leader then
-		if isLeaderKilled then
-			CharaDie( leader )
-		elseif isLeaderBackHome then
-			CharaBackHome( leader )
+	self.home = city	
+	if includeAll then
+		if self.leader then
+			self.leader:JoinCity( city )
 		end
 	end
+end
 
-	local group = self.encampment and self.encampment:GetGroup() or nil
-	if group then
-		group:LoseTroop( self )
-	end
-	
-	if self.corps then
-		self.corps:RemoveTroop( self )
-	end
-	
-	self.encampment = nil
-	self.corps    = nil
-	self.leader   = nil
+function Troop:JoinGroup( group )
+	self.group = group
+end
+
+function Troop:RefreshName()
+	--InputUtility_Pause( "troop rename="..NameIDToString(self).."->".. self:GetHome():GetGroup().name .. "-" .. self.table.name )
+	self.name = self:GetGroup().name .. "-" .. self.table.name
 end

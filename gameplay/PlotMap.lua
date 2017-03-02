@@ -10,6 +10,10 @@ function PlotMap:GetDataManager()
 	return self.mng
 end
 
+function PlotMap:GetNumOfPlot()
+	return self.width * self.height
+end
+
 function PlotMap:ForeachPlot( fn )
 	for y = 1, self.height do
 		for x = 1, self.width do

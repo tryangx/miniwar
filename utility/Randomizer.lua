@@ -1,7 +1,8 @@
 Randomizer = class()
 
 function Randomizer:__init( seed )
-	self.seed = 0
+	self.seed = seed or 0
+	print( "seed=", seed )
 end
 
 function Randomizer:GetSeed( seed )

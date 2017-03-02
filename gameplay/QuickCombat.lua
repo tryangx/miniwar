@@ -178,6 +178,14 @@ function Combat:__init()
 	self.status = {}
 	self.sideOptions = {}
 	
+	self.frontLine   = {}	
+	self.backLine    = {}
+	self.defenceLine = {}
+	self.chargeLine  = {}
+	self.meleeLine   = {}
+	self.attackers   = {}
+	self.defenders   = {}
+	
 	--statistic
 	self.totalSoldier = 0
 	self.atkNumber = 0
@@ -188,8 +196,15 @@ end
 
 local logUtility = LogUtility( "qcombat.log", LogFileMode.WRITE_MANUAL, LogPrinterMode.ON, LogWarningLevel.DEBUG )
 
+function Combat:ShowText( content )
+	if not quickSimulate then 
+	print( content ) 
+	end
+end
+
 function Combat:Log( content )
-	logUtility:WriteLog( content, LogWarningLevel.NORMAL )
+	--print( content )
+	logUtility:WriteLog( content, LogWarningLevel.NORMAL )	
 end
 
 function Combat:FlushLog()
@@ -199,36 +214,41 @@ end
 function Combat:Brief()
 	local atkNum, atkTroop, atkMorale, atkFatigue, atkStartNum, atkMaxNum = self:GetSideStatus( CombatSide.ATTACKER )
 	local defNum, defTroop, defMorale, defFatigue, defStartNum, defMaxNum = self:GetSideStatus( CombatSide.DEFENDER )
-	local content = "Combat";
-	content = content .. " Occured ["..( self.location and self.location.name or "" ).."] "
+	local content = "Combat=" .. self.id;
+	content = content .. " ["..( self.location and self.location.name or "" ).."] "
+	content = content .. "@" .. ( ( self.location and self.location:GetGroup() ) and self.location:GetGroup().name or "" )
 	content = content .. ( self.atkGroup and self.atkGroup.name or "Unkown" ) .. "+" .. atkNum .. "/" .. atkMaxNum .. "("..atkTroop..")"
 	content = content .. " VS "
 	content = content .. ( self.defGroup and self.defGroup.name or "Unkown" ) .. "+" .. defNum .. "/" .. defMaxNum .. "("..defTroop..")" 
-	ShowText( content )
+	self:ShowText( content )
 end
 
 function Combat:CreateDesc()
-	local desc = ( self.atkGroup and self.atkGroup.name or "Unkown" ) .. " v " .. ( self.defGroup and self.defGroup.name or "Unkown" )
+	local desc = self.id, " " .. ( self.atkGroup and self.atkGroup.name or "Unkown" ) .. " v " .. ( self.defGroup and self.defGroup.name or "Unkown" )
 	desc = desc .. " @" .. ( self.location and self.location.name or "" )
 	desc = desc .. " date=" .. g_calendar:CreateDateDescByValue( self.begDate, true, true ) .."->"..g_calendar:CreateDateDescByValue( self.endDate, true, true )
 	desc = desc .. " rslt=" .. MathUtility_FindEnumName( CombatResult, self.result )
 	desc = desc .. " soldier=" .. self.atkNumber .. "/" .. self.defNumber
+	desc = desc .. " died=" .. self.defKill .. "/" .. self.atkKill
 	return desc
 end
 
 function Combat:Dump()
-	self:Log( "Day     : ".. self.day )
-	self:Log( "Time    : ".. math.ceil( self.time / 60 ) )
-	self:Log( "Weather : ".. self.weatherTable.name .. "/" .. self.weatherDuration )
-	self:Log( "VS      : ".. ( self.atkGroup and self.atkGroup.name or "Unkown" ) .. " / " .. ( self.defGroup and self.defGroup.name or "Unkown" ) )
-	self:Log( "Location: ".. ( self.location and self.location.name or "" ) )
-	self:Log( "Line    : ".. "Melee=" .. #self.meleeLine .. "," .. "Charge=" .. #self.chargeLine .. "," .. "Front=" .. #self.frontLine .. "," .. "Back=" .. #self.backLine .. "," .. "Defence=" .. #self.defenceLine )
-	self:Log( "Round   : ".. MathUtility_FindEnumName( CombatRound, self.round ) )
-	self:Log( "Score   : " .. self.atkScore .. "/" .. self.defScore )	
+	self:ShowText( "ID      : ".. self.id )
+	self:ShowText( "Day     : ".. self.day )
+	self:ShowText( "Time    : ".. math.ceil( self.time / 60 ) )
+	self:ShowText( "Weather : ".. self.weatherTable.name .. "/" .. self.weatherDuration )
+	self:ShowText( "VS      : ".. ( self.atkGroup and self.atkGroup.name or "Unkown" ) .. " / " .. ( self.defGroup and self.defGroup.name or "Unkown" ) )
+	self:ShowText( "Location: ".. ( self.location and self.location.name .. ( self.location:GetGroup() and "@" .. self.location:GetGroup().name or "" ) or "" ) )	
+	self:ShowText( "Line    : ".. "Melee=" .. #self.meleeLine .. "," .. "Charge=" .. #self.chargeLine .. "," .. "Front=" .. #self.frontLine .. "," .. "Back=" .. #self.backLine .. "," .. "Defence=" .. #self.defenceLine )
+	self:ShowText( "Round   : ".. MathUtility_FindEnumName( CombatRound, self.round ) )
+	self:ShowText( "Score   : " .. self.atkScore .. "/" .. self.defScore )	
 	local atkNumber, defNumber = 0, 0
 	function dumpTroop( troops )
 		for k, troop in ipairs( troops ) do
-			ShowText( "	" .. troop.name .. " 	id=" .. troop.id .. "(".. ( troop.corps and troop.corps.id or "" )..") num=" .. troop.number .. " side=" .. MathUtility_FindEnumName( CombatSide, troop._combatSide ) .. " Line=" .. MathUtility_FindEnumName( TroopStartLine, troop._startLine ) .. " Mor=" .. troop.morale .. "/" .. troop.maxMorale .. " In="..(troop:IsInCombat() and "true" or "false" ) )
+			local content = "	" .. troop.name .. " 	id=" .. troop.id .. "(".. ( troop.corps and troop.corps.id or "" )..") num=" .. troop.number .. " side=" .. MathUtility_FindEnumName( CombatSide, troop._combatSide ) .. " Line=" .. MathUtility_FindEnumName( TroopStartLine, troop._startLine ) .. " Mor=" .. troop.morale .. "/" .. troop.maxMorale .. " In="..(troop:IsInCombat() and "true" or "false" )
+			content = content .. " " .. ( troop:GetGroup() and troop:GetGroup().name or "" )
+			self:ShowText( content )
 			if troop:IsCombatUnit() then
 				if troop._combatSide == CombatSide.ATTACKER then
 					atkNumber = atkNumber + troop.number
@@ -238,11 +258,15 @@ function Combat:Dump()
 			end
 		end
 	end
-	self:Log( "Attacker:" )
+	dumpTroop( self.troops )
+	--[[
+	self:ShowText( "Attacker:" )
 	dumpTroop( self.attackers )
-	self:Log( "Defender:" )
-	dumpTroop( self.defenders )
-	self:Log( "Atk/Def     : ".. atkNumber .. "/" .. defNumber )
+	self:ShowText( "Defender:" )
+	dumpTroop( self.defenders )	
+	]]
+	self:ShowText( "Atk/Def     : ".. atkNumber .. "/" .. defNumber )
+	self:ShowText( "AtkK/DefK   : ".. self.atkKill .. "/" .. self.defKill )
 end
 
 function Combat:DumpResult()
@@ -273,12 +297,38 @@ end
 function Combat:AddTroopToSide( side, troop )
 	if not troop then return end
 	
-	table.insert( self.troops, troop )
-	
+	for k, other in ipairs( self.troops ) do
+		if other:GetGroup() ~= troop:GetGroup() and troop:GetGroup() and other._combatSide == side then
+			local relation = other:GetGroup():GetGroupRelation( troop:GetGroup().id )
+			if relation and not relation:IsAllyOrDependence() then
+				quickSimulate = false
+				print( self.id )
+				Helper_DumpName( self.troops, function ( t )
+					return NameIDToString( t ) .. " " .. ( t:GetGroup() and t:GetGroup().name or "" )
+				end )
+				print( NameIDToString( troop ), NameIDToString( troop:GetCorps() ) )
+				InputUtility_Pause( self.id, other:GetGroup().name, troop:GetGroup().name, " is diff", MathUtility_FindEnumName( CombatSide, side ) )
+				break
+			end
+		end
+	end
+	Helper_AddDataSafety( self.troops, troop )
+
 	troop:NewCombat()
 	
 	--init side
-	troop._combatSide = side
+	troop._combatSide = side	
+	
+	if self.id == 6 then
+		print( "@"..self.location.name .. " " .. self.id .. "->" .. NameIDToString( troop ), "troop_side=".. MathUtility_FindEnumName( CombatSide, side ), ( troop:GetLocation() and "troop_loc="..troop:GetLocation().name or "" ) )		
+	end
+	if ( side == CombatSide.ATTACKER and troop:GetGroup() == self.defGroup ) then		
+		InputUtility_Pause( NameIDToString( troop ), troop:GetGroup().name, self.defGroup.name, "DefSide error!!!", troop._combatId )
+	elseif ( side == CombatSide.DEFENDER and troop:GetGroup() == self.atkGroup ) then
+		InputUtility_Pause( NameIDToString( troop ), troop:GetGroup().name, self.atkGroup.name, "AtkSide error!!!", troop._combatId )
+	end
+	
+	troop._combatId = self.id
 
 	--init variables
 	troop._armorWeight = 0
@@ -286,11 +336,13 @@ function Combat:AddTroopToSide( side, troop )
 		troop._armorWeight = troop._armorWeight + armor.weight
 	end
 	
-	self.totalSoldier = self.totalSoldier + troop.number		
-	if troop._combatSide == CombatSide.ATTACKER then
-		self.atkNumber = self.atkNumber + troop.number
-	else
-		self.defNumber = self.defNumber + troop.number
+	if troop:IsCombatUnit() then
+		self.totalSoldier = self.totalSoldier + troop.number
+		if troop._combatSide == CombatSide.ATTACKER then
+			self.atkNumber = self.atkNumber + troop.number
+		else
+			self.defNumber = self.defNumber + troop.number
+		end
 	end
 end
 
@@ -331,7 +383,7 @@ end
 
 function Combat:SetLocation( id )
 	self.location = g_cityDataMng:GetData( id )
-	--ShowText( "location", id, combat.location )
+	--self:ShowText( "location", id, combat.location )
 end
 
 function Combat:SetSide( side, data )
@@ -353,8 +405,12 @@ function Combat:SetSide( side, data )
 	self.sideOptions[side] = data
 end
 
-function Combat:End()
+function Combat:EndCombat()
 	self.endDate = g_calendar:GetDateValue()
+	
+	for k, troop in ipairs( self.troops ) do
+		troop:EndCombat()
+	end
 end
 
 function Combat:Init()
@@ -427,7 +483,7 @@ function Combat:Embattle()
 				troop._startLine = TroopStartLine.BACK
 				table.insert( self.backLine, troop )
 			end
-			--ShowText( "embattle siege", troop.name, MathUtility_FindEnumName( TroopStartLine, troop._startLine ) )
+			--self:ShowText( "embattle siege", troop.name, MathUtility_FindEnumName( TroopStartLine, troop._startLine ) )
 		end
 	end
 end
@@ -530,6 +586,26 @@ function Combat:HasStatus( status )
 	return MathUtility_IndexOf( self.status, status )
 end
 
+function Combat:GetTraitValue( troop, effect, default )
+	local condition = nil
+	if effect == TraitEffectType.TROOP_MASTER 
+		or effect == TraitEffectType.TROOP_RESIST then
+		params = troop.table.category
+	end
+	local trait = troop:QueryTrait( effect, params )
+	if not trait then return default end
+	--check probability
+	if trait.prob then
+		if self:RandomRange( 1, RandomParams.MAX_PROBABILITY, "Trait Trigger Prob" ) > trait.prob then
+			return default
+		end
+	end
+	if trait.range then
+		return self:RandomRange( 1, trait.range, "Trait Range" ) + trait.value
+	end
+	return trait.value
+end
+
 -------------------------------
 
 function Combat:NextDay()
@@ -538,7 +614,7 @@ function Combat:NextDay()
 	self.startTime = self.time
 	--day counter
 	self.day = self.day + 1	
-	self.round = CombatRound.PREPARE_ROUND	
+	self.round = CombatRound.PREPARE_ROUND
 	self.result = CombatResult.DRAW
 	
 	self:Embattle()
@@ -546,7 +622,8 @@ function Combat:NextDay()
 	local defNum = self:GetSideStatus( CombatSide.DEFENDER )
 	if defNum <= 0 then
 		self.atkScore = CombatParams.SCORE_GAP_WITH_STRATEGIC_VICTORY * self.scoreModulus
-		self.defScore = 0		
+		self.defScore = 0
+		self.round = CombatRound.END_ROUND
 	end
 end
 
@@ -592,7 +669,7 @@ function Combat:Run()
 	end
 	
 	self:Dump()
-		
+
 	if self.type == CombatType.FIELD_COMBAT then
 		if self.round == CombatRound.PREPARE_ROUND then
 			self.round = CombatRound.SHOOT_ROUND
@@ -674,7 +751,7 @@ function Combat:NextTurn()
 						troop:Flee()					
 					end
 				end
-				ShowText( "Attacker retreat" )
+				self:Log( "Attacker retreat" )
 				self:AddStatus( CombatStatus.SIDE_FLEE )
 				self.round = CombatRound.PURSUE_ROUND
 			end
@@ -687,7 +764,7 @@ function Combat:NextTurn()
 							troop:Flee()						
 						end
 					end
-					ShowText( "Garrison retreat" )
+					self:Log( "Garrison retreat" )
 					self:AddStatus( CombatStatus.SIDE_FLEE )
 					self.round = CombatRound.PURSUE_ROUND
 				end
@@ -700,7 +777,7 @@ function Combat:NextTurn()
 							troop:Flee()
 						end
 					end
-					ShowText( "Defender retreat" )
+					self:ShowText( "Defender retreat" )
 					self:AddStatus( CombatStatus.SIDE_FLEE )
 					self.round = CombatRound.PURSUE_ROUND
 				end
@@ -723,7 +800,7 @@ function Combat:FindTargetInLine( troop, line )
 	elseif line == TroopStartLine.MELEE then
 		lineTroops = self.meleeLine
 	end	
-	--ShowText( "find line", MathUtility_FindEnumName( TroopStartLine, line ), lineTroops and #lineTroops or 0 )
+	--self:ShowText( "find line", MathUtility_FindEnumName( TroopStartLine, line ), lineTroops and #lineTroops or 0 )
 	if not lineTroops then return nil end
 	for k, target in ipairs( lineTroops ) do
 		if target:IsInCombat() and target._combatSide ~= troop._combatSide then
@@ -732,7 +809,7 @@ function Combat:FindTargetInLine( troop, line )
 	end
 	if #troops == 0 then return nil end
 	local index = Random_SyncGetRange( 1, #troops, "Random Target" )
-	--ShowText( "total target=" .. #troops, #lineTroops, MathUtility_FindEnumName( TroopStartLine, line ), " index=", index )
+	--self:ShowText( "total target=" .. #troops, #lineTroops, MathUtility_FindEnumName( TroopStartLine, line ), " index=", index )
 	return troops[index]
 end
 
@@ -742,7 +819,7 @@ function Combat:FindTarget( troop )
 		target = self:FindTargetInLine( troop, line )
 		if target then break end 
 	end
-	--ShowText( NameIDToString( troop ) .. " Find target=" .. ( target and target.name or "" ) )
+	--self:ShowText( NameIDToString( troop ) .. " Find target=" .. ( target and target.name or "" ) )
 	return target
 end
 
@@ -790,7 +867,7 @@ function Combat:CalcDamage( troop, target, weapon, armor, params )
 	local number = troop.number
 	if params.isMelee and troop.number ~= target.number then
 		number = troop.number > target.number and math.floor( target.number * ( troop.number / target.number ) ^ 0.5 ) or math.floor( troop.number * ( target.number / troop.number ) ^ 0.5 )
-		--ShowText( "!!!!ismelee number", number )
+		--self:ShowText( "!!!!ismelee number", number )
 	end
 	local modNumber = math.floor( number < self.battlefield.width and number or self.battlefield.width + ( number - self.battlefield.width ) / 2 )
 	
@@ -798,7 +875,7 @@ function Combat:CalcDamage( troop, target, weapon, armor, params )
 	
 	local dmg = modNumber * weaponRate * lvRate * 0.0035
 		
-	--ShowText( "    num=" .. modNumber, "weapon=" .. math.floor( weaponRate * 350 ) .. "("..weapon.power..","..armor.protection..")", "lv=" .. lvRate )
+	--self:ShowText( "    num=" .. modNumber, "weapon=" .. math.floor( weaponRate * 350 ) .. "("..weapon.power..","..armor.protection..")", "lv=" .. lvRate )
 	
 	local modulus = 1
 	
@@ -808,11 +885,11 @@ function Combat:CalcDamage( troop, target, weapon, armor, params )
 		if criticalProb > 0 and Random_SyncGetRange( 1, RandomParams.MAX_PROBABILITY, "critical prob" ) < criticalProb then dmg = dmg * 1.5 end
 	end
 	
-	--ShowText( "first dmg=", dmg )
+	--self:ShowText( "first dmg=", dmg )
 	
 	-- Damage Modification
 	if params.isCounter then dmg = dmg * 0.65 end
-	if params.isMissile and target._startLine == TroopStartLine.CHARGE then dmg = dmg * 0.65 ShowText( "!!!!!!!!!!!!!!shoot moving" ) end	
+	if params.isMissile and target._startLine == TroopStartLine.CHARGE then dmg = dmg * 0.65 self:ShowText( "!!!!!!!!!!!!!!shoot moving" ) end	
 	if target:IsAttacked() then dmg = dmg * MathUtility_Clamp( 1 - 0.35 * target:IsAttacked(), 0.2, 2 ) end
 	if target:IsDefended() then dmg = dmg * MathUtility_Clamp( 1 + 0.35 * target:IsDefended(), 0.3, 2.5 ) end
 	if troop._combatSide == CombatSide.ATTACKER and self.type == CombatType.SIEGE_COMBAT then		
@@ -875,8 +952,8 @@ function Combat:DealDamage( troop, target, damage )
 		local reduceOrg = math.ceil( damage * 0.5 )
 		if reduceOrg >= org.value then reduceOrg = org.value end
 		org.value = org.value - reduceOrg
-		InputUtility_Pause( "reduceorg=" .. reduceOrg )
-		damage = damage - reduceOrg		
+		--InputUtility_Pause( "reduceorg=" .. reduceOrg )
+		damage = damage - reduceOrg
 	end
 	damage = target:SufferDamage( damage )
 	troop:DealDamage( damage )
@@ -902,7 +979,7 @@ function Combat:Hit( troop, target, params )
 	elseif params.isSiege then atkWeapon = troop:GetSiegeWeapon()
 	end
 	if not atkWeapon then 
-		ShowText( NameIDToString( troop ) .. " don't have right weapon", params.isMissile, params.isCharge, params.isMelee, params.isCounter )
+		self:ShowText( NameIDToString( troop ) .. " don't have right weapon", params.isMissile, params.isCharge, params.isMelee, params.isCounter )
 		return
 	end
 	local defArmor = target:GetDefendArmor( atkWeapon )
@@ -919,9 +996,9 @@ function Combat:Hit( troop, target, params )
 	self:DealDamage( troop, target, damage )	
 	
 	if params.isCounter then
-		ShowText( NameIDToString( troop ) .. "use ["..atkWeapon.name.."] counter " .. NameIDToString( target ) .. " deal dmg=" .. damage .. " left=" .. target.number )
+		self:Log( NameIDToString( troop ) .. "use ["..atkWeapon.name.."] counter " .. NameIDToString( target ) .. " deal dmg=" .. damage .. " left=" .. target.number )
 	else
-		ShowText( NameIDToString( troop ) .. "use ["..atkWeapon.name.."] " .. ( params.isPursue and "pursue " or "hit " ) .. NameIDToString( target ) .. " deal dmg=" .. damage .. " left=" .. target.number )
+		self:Log( NameIDToString( troop ) .. "use ["..atkWeapon.name.."] " .. ( params.isPursue and "pursue " or "hit " ) .. NameIDToString( target ) .. " deal dmg=" .. damage .. " left=" .. target.number )
 	end
 	
 	--score
@@ -929,7 +1006,7 @@ function Combat:Hit( troop, target, params )
 	local score = 0
 	for k, data in ipairs( CombatParams.DAMAGE_SCORE ) do
 		if rate < data.rate then 
-			--ShowText( MathUtility_FindEnumName( CombatSide, troop._combatSide ) .. " score+", data.score, rate )
+			--self:ShowText( MathUtility_FindEnumName( CombatSide, troop._combatSide ) .. " score+", data.score, rate )
 			score = data.score
 			self:LostMorale( target, math.floor( target.morale * data.rate + data.morale ) )			
 			break
