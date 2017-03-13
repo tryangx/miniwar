@@ -21,9 +21,6 @@ function GroupTable:Load( data )
 	--Use to produce / recruit / research / invest
 	self.money     = data.money or 0
 
-	--Determine how many time need to RESEARCH
-	self.researchAbility  = data.researchAbility or 0
-	
 	--Diplomatic Relation
 	self.relations = data.relations or {}
 	

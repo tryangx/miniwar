@@ -40,7 +40,7 @@ function City:Load( data )
 	self.militaryService = self.militaryService or 0
 
 	--determine how many military soldier attend when it's in siege
-	self.defence     = data.defence or 0	
+	self.guards      = data.guards or 0	
 
 	-----------------------------------
 	-- extension
@@ -154,11 +154,17 @@ function City:ConvertID2Data()
 				contribution = chara.contribution
 			end
 			
-			--helper check
+			--repair data
 			--ShowText( "check data", self.id, self.name, chara.name )
+			if chara:GetHome() == 0 then
+				chara.home = self.id				
+			end
+			if chara:GetLocation() == 0 then
+				chara.location = self.id
+			end
 			if self.group and not self.group:HasChara( chara ) then
 				self.group:AddChara( chara )
-				chara:JoinGroup( self )				
+				chara:JoinGroup( self )			
 				Debug_Assert( nil, "Chara is in the city, but not not in the group" )
 			end
 		end
@@ -269,6 +275,10 @@ function City:IsCharaStayCity( chara )
 	return chara:GetLocation() == self
 end
 
+function City:IsWeak()
+	return self:GetTag( CityTag.WEAK )
+end
+
 function City:IsInSiege()
 	return self:GetTag( CityTag.SIEGE )
 end
@@ -276,6 +286,10 @@ end
 -- Is city in conflict, like g_warfare, rebellion
 function City:IsInConflict()	
 	return self:GetTag( CityTag.SIEGE ) or self:GetTag( CityTag.BATTLEFRONT )
+end
+
+function City:IsInDanger()
+	return self:GetTag( CityTag.INDANGER )
 end
 
 function City:IsBattleFront()
@@ -351,6 +365,9 @@ function City:GetCoordinate()
 	return self.coordinate
 end
 
+------------------------------------
+-- Below use for AI
+
 function City:GetAdjacentGroupMilitaryPowerList()
 	return Helper_ListEach( self.adjacentCities, function( city, list )
 		local otherGroup = city:GetGroup()
@@ -374,8 +391,34 @@ end
 function City:GetAdjacentBelligerentCityList()	
 	return Helper_ListIf( self.adjacentCities, function( city )
 		local otherGroup = city:GetGroup()
-		return otherGroup and otherGroup ~= self:GetGroup() and self:GetGroup():IsBelligerent( otherGroup )
+		if not self:GetGroup() then return false end
+		return otherGroup ~= self:GetGroup() and self:GetGroup():IsBelligerent( otherGroup )
 	end )
+end
+
+function City:GetAdjacentInDangerSelfGroupCityList()
+	return Helper_ListIf( self.adjacentCities, function( city )
+		return city:GetGroup() == self:GetGroup() and city:IsInDanger()
+	end )
+end
+
+function City:QueryAdajacentCityMilitaryPower() 
+	local maxPower, minPower, totalPower, number = nil, nil, 0, 0
+	local group = self:GetGroup()
+	for k, otherCity in ipairs( self.adjacentCities ) do 
+		local otherGroup = otherCity:GetGroup()
+		if otherGroup and otherGroup ~= group then			
+			local otherPower = otherCity:GetMilitaryPower()
+			if not maxPower or otherPower > maxPower then maxPower = otherPower end
+			if not minPower or otherPower < minPower then minPower = otherPower end
+			totalPower = totalPower + otherPower
+			number = number + 1
+			if self.id == 10 then
+				print( self.name .. " adja " .. otherCity.name .. "=" .. otherPower)
+			end
+		end
+	end
+	return totalPower, maxPower or 0, minPower or 0, number
 end
 
 -----------------------------------------------------
@@ -419,7 +462,7 @@ end
 
 function City:GetPreparedToAttackCorpsList( hint )
 	return Helper_ListIf( self.corps, function( corps )
-		return corps:IsAtHome() and corps:IsPreparedToAttack() and not g_taskMng:GetTaskByActor( corps ) and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsAtHome() and corps:IsPreparedToAttack() and not g_taskMng:GetTaskByActor( corps )
 	end )
 end
 
@@ -512,14 +555,20 @@ end
 
 function City:GetReqMilitaryPower()
 	local plotNumber = #self.plots
-	if self:IsBattleFront() then
-		return plotNumber * CityParams.MILITARY.BATTLEFRONT_MILITARYPOWER_PER_PLOT
-	elseif self:IsFrontier() then
-		return plotNumber * CityParams.MILITARY.FRONTIER_MILITARYPOWER_PER_PLOT
-	elseif self:GetGroup() and self == self:GetGroup():GetCapital() then
-		return plotNumber * CityParams.MILITARY.SECURITY_MILITARYPOWER_PER_PLOT
+	if self:IsInDanger() then
+		plotNumber = plotNumber * 1.5
 	end
-	return plotNumber * CityParams.MILITARY.SAFETY_MILITARYPOWER_PER_PLOT
+	local ret = 0
+	if self:IsBattleFront() then
+		ret = plotNumber * CityParams.MILITARY.BATTLEFRONT_MILITARYPOWER_PER_PLOT
+	elseif self:IsFrontier() then
+		ret = plotNumber * CityParams.MILITARY.FRONTIER_MILITARYPOWER_PER_PLOT
+	elseif self:GetGroup() and self == self:GetGroup():GetCapital() then
+		ret = plotNumber * CityParams.MILITARY.SECURITY_MILITARYPOWER_PER_PLOT
+	else
+		ret = plotNumber * CityParams.MILITARY.SAFETY_MILITARYPOWER_PER_PLOT
+	end
+	return math.ceil( ret )
 end
 
 function City:GetSupplyBonus()
@@ -640,22 +689,6 @@ end
 
 function City:RemoveTag( tagType, value )
 	Helper_RemoveVarb( self.tags, tagType, value )
-end
-
-function City:QueryAdajacentCityMilitaryPower() 
-	local maxPower, minPower, totalPower, number = 0, 99999999, 0, 0
-	local group = self:GetGroup()
-	for k, otherCity in ipairs( self.adjacentCities ) do 
-		local otherGroup = otherCity:GetGroup()
-		if otherGroup and otherGroup ~= group then
-			local otherPower = otherCity:GetMilitaryPower()
-			if otherPower > maxPower then maxPower = otherPower end
-			if otherPower < minPower then minPower = otherPower end
-			totalPower = totalPower + otherPower
-			number = number + 1
-		end
-	end
-	return totalPower, maxPower, minPower, number
 end
 
 function City:GetGrowthData()
@@ -815,12 +848,14 @@ function City:DumpAdjacentDetail( indent )
 	local group = self:GetGroup()
 	for k, city in ipairs( self.adjacentCities ) do
 		content = content .. ( k > 1 and "," or "" ) .. city.name
-		local otherGroup = city:GetGroup()		
+		local otherGroup = city:GetGroup()
 		if otherGroup and otherGroup ~= group then
 			content = content .. "-" .. city:GetGroup().name
-			local relation = group:GetGroupRelation( otherGroup.id )
-			if relation then
-				content = content .. "+" .. MathUtility_FindEnumName( GroupRelationType, relation.type )
+			if group then
+				local relation = group:GetGroupRelation( otherGroup.id )
+				if relation then
+					content = content .. "+" .. MathUtility_FindEnumName( GroupRelationType, relation.type )
+				end
 			end
 		end
 	end
@@ -848,6 +883,32 @@ end
 function City:DumpSimple( indent )
 	if not indent then indent = "" end
 	ShowText( indent .. '[City] #' .. self.id .. ' Name=' .. self.name )
+end
+
+function City:DumpBrief()
+	local indent = ""
+	ShowText( '>>>>>>>>>>>  City >>>>>>>>>>>>>>>>>' )
+	ShowText( indent .. '[City] #' .. self.id .. ' Name=' .. self.name .. ' Group=' .. ( self.group and self.group.name or "[none]" ) )
+	self:DumpAdjacentDetail( indent )
+	ShowText( indent .. 'Popu/Mil Serv  ', Helper_CreateNumberDesc( self.population ) .. "/" .. Helper_CreateNumberDesc( self:GetMSPopulation() ) .. "(Mil)+" .. self.militaryService )
+	ShowText( indent .. 'Agri+Ecom+Prod ', self.agriculture .. "/" .. self.maxAgriculture .. " " .. self.economy .. "/" .. self.maxEconomy .. " " .. self.production .. "/" .. self.maxProduction )
+	ShowText( indent .. 'Secu/Min Popu  ', self.security .. "/" .. Helper_CreateNumberDesc( self:GetReqPopulation() ) .. "(Req)/" .. Helper_CreateNumberDesc( self:GetMinPopulation() ) .. "(Min)" )
+	ShowText( indent .. 'Money / Food   ', Helper_CreateNumberDesc( self.money ) .. ' / ' .. Helper_CreateNumberDesc( self.food ) .. "+" .. ( self:GetConsumeFood() > 0 and math.floor( self.food / self:GetConsumeFood() ) or "*" ) )
+	ShowText( indent .. 'Supply/Harvest ', Helper_CreateNumberDesc( self:GetSupply() ) .. ' / ' .. Helper_CreateNumberDesc( self:GetHarvestFood() ) )	
+	ShowText( indent .. 'Power/Req Pow  ', self:GetMilitaryPower() .. "/" .. self:GetReqMilitaryPower() )
+	ShowText( indent .. 'Leader         ', ( self.leader and self.leader.name or "" ) )
+	ShowText( indent .. 'Charas         ', #self.charas )	
+	--self:DumpCharaDetail( indent )
+	ShowText( indent .. 'Troops+Corps   ', #self.troops .. '+' .. #self.corps )
+	--self:DumpTroopDetail( indent )
+	--self:DumpCorpsDetail( indent )
+	ShowText( indent .. 'Construction   ', #self.constrs )
+	--self:DumpConstructionDetail( indent )
+	ShowText( indent .. 'Plots          ', #self.plots )	
+	--self:DumpPlotsDetail( indent )
+	ShowText( indent .. 'Tags           ', #self.tags )
+	self:DumpTagDetail( indent )
+	ShowText( "<<<<<<<<<<<<<<< City <<<<<<<<<<<<<" )
 end
 
 function City:Dump( indent, force )
@@ -921,6 +982,10 @@ end
 ----------------------------------
 -- Order operation
 ----------------------------------
+function City:LosePopulation( number )
+	self.population = self.population - number
+end
+
 function City:Instruct( instruction )
 	self.instruction = instruction
 end
@@ -1085,8 +1150,8 @@ function City:FindAdjacentCityByGroup( group )
 		end
 	end
 	if #cities == 0 then
-		if city:GetGroup() then
-			return city:GetGroup():GetCapital()
+		if self:GetGroup() then
+			return self:GetGroup():GetCapital()
 		end
 	end
 	local index = Random_SyncGetRange( 1, #cities )
@@ -1095,7 +1160,9 @@ end
 
 function City:SelectLeader( leader )
 	--Helper_DumpName( self.charas, function ( chara ) return MathUtility_FindEnumName( CharacterStatus, chara.status ) end )
-	print( self.name, " vote leader=".. NameIDToString( leader ), " old=" .. NameIDToString( self.leader ), "chara=", #self.charas )
+	if #self.charas ~= 0 then
+		print( self.name, " vote leader=".. NameIDToString( leader ), " old=" .. NameIDToString( self.leader ), "chara=", #self.charas )
+	end
 	self.leader = leader
 	if #self.charas ~= 0 and not self.leader then
 		quickSimulate = false
@@ -1152,8 +1219,9 @@ function City:CheckData()
 	function CheckData( datas, city )
 		for k, data in ipairs( datas ) do
 			if data:GetHome() ~= city then
-				local content = ( NameIDToString( data ) .. " isn't in " .. city.name .. ", now is in " .. data:GetHome().name ) .. "||"
+				local content = ( NameIDToString( data ) .. " isn't in " .. city.name .. ", now is in " .. ( data:GetHome() and data:GetHome().name or "none" ) ) .. " | "
 				hint = hint .. content
+				print( content )
 			end
 		end
 	end
@@ -1168,9 +1236,13 @@ function City:CheckData()
 end
 
 function City:Update()
+	--Temp data
+	self:UpdateDynamicData()
+	
 	--check data is wrong?
 	self:CheckData()
 
+	--check leader
 	self:CheckLeader()
 	
 	--Adjacent
@@ -1215,10 +1287,7 @@ function City:Update()
 	
 	--Consume money to maintain troops and construction, etc
 	self:Maintain()	
-	
-	--Temp data
-	self:UpdateDynamicData()
-	
+		
 	--Security down
 	if self:IsInConflict() then
 		local plotNumber = #self.plots
@@ -1234,6 +1303,58 @@ function City:Update()
 		if self.economy > self.maxEconomy * 0.35 then
 			self.economy     = MathUtility_Clamp( self.economy - math.ceil( Random_SyncGetRange( 5, 10 ) * self.economy * 0.01 ), 0, nil )		
 		end
+	end
+	
+	--Guards
+	local maxGuardNumber = QueryCityGuardsLimit( self )
+	if self.guards < maxGuardNumber then
+		local recoverGuard = QueryCityGuardsRecover( self )
+		
+		local minPoulation = self:GetMinPopulation()
+		if self.population < minPoulation + recoverGuard then
+			recoverGuard = minPoulation - self.population
+		end
+		if recoverGuard > 0 then
+			if self.guards + recoverGuard > maxGuardNumber then
+				recoverGuard = maxGuardNumber - self.guards
+			end
+			self.guards = self.guards + recoverGuard
+			self.population = self.population - recoverGuard
+		end
+	end
+	
+	--In danger Tag
+	local totalPower, maxPower, minPower, number = self:QueryAdajacentCityMilitaryPower()
+	local avgPower = number ~= 0 and totalPower / number or 0
+	local localPower = self:GetPower()
+	if localPower < minPower * CityParams.MILITARY.INDANGER_ADJACENT_MINPOWER_MODULUS
+		or localPower * CityParams.MILITARY.INDANGER_ADJACENT_MAXPOWER_MODULUS < maxPower
+		or localPower * CityParams.MILITARY.INDANGER_ADJACENT_TOTALPOWER_MODULUS < totalPower
+		or localPower * CityParams.MILITARY.INDANGER_ADJACENT_AVERAGEPOWER_MODULUS < avgPower then
+		local content = self.name .. " in danger=" .. localPower
+		if localPower < minPower * CityParams.MILITARY.INDANGER_ADJACENT_MINPOWER_MODULUS then
+			content = content .. " min=" .. localPower .. "/" .. minPower * CityParams.MILITARY.INDANGER_ADJACENT_MINPOWER_MODULUS
+		end
+		if localPower * CityParams.MILITARY.INDANGER_ADJACENT_MAXPOWER_MODULUS < maxPower then
+			content = content .. " max=" .. localPower * CityParams.MILITARY.INDANGER_ADJACENT_MAXPOWER_MODULUS .. "/" .. maxPower
+		end
+		if localPower * CityParams.MILITARY.INDANGER_ADJACENT_TOTALPOWER_MODULUS < totalPower then
+			content = content .. " tot=" .. localPower * CityParams.MILITARY.INDANGER_ADJACENT_TOTALPOWER_MODULUS .. "/" .. totalPower
+		end
+		if localPower * CityParams.MILITARY.INDANGER_ADJACENT_AVERAGEPOWER_MODULUS < avgPower then
+			content = content .. " tot=" .. localPower * CityParams.MILITARY.INDANGER_ADJACENT_TOTALPOWER_MODULUS .. "/" .. totalPower
+		end
+		--print( content )
+		self:AppendTag( CityTag.INDANGER, 1 )
+	else
+		self:RemoveTag( CityTag.INDANGER )
+	end
+	
+	--weak
+	if localPower < self:GetReqMilitaryPower() then
+		self:AppendTag( CityTag.WEAK, 1 )
+	else
+		self:RemoveTag( CityTag.WEAK )
 	end
 	
 	--InputUtility_Pause( "update city=" .. self.name .. " " .. #self.tags )

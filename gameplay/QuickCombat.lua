@@ -217,14 +217,14 @@ function Combat:Brief()
 	local content = "Combat=" .. self.id;
 	content = content .. " ["..( self.location and self.location.name or "" ).."] "
 	content = content .. "@" .. ( ( self.location and self.location:GetGroup() ) and self.location:GetGroup().name or "" )
-	content = content .. ( self.atkGroup and self.atkGroup.name or "Unkown" ) .. "+" .. atkNum .. "/" .. atkMaxNum .. "("..atkTroop..")"
+	content = content .. ( self.atkGroup and self.atkGroup.name or "Neutral" ) .. "+" .. atkNum .. "/" .. atkMaxNum .. "("..atkTroop..")"
 	content = content .. " VS "
-	content = content .. ( self.defGroup and self.defGroup.name or "Unkown" ) .. "+" .. defNum .. "/" .. defMaxNum .. "("..defTroop..")" 
+	content = content .. ( self.defGroup and self.defGroup.name or "Neutral" ) .. "+" .. defNum .. "/" .. defMaxNum .. "("..defTroop..")" 
 	self:ShowText( content )
 end
 
 function Combat:CreateDesc()
-	local desc = self.id, " " .. ( self.atkGroup and self.atkGroup.name or "Unkown" ) .. " v " .. ( self.defGroup and self.defGroup.name or "Unkown" )
+	local desc = self.id .. " " .. ( self.atkGroup and self.atkGroup.name or "Neutral" ) .. " v " .. ( self.defGroup and self.defGroup.name or "Neutral" )
 	desc = desc .. " @" .. ( self.location and self.location.name or "" )
 	desc = desc .. " date=" .. g_calendar:CreateDateDescByValue( self.begDate, true, true ) .."->"..g_calendar:CreateDateDescByValue( self.endDate, true, true )
 	desc = desc .. " rslt=" .. MathUtility_FindEnumName( CombatResult, self.result )
@@ -238,7 +238,7 @@ function Combat:Dump()
 	self:ShowText( "Day     : ".. self.day )
 	self:ShowText( "Time    : ".. math.ceil( self.time / 60 ) )
 	self:ShowText( "Weather : ".. self.weatherTable.name .. "/" .. self.weatherDuration )
-	self:ShowText( "VS      : ".. ( self.atkGroup and self.atkGroup.name or "Unkown" ) .. " / " .. ( self.defGroup and self.defGroup.name or "Unkown" ) )
+	self:ShowText( "VS      : ".. ( self.atkGroup and self.atkGroup.name or "Neutral" ) .. " / " .. ( self.defGroup and self.defGroup.name or "Neutral" ) )
 	self:ShowText( "Location: ".. ( self.location and self.location.name .. ( self.location:GetGroup() and "@" .. self.location:GetGroup().name or "" ) or "" ) )	
 	self:ShowText( "Line    : ".. "Melee=" .. #self.meleeLine .. "," .. "Charge=" .. #self.chargeLine .. "," .. "Front=" .. #self.frontLine .. "," .. "Back=" .. #self.backLine .. "," .. "Defence=" .. #self.defenceLine )
 	self:ShowText( "Round   : ".. MathUtility_FindEnumName( CombatRound, self.round ) )

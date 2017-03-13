@@ -9,6 +9,20 @@ function Warfare:GetCombatByLocation( location )
 	return self.combats[location]
 end
 
+function Warfare:IsLocationUnderAttackBy( location, atkGroup )
+	local combat = self.combats[location]
+	if not combat then
+		--InputUtility_Pause( "why no combat", location.name )
+		return false
+	end
+	local combatAtkGroup = combat:GetSideGroup( CombatSide.ATTACKER )
+	local ret = combatAtkGroup == atkGroup
+	if not ret then
+		InputUtility_Pause( combatAtkGroup.name, atkGroup.name, "@" .. location.name, location:GetGroup() and location:GetGroup().name .. "" )
+	end
+	return ret
+end
+
 --Add siege
 function Warfare:AddWarfarePlan( corps, city )
 	local locationPlan = self.plans[city]
@@ -46,9 +60,11 @@ function Warfare:Update( elapasedTime )
 				local existCombat = self:GetCombatByLocation( city )
 				local attacker = existCombat and existCombat:GetSideGroup( CombatSide.ATTACKER ) or nil
 				if existCombat then
+					--[[
 					quickSimulate = false
 					existCombat:Dump()
 					quickSimulate = true
+					]]					
 					print( existCombat:CreateDesc() )
 					print( "existCombat=", existCombat.id )
 					local reinforcer = plan.attacker:GetGroup()
@@ -86,7 +102,7 @@ function Warfare:GetCombatInLocation( city )
 end
 
 function Warfare:AddSiegeCombat( corps, city )
-	print( NameIDToString( corps ) .. " attack " .. city.name .. "@" .. city:GetGroup().name )
+	print( NameIDToString( corps ) .. " attack " .. city.name .. "@" .. ( city:GetGroup() and city:GetGroup().name or "Neutral" ) )
 	city:AppendTag( CityTag.SIEGE, 1 )
 	local combat = nil
 	local findCombat = self:GetCombatInLocation( city )
@@ -101,7 +117,7 @@ function Warfare:AddSiegeCombat( corps, city )
 		combat:SetSide( CombatSide.ATTACKER, { purpose=CombatPurpose.CONVENTIONAL } )
 		combat:SetSide( CombatSide.DEFENDER, { purpose=CombatPurpose.CONVENTIONAL } )	
 		
-		print( "combatid="..combat.id, corps:GetGroup().name, city:GetGroup().name )
+		print( "combatid="..combat.id, corps:GetGroup().name, ( city:GetGroup() and city:GetGroup().name or "" ) )
 		
 		--not in corps	
 		for k, defender in ipairs( city.troops ) do
@@ -124,12 +140,30 @@ function Warfare:AddSiegeCombat( corps, city )
 			end
 		end
 		
-		--add wall
-		combat:AddTroopToSide( CombatSide.DEFENDER, g_troopDataMng:GetData( 100 ) )	
-		--add gate
-		combat:AddTroopToSide( CombatSide.DEFENDER, g_troopDataMng:GetData( 200 ) )
-		--add tower
-		combat:AddTroopToSide( CombatSide.DEFENDER, g_troopDataMng:GetData( 210 ) )
+		function AddDefenderTroop( id, allocateNumber )
+			local newTroop = GenerateTroop( id )
+			if allocateNumber then
+				if allocateNumber <= newTroop.maxNumber then
+					newTroop.number = allocateNumber
+				end
+				allocateNumber = allocateNumber - newTroop.maxNumber
+			end
+			combat:AddTroopToSide( CombatSide.DEFENDER, newTroop )
+			--InputUtility_Pause( "Add Guard", NameIDToString( newTroop ) )
+			return allocateNumber
+		end
+		
+		--add guards
+		local troopIds = g_scenario:CallFunction( "QueryPlotGuardIds", #city.plots )
+		local totalGuards = city.guards
+		while totalGuards > 0 do
+			local troopId = troopIds[Random_SyncGetRange( 1, #troopIds )]			
+			totalGuards = AddDefenderTroop( troopId, totalGuards )
+		end
+		--add wall, gate, tower
+		AddDefenderTroop( 100 )
+		AddDefenderTroop( 200 )
+		AddDefenderTroop( 210 )		
 
 		combat:Init()
 	else
@@ -229,26 +263,42 @@ function Warfare:ProcessCombatResult( combat )
 	print( "CombatEnd=" .. combat.id, combat:GetLocation().name )
 	--combat:Dump()
 	combat:EndCombat()
-	--InputUtility_Pause()
+	
+	local city = combat:GetLocation()
+	
+	--remove guards first
+	local deadGuard = 0
+	for k, troop in ipairs( combat.troops ) do
+		if not troop:GetGroup() then
+			--InputUtility_Pause( "remove guard", NameIDToString( troop ) )
+			deadGuard = deadGuard + troop.maxNumber - troop.number
+			g_troopDataMng:RemoveData( troop.id )
+		end
+	end
+	--InputUtility_Pause( city.name, "lose guard=" .. deadGuard.."/"..city.guards, "population="..city.population )
+	city.guards = MathUtility_Clamp( city.guards - deadGuard, 0, city.guards )
+	city:LosePopulation( deadGuard )	
+
 	local winner = combat:GetWinner()
 	local atkGroup = combat:GetSideGroup( CombatSide.ATTACKER )
 	local defGroup = combat:GetSideGroup( CombatSide.DEFENDER )	
-	if not atkGroup or not defGroup then 
+	if not atkGroup then
 		--test
 		return		
 	end	
-	local relation = atkGroup:GetGroupRelation( defGroup.id )
-	if relation then
-		relation:GainProfit( atkGroup, combat.atkKill )
-		relation:GainProfit( defGroup, combat.defKill )
-	else
-		--InputUtility_Pause( atkGroup.name, defGroup.name )
+	if defGroup then
+		local relation = atkGroup:GetGroupRelation( defGroup.id )
+		if relation then
+			relation:GainProfit( atkGroup, combat.atkKill )
+			relation:GainProfit( defGroup, combat.defKill )
+		else
+			--InputUtility_Pause( atkGroup.name, defGroup.name )
+		end
 	end
 	if combat.type == CombatType.SIEGE_COMBAT then
-		local city = combat:GetLocation()
 		city:RemoveTag( CityTag.SIEGE )
 		if winner == CombatSide.ATTACKER then
-			-- Determine the ownership of the city if it's a siege combat			
+			-- Determine the ownership of the city if it's a siege combat
 			local atkCorpsList = MathUtility_Filter( combat.corps, function ( corps ) return corps:GetGroup() == atkGroup end	)
 			CaptureCity( atkGroup, city )
 			--Garrisson into the city
@@ -286,8 +336,7 @@ end
 
 function Warfare:EndCombat( combat )
 	self.combats[combat:GetLocation()] = nil
-	self:ProcessCombatResult( combat )
-	--InputUtility_Pause( "Remove Combat=", combat.location.name )
+	self:ProcessCombatResult( combat )	
 end
 
 --Use when group is fallen

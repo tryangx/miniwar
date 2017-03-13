@@ -125,7 +125,7 @@ PlotParams =
 	
 	--Minimum population need
 	-- Consider age structure of population, so minimum workforce rate is set to 0.7
-	PLOT_NEED_POPULATION_MODULUS     = 0.7,
+	PLOT_NEED_POPULATION_MODULUS     = 0.5,
 	PLOT_AGRICULTURE_NEED_POPULATION = 60,
 	PLOT_ECONOMY_NEED_POPULATION     = 20,
 	PLOT_PRODUCTION_NEED_POPULATION  = 40,
@@ -377,7 +377,13 @@ CityTag =
 	--Adjacent to enemy
 	--Good:
 	--Bad : War weariness
-	BATTLEFRONT = 11,		
+	BATTLEFRONT = 11,
+	
+	--Adjacent Power of other group is higher
+	INDANGER    = 12,
+	
+	--Military Power is less than required power
+	WEAK        = 13,
 	
 	--Economic is well
 	--Good: More tax
@@ -388,7 +394,9 @@ CityTag =
 	--Good: 
 	--Bad : Less Tax
 	DEPRESSED   = 21,
-	
+
+	--Good:
+	--Bad : Lose Trust
 	BANKRUPT    = 22,
 	
 	--Supply not enough
@@ -446,6 +454,11 @@ CityParams =
 	
 	MILITARY = 
 	{
+		INDANGER_ADJACENT_MINPOWER_MODULUS   = 0.65,
+		INDANGER_ADJACENT_MAXPOWER_MODULUS   = 5,
+		INDANGER_ADJACENT_TOTALPOWER_MODULUS = 10,
+		INDANGER_ADJACENT_AVERAGEPOWER_MODULUS = 2,
+		
 		REQUIRE_MILITARYPOWER_LIMITATION_MODULUS   = 4,
 		SAFETY_MILITARYPOWER_PER_PLOT      = 100,
 		SECURITY_MILITARYPOWER_PER_PLOT    = 200,
@@ -701,6 +714,16 @@ GroupGovernment =
 	-- Special     : 
 	-- Leader      : Election ( Leader dead / Term end )
 	NATION        = 6,
+	
+	------------------------------------
+	-- Comment     : Belong to Indenpendce goverment
+	-- Destruction : Lose all cities
+	-- Order       : No limited
+	-- Purpose     : Short term goal
+	-- Belong      : None
+	-- Special     : 
+	-- Leader      : Election ( Leader dead / Term end )
+	WARZONE       = 7,
 }
 
 GroupPower =
@@ -1641,25 +1664,26 @@ CharacterProposal =
 	HR_EXILE         = 44,
 	HR_PROMOTE       = 45,--Need AI
 	HR_BONUS         = 46,--Need implement
-    HR_AFFAIRS_END   = 49,	
+	HR_LOOKFORTALENT = 47,
+    HR_AFFAIRS_END   = 49,
 	
 	-- War preparedness	
 	WAR_PREPAREDNESS_AFFAIRS = 50,
 	RECRUIT_TROOP    = 51,
 	LEAD_TROOP       = 52,
-	ESTABLISH_CORPS  = 53,
-	DISPATCH_CORPS   = 54,--Need AI
-	REINFORCE_CORPS  = 55,
-	REGROUP_CORPS    = 56,
-	TRAIN_CORPS      = 57,
-	CONSCRIPT_TROOP  = 58,--Need implement
+	ESTABLISH_CORPS  = 53,	
+	REINFORCE_CORPS  = 54,
+	REGROUP_CORPS    = 55,
+	TRAIN_CORPS      = 56,
+	CONSCRIPT_TROOP  = 57,--Need implement
 	WAR_PREPAREDNESS_AFFAIRS_END = 59,
 	
 	-- Military
 	MILITARY_AFFAIRS = 60,
 	ATTACK_CITY      = 61,
 	EXPEDITION       = 62,
-	CONTROL_PLOT     = 63,
+	CONTROL_PLOT     = 63,--Need AI
+	DISPATCH_CORPS   = 64,
 	MILITARY_AFFAIRS_END = 69,
 
 	-- Diplomacy
@@ -1699,17 +1723,16 @@ CharacterParams =
 	{
 		MAX_SATISFACTION = 250,
 		MAX_AP           = 250,
-		MAX_TRUST        = 250,
+		MAX_TRUST        = 250,	
+		MAX_CONTRIBUTION = 10000,	
+		
+		LOW_TRUST        = 50,
+		LOW_CONTRIBUTION = 100,
 	},
 
 	TRAIT = 
 	{
 		TRAIT_REQUIREMENT_PER_SLOT = 40,
-	},
-
-	CONTRIBUTION = 
-	{
-		MAX_CONTRIBUTION = 10000,
 	},
 	
 	SUBORDINATE_LIMIT = 
@@ -1857,8 +1880,10 @@ CharacterParams =
 	{
 		STANDARD_STAMINA = 100,	
 		RESTORE_STAMINA_RATE = 0.35,
-		SUBMIT_PROPOSAL = 35,
-		ACCEPT_PROPOSAL = 25,
+		SUBMIT_PROPOSAL  = 35,
+		ACCEPT_PROPOSAL  = 25,
+		ASSIGN_PROPOSAL  = 10,
+		EXECUTE_PROPOSAL = 40,
 	},
 	
 	PROPOSAL_TENDENCY = 

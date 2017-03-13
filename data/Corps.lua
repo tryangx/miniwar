@@ -133,8 +133,7 @@ function Corps:RefreshName()
 			break
 		end
 	end
-	self.name = self.name .. "-" .. "corps"		
-	print( "corps rename=" .. ( oldName or "" ) .."->" ..self.name )
+	self.name = self.name .. "-" .. "corps"
 end
 
 function Corps:GetAsset( tagType )

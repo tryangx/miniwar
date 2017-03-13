@@ -192,6 +192,10 @@ function Character:IsGroupLeader()
 	return self.group and self.group:GetLeader() == self
 end
 
+function Character:IsCityLeader()
+	return self.home and self.home:GetLeader() == self
+end
+
 function Character:IsAtHome()
 	return self.location == self.home and not g_movingActorMng:HasActor( MovingActorType.CHARACTER, self )
 end
@@ -251,7 +255,7 @@ function Character:ChoiceAction( action )
 end
 
 function Character:Contribute( contribution )
-	self.contribution = MathUtility_Clamp( self.contribution + contribution, 0, CharacterParams.CONTRIBUTION.MAX_CONTRIBUTION )
+	self.contribution = MathUtility_Clamp( self.contribution + contribution, 0, CharacterParams.ATTRIBUTE.MAX_CONTRIBUTION )
 	Debug_Normal( "["..self.name.."] contribute " .. contribution .. " to " .. self.contribution )
 end
 
@@ -270,12 +274,12 @@ end
 
 function Character:JoinCity( city )
 	if city and city:GetGroup() ~= self:GetGroup() then
-		print( self.name, city:GetGroup(), self:GetGroup(), city.name )
+		print( "Join", self.name, city:GetGroup(), self:GetGroup(), city.name )
 		InputUtility_Pause( city.name .. "["..( city:GetGroup() and city:GetGroup().name or "" ).."] is not ", ( self:GetGroup() and self:GetGroup().name or "" ) )
 		k.p = 1
 	end
 	self.home = city
-	print( NameIDToString( self ), "join=" .. ( city and city.name or "" ) )	
+	--print( NameIDToString( self ), "join=" .. ( city and city.name or "" ) )	
 end
 
 function Character:JoinGroup( group )
@@ -316,11 +320,19 @@ function Character:GetProposal()
 end
 
 function Character:CanSubmitProposal()
-	return self._hasSubmitProposal ~= true and self.stamina > CharacterParams.STAMINA["SUBMIT_PROPOSAL"] and not g_taskMng:GetTaskByActor( self )
+	return self.stamina > CharacterParams.STAMINA["SUBMIT_PROPOSAL"] and self._hasSubmitProposal ~= true and not g_taskMng:GetTaskByActor( self )
+end
+
+function Character:CanAssignProposal()
+	return self.stamina > CharacterParams.STAMINA["ASSIGN_PROPOSAL"]
 end
 
 function Character:CanAcceptProposal()
 	return self.stamina > CharacterParams.STAMINA["ACCEPT_PROPOSAL"]
+end
+
+function Character:CanExecuteProposal()
+	return self.stamina > CharacterParams.STAMINA["EXECUTE_PROPOSAL"] and not g_taskMng:GetTaskByActor( self )
 end
 
 function Character:CanLead()

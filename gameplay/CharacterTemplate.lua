@@ -124,7 +124,7 @@ function CharacterTemplate:CheckNumOfCharaInCity( city )
 	table.insert( self.cityList, city )
 end
 
-function CharacterTemplate:GenerateOutChara( city )
+function CharacterTemplate:GenerateChara( city )
 	self.retryTime = 0
 	
 	local chara = g_charaDataMng:NewData()
@@ -134,11 +134,16 @@ function CharacterTemplate:GenerateOutChara( city )
 	chara.location = city
 	chara.home     = city
 	
-	g_statistic:AddOutChara( chara )
+	return chara
+end
+
+function CharacterTemplate:GenerateOutChara( city )
+	local chara = self:GenerateChara( city )
+	g_statistic:AddOutChara( chara )	
+	self.generateChara = self.generateChara + 1	
+	--InputUtility_Pause( "generate chara ", NameIDToString( chara ) .. " in " .. city.name, "retry=" .. self.retryTime, "tot=" .. self.generateChara )	
 	
-	self.generateChara = self.generateChara + 1
-	
-	--InputUtility_Pause( "generate chara ", NameIDToString( chara ) .. " in " .. city.name, "retry=" .. self.retryTime, "tot=" .. self.generateChara )
+	return chara
 end
 
 function CharacterTemplate:Update( elapsedTime )

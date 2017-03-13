@@ -398,15 +398,62 @@ local TroopData =
 		number    = 1000,
 		morale    = 60,
 	},
+	--[[
 	[500] = 
 	{
-		name      = "Militia",
+		name      = "Guard F1",
 		tableId   = 500,
 		exp       = 0,		
 		level     = 5,		
-		number    = 1000,
+		number    = 100,
 		morale    = 40,
 	},
+	[501] = 
+	{
+		name      = "Guard F2",
+		tableId   = 501,
+		exp       = 0,		
+		level     = 5,		
+		number    = 200,
+		morale    = 40,
+	},
+	[502] = 
+	{
+		name      = "Guard F3",
+		tableId   = 502,
+		exp       = 0,		
+		level     = 5,		
+		number    = 500,
+		morale    = 40,
+	},
+	[510] = 
+	{
+		name      = "Guard A1",
+		tableId   = 510,
+		exp       = 0,		
+		level     = 5,		
+		number    = 100,
+		morale    = 40,
+	},
+	[511] = 
+	{
+		name      = "Guard A2",
+		tableId   = 511,
+		exp       = 0,		
+		level     = 5,		
+		number    = 200,
+		morale    = 40,
+	},
+	[512] = 
+	{
+		name      = "Guard A3",
+		tableId   = 512,
+		exp       = 0,		
+		level     = 5,		
+		number    = 500,
+		morale    = 40,
+	},
+	]]
 }
 
 local CorpsData = 
@@ -466,7 +513,7 @@ local CityData =
 		constructions = {},		
 		resources = {},--{ 200, 201, 202, 203, 204, 205, 206 },
 		plots = { { x = 1, y = 1 }, { x = 2, y = 1 } },
-		adjacentCities = { 11, 30, 40, 70 },
+		adjacentCities = { 11 },--, 30, 40, 70 },
 	},
 	[11] = 
 	{
@@ -488,7 +535,7 @@ local CityData =
 		constructions = {},		
 		resources = {},
 		plots = { { x = 2, y = 2 }, { x = 2, y = 2 } },
-		adjacentCities = { 10, 40, 90 },
+		adjacentCities = { 10, 30, 40, 90 },
 	},
 	
 	[20] = 
@@ -530,7 +577,7 @@ local CityData =
 		troops = {},				
 		constructions = {},		
 		resources = {},		
-		adjacentCities = { 10, 70 },
+		adjacentCities = { 11, 70 },
 	},
 	
 	[40] = 
@@ -551,7 +598,7 @@ local CityData =
 		troops = {},				
 		constructions = {},		
 		resources = {},		
-		adjacentCities = { 10, 11, 20, 50, 70 },
+		adjacentCities = { 11, 20, 50, 70 },
 	},
 	
 	[50] = 
@@ -609,12 +656,12 @@ local CityData =
 		cultureCircle = 0,		
 		security = 80,		
 		traits = {},		
-		charas = { 700 },		
+		charas = { 700 },
 		corps  = {},		
 		troops = {},				
 		constructions = {},		
 		resources = {},		
-		adjacentCities = { 10, 30, 40, 50, 80, 90, },
+		adjacentCities = { 30, 40, 50, 80, 90, },
 	},
 	
 	[80] = 
@@ -669,7 +716,6 @@ local GroupData =
 		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 100,
 		money = 1000,
-		researchAbility = 100,
 		power = 400000,
 		capital = 10,
 		cities = { 10, 11 },		
@@ -687,7 +733,6 @@ local GroupData =
 		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 200,
 		money = 1000,
-		researchAbility = 100,
 		power = 350000,
 		capital = 20,
 		cities = { 20 },
@@ -702,7 +747,6 @@ local GroupData =
 		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 300,		
 		money = 10000,
-		researchAbility = 100,
 		power = 500000,
 		capital = 30,
 		cities = { 30 },
@@ -717,7 +761,6 @@ local GroupData =
 		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 400,		
 		money = 1000,
-		researchAbility = 100,
 		power = 250000,
 		capital = 40,
 		cities = { 40 },
@@ -734,7 +777,6 @@ local GroupData =
 		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 500,
 		money = 1000,
-		researchAbility = 100,
 		power = 300000,
 		capital = 50,
 		cities = { 50 },
@@ -749,7 +791,6 @@ local GroupData =
 		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 600,
 		money = 1000,
-		researchAbility = 100,
 		power = 250000,
 		capital = 60,
 		cities = { 60 },
@@ -764,7 +805,6 @@ local GroupData =
 		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 700,
 		money = 1000,
-		researchAbility = 100,
 		power = 150000,
 		capital = 70,
 		cities = { 70 },
@@ -779,7 +819,6 @@ local GroupData =
 		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 800,
 		money = 1000,
-		researchAbility = 100,
 		power = 15000,
 		capital = 80,
 		cities = { 80 },
@@ -795,7 +834,6 @@ local GroupData =
 		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
 		leader = 900,
 		money = 10000,
-		researchAbility = 100,
 		power = 2500,
 		capital = 90,
 		cities = { 90 },
@@ -999,31 +1037,6 @@ local GroupRelationData =
 	},
 }
 
-local PlotData = 
-{
-	{
-		x = 1,
-		y = 1,
-		tableId = 100,
-		assets = { },
-	},
-	{
-		x = 2,
-		y = 1,
-		tableId = 200,
-	},
-	{
-		x = 1,
-		y = 2,
-		tableId = 300,
-	},
-	{
-		x = 2,
-		y = 2,
-		tableId = 400,
-	},
-}
-
 function Scenario_Demo_GroupRelation_TableData()
 	return GroupRelationData
 end
@@ -1050,8 +1063,4 @@ end
 
 function Scenario_Demo_GroupRelation_Data()
 	return GroupRelationData
-end
-
-function Scenario_Demo_Plot_Data()
-	return PlotData
 end

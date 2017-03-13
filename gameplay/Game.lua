@@ -116,7 +116,8 @@ function Game:NewGame()
 	g_groupRelationDataMng:LoadFromData( g_scenario:GetTableData( "GROUPRELATION_DATA" ) )
 	
 	--Plot map
-	g_plotMap:RandomMap( 10, 10 )
+	--g_plotMap:RandomMap( 10, 10 )
+	g_plotMap:RandomMap( 72, 72 )
 	g_plotMap:AllocateToCity()
 
 	--Choice Player
@@ -192,7 +193,7 @@ function Game:Init()
 	Debug_SetFileMode( false )	
 
 	self.turn = 0
-	self.maxTurn = 120
+	self.maxTurn = 240
 	
 	g_gameEvent:InitData()
 	
@@ -222,8 +223,9 @@ function Game:Init()
 	g_plotTableMng:LoadTable( Standard_Plot_TableData() )
 	
 	-- initialize g_calendar
-	g_calendar:Init( Standard_Calendar_TableData() )	
-	g_calendar:SetDate( 1, 1, 580, 1, 1 )
+	g_calendar:Init( Standard_Calendar_TableData() )
+	local begdate = g_scenario:GetBegDate()
+	g_calendar:SetDate( begdate.month, begdate.day, begdate.year, begdate.hour, begdate.bc )
 	
 	-- initialize g_season
 	g_season:Init( g_calendar, g_seasonTableMng )
@@ -247,11 +249,14 @@ end
 
 function Game:PreprocessGameData()	
 	--entity data relative
+	
+	--1st Group Data
 	self._groupList = {}
 	g_groupDataMng:Foreach( function ( data )
 		data:ConvertID2Data()
 		table.insert( self._groupList, data )
 	end )
+	
 	-- Repair relation data leaks	
 	local _firstGroup = self._groupList[1]
 	if _firstGroup then
@@ -260,6 +265,7 @@ function Game:PreprocessGameData()
 		end
 	end
 	
+	--2nd City Data
 	self._cityList      = {}
 	g_cityDataMng:Foreach( function ( data )
 		data:ConvertID2Data()
@@ -272,12 +278,14 @@ function Game:PreprocessGameData()
 		end
 	end )
 	
+	--3rd Corps Data
 	self._corpsList     = {}
 	g_corpsDataMng:Foreach( function ( data )
 		data:ConvertID2Data()
 		table.insert( self._corpsList, data )
 	end )
 	
+	--4th Chara Data
 	g_charaDataMng:Foreach( function ( data )
 		data:ConvertID2Data()
 		if data.status == CharacterStatus.NORMAL then
@@ -296,6 +304,7 @@ function Game:PreprocessGameData()
 	-- 2. generate list
 	-- 3. set default value
 	
+	-- 5th Troop Data
 	g_troopDataMng:Foreach( function ( data )
 		data:ConvertID2Data()
 		
@@ -353,6 +362,24 @@ function Game:TestCombat()
 	self:Run()
 end
 
+function Game:End()
+	for k, group in ipairs( self._groupList ) do
+		group:Dump()
+	end
+	for k, city in ipairs( self._cityList ) do
+		if city:GetGroup() then
+			city:Dump()
+		end
+	end
+	g_taskMng:DumpResult()
+	g_diplomacy:DumpResult()
+	g_statistic:Dump()
+	g_gameMap:DrawAll()
+	if self.winner then
+		InputUtility_Wait( "winner="..self.winner.name, "end" )
+	end
+end
+
 function Game:Run()
 	while self.turn < self.maxTurn do
 		if self.gameMode == GameMode.NEW_GAME or self.gameMode == GameMode.LOAD_GAME then
@@ -364,20 +391,7 @@ function Game:Run()
 	end
 	--game finished
 	if self.turn >= self.maxTurn or self.winner then
-		for k, group in ipairs( self._groupList ) do
-			group:Dump()
-		end
-		for k, city in ipairs( self._cityList ) do
-			if city:GetGroup() then
-				city:Dump()
-			end
-		end
-		g_taskMng:DumpResult()
-		g_diplomacy:DumpResult()
-		g_statistic:Dump()
-	end
-	if self.winner then
-		InputUtility_Wait( "winner="..self.winner.name, "end" )
+		self:End()
 	end
 end
 
@@ -449,47 +463,8 @@ function Game:NextTurn()
 	self:ActionFlow()
 end
 
-function Game:DrawMap()
-	function DrawMapTable( map, fn )
-		for y = 1, g_plotMap.height do
-			local row = map[y]
-			local content = ""
-			for x = 1, g_plotMap.width do
-				content = content .. fn( x, y )
-			end
-			ShowText( "Y=".. y, content )
-		end
-	end
-	local map = {}
-	for k, city in ipairs( self._cityList ) do
-		local pos = city.coordinate
-		if not map[pos.y] then map[pos.y] = {} end
-		if map[pos.y][pos.x] then ShowText( "Duplicate", city.name, map[pos.y][pos.x].name ) end
-		map[pos.y][pos.x] = city
-	end	
-	if self.turn == 1 then
-		g_plotMap:Dump()
-		ShowText( "City Map" )		
-		DrawMapTable( map, function( x, y )
-			local city = map[y] and map[y][x]		
-			if city then return "<".. Helper_AbbreviateString( city.name, 5 ) ..">" end
-			return "       "
-		end )
-		ShowText( "Resource Map" )
-		DrawMapTable( map, function ( x, y )
-			local plot = g_plotMap:GetPlot( x, y )
-			if plot.resource then
-				return "<".. Helper_TrimString( plot.resource.name, 5 ) ..">"
-			end
-			return "       "
-		end )
-	end
-	g_taskMng:Dump()
-	--InputUtility_Pause()
-end
-
 function Game:ActionFlow()	
-	self:DrawMap()
+	--g_gameMap:DrawGroupMap()
 
 	--[[
 	-- Personal Choice
@@ -560,6 +535,9 @@ function Game:ActionFlow()
 		corps:HoldMeeting()
 	end
 	]]
+	
+	--execute immediately task
+	g_taskMng:Update( 0 )
 end
 
 function Game:Update( elpasedTime )

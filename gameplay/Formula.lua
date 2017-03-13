@@ -22,23 +22,34 @@ end
 ------------------------------
 -- City relative
 
+function QueryCityGuardsLimit( city )
+	local plotNumber = #city.plots
+	local number = math.ceil( plotNumber ^ 1.3 ) * 100
+	return number
+end
+function QueryCityGuardsRecover( city )
+	local plotNumber = #city.plots
+	local number = math.ceil( plotNumber ^ 0.5 ) * 100
+	return number
+end
+
 function QueryCityCorpsSupport( city )
-	local numPlot = #city.plots
-	local ret = math.floor( numPlot ^ 0.5 )
+	local plotNumber = #city.plots
+	local ret = math.floor( plotNumber ^ 0.5 )
 	if city:IsCapital() then ret = ret + CityParams.CAPITAL_EXTRA_CORPS_REQUIREMENT end
 	return ret
 end
 
 function QueryCityCharaLimit( city )
-	local numPlot = #city.plots
-	local ret = math.max( 1, math.floor( numPlot ^ 0.5 ) )
+	local plotNumber = #city.plots
+	local ret = math.max( 1, math.floor( plotNumber ^ 0.5 ) )
 	if city:IsCapital() then ret = ret + CityParams.CAPITAL_EXTRA_CHARA_LIMIT end
 	return ret
 end
 
 function QueryCityNeedChara( city )
-	local numPlot = #city.plots
-	local ret = math.max( 1, math.floor( numPlot ^ 0.5 ) + CityParams.NONCAPITAL_EXTRA_CHARA_REQUIREMENT )
+	local plotNumber = #city.plots
+	local ret = math.max( 1, math.floor( plotNumber ^ 0.5 ) + CityParams.NONCAPITAL_EXTRA_CHARA_REQUIREMENT )
 	if city:IsCapital() then ret = ret + CityParams.CAPITAL_EXTRA_CHARA_REQUIREMENT end
 	--fortress modification?
 	--print( city.name, " need=", ret )
@@ -94,6 +105,11 @@ end
 --------------------------
 -- City
 
+function GuessCityPower( city )
+	local power = city:GetReqMilitaryPower()
+	return power
+end
+
 -- How many people required for each work position 
 function CalcCityMinPopulation( city )
 	local agr, maxAgr, ecn, maxEcn, prd, maxPrd = city:GetGrowthData()
@@ -122,9 +138,14 @@ end
 --------------------------
 -- Time spend on the task
 
+function CalcLookforTalentTime( city )
+	local plotNumber = #city.plots
+	return math.max( 1, math.floor( plotNumber ^ 0.5 ) - 1 )
+end
+
 function CalcSpendTimeOnCityAffairs( city )
-	local numPlot = #city.plots
-	return math.max( 1, math.floor( numPlot ^ 0.5 ) )
+	local plotNumber = #city.plots
+	return math.max( 1, math.floor( plotNumber ^ 0.5 ) )
 end
 
 function CalcSpendTimeOnRoad( currentCity, targetCity )

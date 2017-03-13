@@ -78,23 +78,26 @@ MeetingSubFlow =
 	SUB_CITY_FARM        = 33,
 	SUB_CITY_PATROL      = 34,
 	
-	SUB_DISPATCH_CHARA   = 40,	
-	SUB_CALL_CHARA       = 41,
-	SUB_HIRE_CHARA       = 42,
-	SUB_EXILE_CHARA	     = 43,
-	SUB_PROMOTE_CHARA    = 44,
+	SUB_HR_DISPATCH      = 41,	
+	SUB_HR_CALL          = 42,
+	SUB_HR_HIRE          = 43,
+	SUB_HR_EXILE	     = 44,
+	SUB_HR_PROMOTE       = 45,
+	SUB_HR_BONUS         = 46,
+	SUB_HR_LOOKFORTALENT = 47,
 	
-	SUB_RECRUIT_TROOP    = 50,
-	SUB_LEAD_TROOP       = 51,
-	SUB_ESTABLISH_CORPS  = 52,	
-	SUB_REINFORCE_CORPS  = 53,
-	SUB_DISPATCH_CORPS   = 54,
+	SUB_RECRUIT_TROOP    = 51,
+	SUB_LEAD_TROOP       = 52,
+	SUB_ESTABLISH_CORPS  = 53,	
+	SUB_REINFORCE_CORPS  = 54,	
 	SUB_REGROUP_CORPS    = 55,
 	SUB_TRAIN_CORPS      = 56,
 	SUB_CONSCRIPT_TROOP  = 57,
 	
-	SUB_ATTACK_CITY      = 60,
-	SUB_EXPEDITION       = 61,
+	SUB_ATTACK_CITY      = 61,
+	SUB_EXPEDITION       = 62,
+	SUB_CONTROL_PLOT     = 63,
+	SUB_DISPATCH_CORPS   = 64,
 }
 
 Meeting = class()
@@ -159,6 +162,9 @@ function Meeting:CreateProposalDesc( proposal, needChara, needDate )
 		content = "Exile [" .. NameIDToString( proposal.target ) .. "] in [".. proposal.data.name .. "]" 
 	elseif proposal.type == CharacterProposal.HR_PROMOTE then
 		content = "Promote [" .. NameIDToString( proposal.target ) .. "] in [".. proposal.data.name .. "]" 
+	elseif proposal.type == CharacterProposal.HR_LOOKFORTALENT then
+		content = "Look for Talent in [".. proposal.data.name .. "]" 
+		
 		
 	--War preparedness
 	elseif proposal.type == CharacterProposal.ESTABLISH_CORPS then
@@ -176,15 +182,17 @@ function Meeting:CreateProposalDesc( proposal, needChara, needDate )
 		for k, troop in ipairs( proposal.target ) do
 			troopName = troopName .. NameIDToString( troop ) .. " "
 		end
-		content = "Regroup Corps [".. proposal.data.name .. "]" .. " with [".. troopName .."]" 
-	elseif proposal.type == CharacterProposal.DISPATCH_CORPS then
-		content = "Dispatch Corps [".. NameIDToString( proposal.target ) .. "]" .. " to ["..proposal.city.name.."]" 
+		content = "Regroup Corps [".. NameIDToString( proposal.data ) .. "]" .. " with [".. troopName .."]" 
+
 		
 	--Military
 	elseif proposal.type == CharacterProposal.ATTACK_CITY then
 		content = "Send [" .. NameIDToString( proposal.data ) .. "] Attack [".. NameIDToString( proposal.target ) .. "]"
 	elseif proposal.type == CharacterProposal.EXPEDITION then
 		content = "Send [" .. NameIDToString( proposal.data ) .. "] Go on expedition to [".. NameIDToString( proposal.target ) .. "] " 		
+	elseif proposal.type == CharacterProposal.DISPATCH_CORPS then
+		content = "Dispatch Corps [".. NameIDToString( proposal.data ) .. "]" .. " to ["..proposal.target.name.."]" 
+	
 	
 	else
 		content = "unknown " .. MathUtility_FindEnumName( CharacterProposal, proposal.type )	
@@ -258,7 +266,7 @@ function Meeting:SelectProposalFlow( chara )
 		self._leader:ClearProposal()
 		if self._leader:CanSubmitProposal() then
 			table.insert( menus, { c = index, content = "Submit My Proposal", fn = function ()
-				self._leader:SubmitProposal( { type = CharacterProposal.PLAYER_EXECUTE_PROPOSAL, proposer =self._leader } )
+				self._leader:SubmitProposal( { type = CharacterProposal.PLAYER_EXECUTE_PROPOSAL, proposer = self._leader } )
 				self:UpdateStatus( MeetingStatus.MAKE_CHOICE )
 			end } )
 			index = index + 1
@@ -454,7 +462,7 @@ function Meeting:ConfirmProposalFlow( proposal )
 			self.subFlow = MeetingSubFlow["SUB_" .. MathUtility_FindEnumKey( CharacterProposal, proposal.type )]
 			--ShowText( "subflow=" .. MathUtility_FindEnumName( MeetingSubFlow, self.subFlow ), self.subFlow, proposal.type, MathUtility_FindEnumKey( CharacterProposal, proposal.type )  )			
 		else
-			--print( "!!!" .. self:CreateProposalDesc( proposal ) .. proposal.proposer.name )
+			--print( "!!!Issue " .. self:CreateProposalDesc( proposal ) .. " by " .. proposal.proposer.name )
 			g_taskMng:IssueTaskByProposal( proposal )
 		end
 	end
@@ -1075,97 +1083,100 @@ function Meeting:ProcessSubMenu()
 	if self.subFlow == MeetingSubFlow.SUB_CITY_BUILD then
 		local SelectConstruction = SelectBuildConstruction( self._city )
 		if SelectConstruction then
-			_chara:SubmitProposal( { type = CharacterProposal.CITY_BUILD, target = self._city, data = SelectConstruction, proposer =_chara } )
+			_chara:SubmitProposal( { type = CharacterProposal.CITY_BUILD, target = self._city, data = SelectConstruction, proposer =_chara, actor = _actor } )
 		end
 	elseif self.subFlow == MeetingSubFlow.SUB_CITY_INVEST then
-		_chara:SubmitProposal( { type = CharacterProposal.CITY_INVEST, target = self._city, proposer =_chara } )
+		_chara:SubmitProposal( { type = CharacterProposal.CITY_INVEST, target = self._city, proposer =_chara, actor = _actor } )
 	elseif self.subFlow == MeetingSubFlow.SUB_CITY_FARM then
-		_chara:SubmitProposal( { type = CharacterProposal.CITY_FARM, target = self._city, proposer =_chara } )
+		_chara:SubmitProposal( { type = CharacterProposal.CITY_FARM, target = self._city, proposer =_chara, actor = _actor } )
 	elseif self.subFlow == MeetingSubFlow.SUB_CITY_PATROL then
-		_chara:SubmitProposal( { type = CharacterProposal.CITY_PATROL, target = self._city, proposer =_chara } )
+		_chara:SubmitProposal( { type = CharacterProposal.CITY_PATROL, target = self._city, proposer =_chara, actor = _actor } )
 	elseif self.subFlow == MeetingSubFlow.SUB_CITY_LEVY_TAX then
-		_chara:SubmitProposal( { type = CharacterProposal.CITY_LEVY_TAX, target = self._city, proposer =_chara } )
+		_chara:SubmitProposal( { type = CharacterProposal.CITY_LEVY_TAX, target = self._city, proposer =_chara, actor = _actor } )
 	elseif self.subFlow == MeetingSubFlow.SUB_CITY_INSTRUCT then
 		local SelectCity = SelectNonCapitalCity( self._group )
 		local SelectInstruction = SelectCityInstruction()
 		if SelectCity and SelectInstruction ~= nil then
-			_chara:SubmitProposal( { type = CharacterProposal.CITY_INSTRUCT, target = SelectCity, data = SelectInstruction, proposer =_chara } )
+			_chara:SubmitProposal( { type = CharacterProposal.CITY_INSTRUCT, target = SelectCity, data = SelectInstruction, proposer =_chara, actor = _actor } )
 		end
 		
 	--Human resource
-	elseif self.subFlow == MeetingSubFlow.SUB_DISPATCH_CHARA then
+	elseif self.subFlow == MeetingSubFlow.SUB_HR_DISPATCH then
 		local SelectChara = SelectFreeChara( self._city )
 		local SelectCity = SelectDispatchTargetCity( self._city )
 		if SelectChara and SelectCity then
-			_chara:SubmitProposal( { type = CharacterProposal.HR_DISPATCH, data = SelectCity, target = SelectChara, proposer =_chara } )
+			_chara:SubmitProposal( { type = CharacterProposal.HR_DISPATCH, data = SelectCity, target = SelectChara, proposer = _chara, actor = _actor } )
 		end
-	elseif self.subFlow == MeetingSubFlow.SUB_CALL_CHARA then
+	elseif self.subFlow == MeetingSubFlow.SUB_HR_CALL then
 		local SelectCity = SelectFreeCharaCity( self._city )
 		local SelectChara = SelectCity and SelectFreeChara( SelectCity ) or nil
 		if SelectChara then
-			_chara:SubmitProposal( { type = CharacterProposal.HR_CALL, data = self._city, target = SelectChara, proposer =_chara } )
+			_chara:SubmitProposal( { type = CharacterProposal.HR_CALL, data = self._city, target = SelectChara, proposer =_chara, actor = _actor } )
 		end
-	elseif self.subFlow == MeetingSubFlow.SUB_HIRE_CHARA then
+	elseif self.subFlow == MeetingSubFlow.SUB_HR_HIRE then
 		local SelectCity = SelectOutCharaExistCities( self._group )
 		local SelectChara = SelectCity and SelectCityOutChara( SelectCity ) or nil
 		if SelectChara then
-			local proposal = { type = CharacterProposal.HR_HIRE, data = SelectCity, target = SelectChara, proposer =_chara }			
+			local proposal = { type = CharacterProposal.HR_HIRE, data = SelectCity, target = SelectChara, proposer =_chara, actor = _actor }			
 			_chara:SubmitProposal( proposal )
 		end	
-	elseif self.subFlow == MeetingSubFlow.SUB_EXILE_CHARA then
+	elseif self.subFlow == MeetingSubFlow.SUB_HR_EXILE then
 		local SelectCity = SelectFreeCharaCity( self._city )
 		local SelectChara = SelectCity and SelectFreeChara( SelectCity ) or nil
 		if SelectChara then
-			local proposal = { type = CharacterProposal.HR_EXILE, data = SelectCity, target = SelectChara, proposer =_chara }			
+			local proposal = { type = CharacterProposal.HR_EXILE, data = SelectCity, target = SelectChara, proposer =_chara, actor = _actor }			
 			_chara:SubmitProposal( proposal )
 		end
-	elseif self.subFlow == MeetingSubFlow.SUB_PROMOTE_CHARA then
+	elseif self.subFlow == MeetingSubFlow.SUB_HR_PROMOTE then
 		local SelectChara = SelectPromoteChara( self._group )
 		local SelectJob = SelectChara and SelectCharaPromotionJob( SelectChara ) or nil
 		if SelectJob then
-			_chara:SubmitProposal( { type = CharacterProposal.HR_PROMOTE, data = SelectCity, target = SelectChara, proposer =_chara } )
+			_chara:SubmitProposal( { type = CharacterProposal.HR_PROMOTE, data = SelectCity, target = SelectChara, proposer =_chara, actor = _actor } )
 		end
+	elseif self.subFlow == MeetingSubFlow.SUB_HR_LOOKFORTALENT then
+		_chara:SubmitProposal( { type = CharacterProposal.HR_LOOKFORTALENT, data = SelectCity, proposer =_chara, actor = _actor } )
+		
 	
 	--War preparedness
 	elseif self.subFlow == MeetingSubFlow.SUB_ESTABLISH_CORPS then
 		local SelectTroops = SelectMultiCityTroops( self._city )
 		if #SelectTroops > 0 then
-			_chara:SubmitProposal( { type = CharacterProposal.ESTABLISH_CORPS, data = SelectTroopsself._city, target = SelectTroops, proposer =_chara } )
+			_chara:SubmitProposal( { type = CharacterProposal.ESTABLISH_CORPS, data = SelectTroopsself._city, target = SelectTroops, proposer =_chara, actor = _actor } )
 		end
 	elseif self.subFlow == MeetingSubFlow.SUB_RECRUIT_TROOP then
 		--Select troop
 		local SelectTroop = SelectCityRecruitTroop( self._city )		
 		if SelectTroop then
-			_chara:SubmitProposal( { type = CharacterProposal.RECRUIT_TROOP, data = self._city, target= SelectTroop, proposer =_chara } )
+			_chara:SubmitProposal( { type = CharacterProposal.RECRUIT_TROOP, data = self._city, target= SelectTroop, proposer =_chara, actor = _actor } )
 		end
 	elseif self.subFlow == MeetingSubFlow.SUB_REGROUP_CORPS then
 		local SelectCorps = SelectCityVacancyCorps( self._city )
 		local SelectTroops = SelectCityNonCorpsTroops( self._city )		
 		if SelectCorps and #SelectTroops > 0 then
-			_chara:SubmitProposal( { type = CharacterProposal.REGROUP_CORPS, data = SelectCorps, target = SelectTroops, proposer =_chara } )
+			_chara:SubmitProposal( { type = CharacterProposal.REGROUP_CORPS, data = SelectCorps, target = SelectTroops, proposer =_chara, actor = _actor } )
 		end
 	elseif self.subFlow == MeetingSubFlow.SUB_REINFORCE_CORPS then
 		local SelectCorps = SelectCityUnderstaffedCorps( self._city )
 		if SelectCorps and #SelectTroops > 0 then
-			_chara:SubmitProposal( { type = CharacterProposal.REINFORCE_CORPS, target = SelectCorps, proposer =_chara } )
+			_chara:SubmitProposal( { type = CharacterProposal.REINFORCE_CORPS, target = SelectCorps, proposer =_chara, actor = _actor } )
 		end
 	elseif self.subFlow == MeetingSubFlow.SUB_TRAIN_CORPS then
 		local SelectCorps = SelectCityUntraiedCorps( self._city )
 		if SelectCorps then
-			_chara:SubmitProposal( { type = CharacterProposal.TRAIN_CORPS, target = SelectCorps, proposer =_chara } )
+			_chara:SubmitProposal( { type = CharacterProposal.TRAIN_CORPS, target = SelectCorps, proposer =_chara, actor = _actor } )
 		end
 	elseif self.subFlow == MeetingSubFlow.SUB_DISPATCH_CORPS then
 		--Select corps
 		local SelectCorps = SelectCityIdleCorps( self._city )		
 		local SelectCity = SelectOtherCity( self._city )
 		if SelectCorps and SelectCity then
-			_chara:SubmitProposal( { type = CharacterProposal.DISPATCH_CORPS, target = SelectCorps, data = SelectCity, proposer =_chara } )
+			_chara:SubmitProposal( { type = CharacterProposal.DISPATCH_CORPS, data = SelectCorps, target = SelectCity, proposer =_chara, actor = _actor } )
 		end
 	elseif self.subFlow == MeetingSubFlow.SUB_LEAD_TROOP then
 		local SelectChara = SelectNotLeaderChara( self._city )
 		local SelectTroop = SelectChara and SelectNonLeaderTroop( self._city ) or nil
 		if SelectTroop then
-			_chara:SubmitProposal( { type = CharacterProposal.LEAD_TROOP, target = SelectTroop, data = SelectChara, proposer =_chara } )
+			_chara:SubmitProposal( { type = CharacterProposal.LEAD_TROOP, target = SelectTroop, data = SelectChara, proposer =_chara, actor = _actor } )
 		end
 		
 	--Attack Sub Menu
@@ -1174,9 +1185,9 @@ function Meeting:ProcessSubMenu()
 		local SelectCorps = SelectCity and SelectCityIdleCorps( sel._city ) or nil
 		if SelectCorps then
 			if self.subFlow == MeetingSubFlow.SUB_ATTACK_CITY then
-				_chara:SubmitProposal( { type = CharacterProposal.ATTACK_CITY, target = SelectCity, data = SelectCorps, proposer =_chara } )
+				_chara:SubmitProposal( { type = CharacterProposal.ATTACK_CITY, target = SelectCity, data = SelectCorps, proposer =_chara, actor = _actor } )
 			elseif self.subFlow == MeetingSubFlow.SUB_EXPEDITION then
-				_chara:SubmitProposal( { type = CharacterProposal.EXPEDITION, target = SelectCity, data = SelectCorps, proposer =_chara } )
+				_chara:SubmitProposal( { type = CharacterProposal.EXPEDITION, target = SelectCity, data = SelectCorps, proposer =_chara, actor = _actor } )
 			end
 		end
 	
@@ -1184,7 +1195,7 @@ function Meeting:ProcessSubMenu()
 	elseif self.subFlow == MeetingSubFlow.SUB_TECH_RESEARCH then
 		local SelectTech = SelectResearchTech( self._group )
 		if SelectTech then
-			_chara:SubmitProposal( { type = CharacterProposal.TECH_RESEARCH, target = SelectTech, proposer =_chara } )
+			_chara:SubmitProposal( { type = CharacterProposal.TECH_RESEARCH, data = _chara:GetGroup(), target = SelectTech, proposer =_chara, actor = _actor } )
 		else
 			ShowText( "No tech can research" )
 		end
@@ -1211,7 +1222,7 @@ function Meeting:ProcessSubMenu()
 			elseif SelectMethod == DiplomacyMethod.SURRENDER then
 				proposalType = CharacterProposal.SURRENDER_DIPLOMACY
 			end
-			_chara:SubmitProposal( { type = proposalType, target = self._target, proposer =_chara } )
+			_chara:SubmitProposal( { type = proposalType, target = self._target, proposer =_chara, actor = _actor } )
 		end
 	end
 	
@@ -1463,7 +1474,7 @@ function Meeting:HoldCityMeeting( game, city )
 	self._participants = charaList
 	MathUtility_Shuffle( charaList )
 	
-	city:Dump()	
+	--city:Dump( nil, true )
 	self.acceptProposals = 0
 	--print( city.name .. " CityMeeting Attend=", #charaList )
 	--ShowText( "++++++++++ City Meeting Start ++++++++++++++++" )
@@ -1473,7 +1484,7 @@ function Meeting:HoldCityMeeting( game, city )
 		--	print( group.name .. " noproposal", #charaList, #group:GetCapital().charas )
 		local cityList = city:GetAdjacentBelligerentCityList()
 		local corpsList = city:GetPreparedToAttackCorpsList()
-		--self._group:ExecuteProposal( "[" .. city.name .. "] NoProposal " .. " chara=" .. #charaList .. " adjaBelli="..#cityList .. " readyCorp=" ..#corpsList  .. " " .. g_calendar:CreateCurrentDateDesc( true, true ) )
+		self._group:ExecuteProposal( "[" .. city.name .. "] NoProposal " .. " chara=" .. #charaList .. " adjaBelli="..#cityList .. " readyCorp=" ..#corpsList  .. " " .. g_calendar:CreateCurrentDateDesc( true, true ) )
 	end
 	--ShowText( "++++++++++ City Meeting End ++++++++++++++++" )
 	--ShowText( "" )

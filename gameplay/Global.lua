@@ -67,6 +67,7 @@ require "Plot"
 
 ---------------------------------------
 -- Logical
+require "GameMap"
 require "GameEvent"
 require "Task"
 require "TaskOperation"
@@ -89,8 +90,7 @@ require "CharacterGrowth"
 
 ---------------------------------------
 -- AI
---require "GroupAI"
-require "CharacterAI"
+require "MeetingAI"
 
 ---------------------------------------
 -- Gameplay
@@ -117,6 +117,8 @@ g_statistic = Statistic()
 g_charaTemplate = CharacterTemplate()
 
 g_gameEvent = GameEvent()
+
+g_gameMap = GameMap()
 
 ---------------------------
 -- Configure Table
@@ -153,7 +155,7 @@ g_combatDataMng = DataManager( "COMBAT_DATA", Combat )
 
 -- Lock step
 local seed = os.time()
---seed = 1488359716
+--seed = 1488531422
 g_syncRandomizer = Randomizer( seed )
 
 -- Local game

@@ -75,6 +75,9 @@ function DataManager:LoadFromTable( tableMng )
 		newData:Load( data )
 		--ShowText( "LoadDataFromTable", data.id, " in ", self.name )
 		self:SetData( newData.id, newData )
+		if self.alloateId <= newData.id then 
+			self.alloateId = newData.id
+		end
 	end )
 end
 

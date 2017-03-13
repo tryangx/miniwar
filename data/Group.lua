@@ -51,13 +51,7 @@ function Group:Load( data )
 	--Measure the group how powerful is
 	--It determines how many cities it can control
 	self.autority  = data.authority or 0
-		
-	--------------------------------------
-	-- Ability Data	
-		
-	--Determine how many time need to RESEARCH
-	self.researchAbility  = data.researchAbility or 0	
-	
+
 	--------------------------------------
 	-- Additional Data	
 	self.cities    = MathUtility_Copy( data.cities )
@@ -142,7 +136,6 @@ function Group:SaveData()
 	Data_OutputValue( "leader", self, "id" )
 	
 	Data_OutputValue( "money", self )
-	Data_OutputValue( "researchAbility", self )
 	
 	Data_OutputValue( "government", self )
 
@@ -204,7 +197,9 @@ function Group:ConvertID2Data()
 		local city = g_cityDataMng:GetData( id )
 		--ShowText( "set city group", city.id, city.name )
 		if not city then Debug_Error( "Invalid city" .. id ) end		
-		city:JoinGroup( self )
+		if city:GetGroup() ~= self then
+			city:JoinGroup( self )
+		end
 		table.insert( cities, city )
 	end
 	self.cities = cities
@@ -310,7 +305,7 @@ function Group:UpdateRecruitList()
 		table.insert( self._canRecruitTroops, troop )
 	end )
 	
-	--Debug_Normal( "Group Recruit List " .. #self._canRecruitTroops )
+	--InputUtility_Pause( "Group Recruit List " .. #self._canRecruitTroops )
 end
 
 function Group:UpdateBuildList()
@@ -404,6 +399,15 @@ function Group:InvalidateData()
 	self._militaryPower = -1
 end
 
+function Group:GetResearchAbility()
+	local numPlot = 0
+	for k, city in ipairs( self.cities ) do
+		numPlot = numPlot + #city.plots
+	end
+	local numCity = #self.cities
+	return numCity * 20 + 10 * math.ceil( ( numCity * numPlot ) ^ 0.5 )
+end
+
 function Group:GetMilitaryPower()
 	if self._militaryPower ~= -1 then return self._militaryPower end
 	self._militaryPower = 0
@@ -478,6 +482,8 @@ function Group:GetGroupRelation( id )
 		k.a = 2
 		return nil
 	end
+	
+	--find in self
 	for k, relation in ipairs( self.relations ) do
 		if relation.sid == id or relation.tid == id then
 			return relation
@@ -486,22 +492,21 @@ function Group:GetGroupRelation( id )
 	
 	--find in target
 	local target = g_groupDataMng:GetData( id )
-	if target then
-		for k, relation in ipairs( target.relations ) do
-			if relation.sid == id or relation.tid == id then
-				table.insert( self.relations, relation )
-				return relation
-			end
+	if not target then return nil end
+	
+	for k, relation in ipairs( target.relations ) do
+		if relation.sid == id or relation.tid == id then
+			table.insert( self.relations, relation )
+			return relation
 		end
-	else
-		return nil
 	end
-	
-	Debug_Normal( "!!!Add new relation in [" .. self.name .. "," .. self.id .. "] with [" .. id .. "]" )
-	
+		
 	local relation = g_diplomacy:CreateRelation( self.id, id )	
-	table.insert( self.relations, relation )	
-	table.insert( target.relations, relation )	
+	table.insert( self.relations, relation )
+	table.insert( target.relations, relation )
+	
+	print( "!!!Add new relation in " .. NameIDToString( self ) .. " with " .. NameIDToString( target ) )
+	
 	return relation
 end
 
@@ -599,23 +604,33 @@ function Group:GetReachableBelligerentCityList()
 end
 
 function Group:GetBelligerentGroupPower()
-	local maxPower, minPower, totalPower, number = 0, 99999999, 0, 0
+	local maxPower, minPower, totalPower, number = nil, nil, 0, 0
 	for k, relation in ipairs( self.relations ) do
 		local otherGroup = relation:GetOppGroup( self.id )
 		if otherGroup then
 			local otherPower = otherGroup:GetPower()
-			if otherPower > maxPower then maxPower = otherPower end
-			if otherPower < minPower then minPower = otherPower end
+			if not maxPower or otherPower > maxPower then maxPower = otherPower end
+			if not minPower or otherPower < minPower then minPower = otherPower end
 			totalPower = totalPower + otherPower
 			number = number + 1
 		end
 	end
-	return totalPower, maxPower, minPower, number
+	return totalPower, maxPower or 0, minPower or 0, number
 end
 
 function Group:GetUnderstaffedCityList()
 	return Helper_ListIf( self.cities, function ( city )
 		return city:IsUnderstaffed()
+	end )
+end
+
+function Group:GetRedudantCharaList()
+	if #self.charas < QueryGroupCharaLimit( self ) then return false end
+	return Helper_ListIf( self.charas, function ( chara )
+		if not chara:IsAtHome() then return false end
+		local home = chara:GetHome()
+		if home and #chara:GetHome().charas < QueryCityCharaLimit( home ) then return false end
+		return chara.type == CharacterType.FICTIONAL and chara.contribution < CharacterParams.ATTRIBUTE.LOW_CONTRIBUTION and chara.trust < CharacterParams.ATTRIBUTE.LOW_TRUST
 	end )
 end
 
@@ -707,6 +722,8 @@ function Group:IsHostility( target )
 end
 
 function Group:IsBelligerent( group )
+	--neutral default to belligigerent
+	if not group then return true end
 	local relation = self:GetGroupRelation( group.id )
 	return relation and relation:IsBelligerent() or false
 end
@@ -760,10 +777,9 @@ end
 
 function Group:CanResearch()
 	if self.researchTechId ~= 0 then return false end
-	if g_taskMng:IsTaskConflictWithCity( TaskType.TECH_RESEARCH, nil ) then return false end	
+	if g_taskMng:IsTaskConflictWithCity( TaskType.TECH_RESEARCH, self ) then return false end	
 	return #self._canResearchTechs > 0
 end
-
 
 
 ----------------------------------------------
@@ -922,7 +938,7 @@ function Group:Fall()
 	self.relations = {}
 	
 	--Remove task from group
-	g_taskMng:TerminateTaskToGroup( self, "target group fall" )
+	g_taskMng:TerminateTaskByGroup( self, "target group fall" )
 	
 	--Remove combat from group
 	g_warfare:EndCombatByGroup( group )

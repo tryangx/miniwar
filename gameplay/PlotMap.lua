@@ -49,10 +49,136 @@ function PlotMap:Clear()
 	self.height = 0
 	self.mng:Clear()
 end
+function PlotMap:MatchCondition( plot, condition )
+	function CheckNearPlot( distance, fn )
+		distance = distance or 1
+		local matchCondition = false
+		for k, offset in ipairs( PlotAdjacentOffsets ) do
+			if offset.distance <= distance then
+				local adjaPlot = self:GetPlot( plot.x + offset.x, plot.y + offset.y )
+				if adjaPlot and fn( adjaPlot ) then matchCondition = true break end
+			end
+		end
+		if not matchCondition then return false end
+		return true
+	end
+	function CheckAwayFromPlot( distance, fn )
+		distance = distance or 1
+		local matchCondition = true
+		for k, offset in ipairs( PlotAdjacentOffsets ) do
+			if offset.distance <= distance then
+				local adjaPlot = self:GetPlot( plot.x + offset.x, plot.y + offset.y )
+				if adjaPlot and fn( adjaPlot ) then matchCondition = false break end
+			end
+		end
+		if not matchCondition then return false end
+		return true
+	end
+	if condition.type == ResourceGenerateCondition.CONDITION_BRANCH then
+		for k, subCond in ipairs( condition.value ) do
+			if not self:MatchCondition( plot, subCond ) then return false end
+		end
+	elseif condition.type == ResourceGenerateCondition.PROBABILITY then
+		if g_synRandomizer:GetInt( 1, 10000 ) > condition.value then return false end
+	elseif condition.type == ResourceGenerateCondition.PLOT_TYPE then
+		if condition.value == "LIVING" then				
+			if plot.table:GetType() ~= PlotType.HILLS and plot.table:GetType() ~= PlotType.LAND then					
+				return false
+			end
+		elseif plot.table:GetType() ~= PlotType[condition.value] then
+			return false
+		end
+	elseif condition.type == ResourceGenerateCondition.PLOT_TERRAIN_TYPE then
+		if plot.table:GetTerrain() ~= PlotTerrainType[condition.value] then return false end
+	elseif condition.type == ResourceGenerateCondition.PLOT_FEATURE_TYPE then
+		if plot.table:GetFeature() ~= PlotFeatureType[condition.value] then return false end
+	elseif condition.type == ResourceGenerateCondition.PLOT_TYPE_EXCEPT then
+		if condition.value == "LIVING" then				
+			if plot.table:GetType() == PlotType.HILLS or plot.table:GetType() == PlotType.LAND then
+				return false
+			end
+		elseif plot.table:GetType() == PlotType[condition.value] then
+			return false
+		end
+	elseif condition.type == ResourceGenerateCondition.PLOT_TERRAIN_TYPE_EXCEPT then
+		if plot.table:GetTerrain() == PlotTerrainType[condition.value] then return false end
+	elseif condition.type == ResourceGenerateCondition.PLOT_FEATURE_TYPE_EXCEPT then
+		if condition.value == "ALL" then
+			if plot.table:GetFeature() ~= PlotFeatureType.NONE then
+				return false
+			end
+		elseif plot.table:GetFeature() == PlotFeatureType[condition.value] then
+			return false
+		end
+	elseif condition.type == ResourceGenerateCondition.NEAR_PLOT_TYPE then
+		CheckNearPlot( 1, function( adjaPlot )
+			return adjaPlot.table:GetType() == PlotType[condition.value]
+		end )
+	elseif condition.type == ResourceGenerateCondition.NEAR_TERRAIN_TYPE then
+		return CheckNearPlot( 1, function( adjaPlot )
+			return adjaPlot.table:GetTerrain() == PlotTerrainType[condition.value]
+		end )
+	elseif condition.type == ResourceGenerateCondition.NEAR_FEATURE_TYPE then
+		return CheckNearPlot( 1, function( adjaPlot )
+			return adjaPlot.table:GetFeature() == PlotFeatureType[condition.value]
+		end )
+	elseif condition.type == ResourceGenerateCondition.AWAY_FROM_PLOT_TYPE then
+		return CheckAwayFromPlot( 1, function( adjaPlot )
+			return adjaPlot.table:GetType() == PlotType[condition.value]
+		end )
+	elseif condition.type == ResourceGenerateCondition.AWAY_FROM_TERRAIN_TYPE then
+		return CheckAwayFromPlot( 1, function( adjaPlot )
+			return adjaPlot.table:GetTerrain() == PlotTerrainType[condition.value]
+		end )
+	elseif condition.type == ResourceGenerateCondition.AWAY_FROM_FEATURE_TYPE then
+		return CheckAwayFromPlot( 1, function( adjaPlot )
+			return adjaPlot.table:GetFeature() == PlotFeatureType[condition.value]
+		end )
+	else
+		ShowText( "not match" .. condition.type)
+		return false
+	end
+	--InputUtility_Pause( "match", condition.type, condition.value, plot.table.name )
+	return true
+end	
+
+function PlotMap:FindPlotSuitable( conditions )
+	local plotList = {}
+	self:ForeachPlot( function ( plot ) 					
+		if plot:GetResource() then return end				
+		local matchCondition = true
+		if conditions and #conditions > 0 then
+			--check conditions
+			matchCondition = false
+			for k, condition in pairs( conditions ) do
+				if self:MatchCondition( plot, condition ) then matchCondition = true end
+			end
+		end
+		if matchCondition then table.insert( plotList, plot ) end
+	end )
+	return plotList
+end
+function PlotMap:PutResource( items )
+	local plotNunmber = self.width * self.height
+	for k, item in pairs( items ) do
+		local percent = item.percent or 0
+		item.count = math.ceil( plotNunmber * percent * 0.01 )
+		local resource = g_resourceTableMng:GetData( item.id )
+		if resource then
+			local plotList = self:FindPlotSuitable( resource.conditions )
+			plotList = MathUtility_Shuffle( plotList, g_synRandomizer )
+			for number = 1, #plotList do
+				if number > item.count then break end
+				local plot = plotList[number]					
+				plot.resource = item.id
+				--InputUtility_Pause( "put ", resource.name, "on", plot.x, plot.y )
+			end
+		end
+	end
+end
 
 function PlotMap:RandomMap( width, height )
 	self:Clear()
-	
 	
 	----------------------------
 	--Initialize
@@ -105,8 +231,7 @@ function PlotMap:RandomMap( width, height )
 			plot:SetTable( SimpleRandomPlotType() )
 		end )	
 	end
-	
-	
+		
 	----------------------------
 	--Initialize plot type
 	SetPlotType()
@@ -136,137 +261,11 @@ function PlotMap:RandomMap( width, height )
 	{
 		{ id=500, percent=20, }--settlement
 	}
-	function MatchCondition( plot, condition )
-		function CheckNearPlot( distance, fn )
-			distance = distance or 1
-			local matchCondition = false
-			for k, offset in ipairs( PlotAdjacentOffsets ) do
-				if offset.distance <= distance then
-					local adjaPlot = self:GetPlot( plot.x + offset.x, plot.y + offset.y )
-					if adjaPlot and fn( adjaPlot ) then matchCondition = true break end
-				end
-			end
-			if not matchCondition then return false end
-			return true
-		end
-		function CheckAwayFromPlot( distance, fn )
-			distance = distance or 1
-			local matchCondition = true
-			for k, offset in ipairs( PlotAdjacentOffsets ) do
-				if offset.distance <= distance then
-					local adjaPlot = self:GetPlot( plot.x + offset.x, plot.y + offset.y )
-					if adjaPlot and fn( adjaPlot ) then matchCondition = false break end
-				end
-			end
-			if not matchCondition then return false end
-			return true
-		end
-		if condition.type == ResourceGenerateCondition.CONDITION_BRANCH then
-			for k, subCond in ipairs( condition.value ) do
-				if not MatchCondition( plot, subCond ) then return false end
-			end
-		elseif condition.type == ResourceGenerateCondition.PROBABILITY then
-			if g_synRandomizer:GetInt( 1, 10000 ) > condition.value then return false end
-		elseif condition.type == ResourceGenerateCondition.PLOT_TYPE then
-			if condition.value == "LIVING" then				
-				if plot.table:GetType() ~= PlotType.HILLS and plot.table:GetType() ~= PlotType.LAND then					
-					return false
-				end
-			elseif plot.table:GetType() ~= PlotType[condition.value] then
-				return false
-			end
-		elseif condition.type == ResourceGenerateCondition.PLOT_TERRAIN_TYPE then
-			if plot.table:GetTerrain() ~= PlotTerrainType[condition.value] then return false end
-		elseif condition.type == ResourceGenerateCondition.PLOT_FEATURE_TYPE then
-			if plot.table:GetFeature() ~= PlotFeatureType[condition.value] then return false end
-		elseif condition.type == ResourceGenerateCondition.PLOT_TYPE_EXCEPT then
-			if condition.value == "LIVING" then				
-				if plot.table:GetType() == PlotType.HILLS or plot.table:GetType() == PlotType.LAND then
-					return false
-				end
-			elseif plot.table:GetType() == PlotType[condition.value] then
-				return false
-			end
-		elseif condition.type == ResourceGenerateCondition.PLOT_TERRAIN_TYPE_EXCEPT then
-			if plot.table:GetTerrain() == PlotTerrainType[condition.value] then return false end
-		elseif condition.type == ResourceGenerateCondition.PLOT_FEATURE_TYPE_EXCEPT then
-			if condition.value == "ALL" then
-				if plot.table:GetFeature() ~= PlotFeatureType.NONE then
-					return false
-				end
-			elseif plot.table:GetFeature() == PlotFeatureType[condition.value] then
-				return false
-			end
-		elseif condition.type == ResourceGenerateCondition.NEAR_PLOT_TYPE then
-			CheckNearPlot( 1, function( adjaPlot )
-				return adjaPlot.table:GetType() == PlotType[condition.value]
-			end )
-		elseif condition.type == ResourceGenerateCondition.NEAR_TERRAIN_TYPE then
-			return CheckNearPlot( 1, function( adjaPlot )
-				return adjaPlot.table:GetTerrain() == PlotTerrainType[condition.value]
-			end )
-		elseif condition.type == ResourceGenerateCondition.NEAR_FEATURE_TYPE then
-			return CheckNearPlot( 1, function( adjaPlot )
-				return adjaPlot.table:GetFeature() == PlotFeatureType[condition.value]
-			end )
-		elseif condition.type == ResourceGenerateCondition.AWAY_FROM_PLOT_TYPE then
-			return CheckAwayFromPlot( 1, function( adjaPlot )
-				return adjaPlot.table:GetType() == PlotType[condition.value]
-			end )
-		elseif condition.type == ResourceGenerateCondition.AWAY_FROM_TERRAIN_TYPE then
-			return CheckAwayFromPlot( 1, function( adjaPlot )
-				return adjaPlot.table:GetTerrain() == PlotTerrainType[condition.value]
-			end )
-		elseif condition.type == ResourceGenerateCondition.AWAY_FROM_FEATURE_TYPE then
-			return CheckAwayFromPlot( 1, function( adjaPlot )
-				return adjaPlot.table:GetFeature() == PlotFeatureType[condition.value]
-			end )
-		else
-			ShowText( "not match" .. condition.type)
-			return false
-		end
-		--InputUtility_Pause( "match", condition.type, condition.value, plot.table.name )
-		return true
-	end	
-	function FindPlotSuitable( conditions )
-		local plotList = {}
-		self:ForeachPlot( function ( plot ) 					
-			if plot:GetResource() then return end				
-			local matchCondition = true
-			if conditions and #conditions > 0 then
-				--check conditions
-				matchCondition = false
-				for k, condition in pairs( conditions ) do
-					if MatchCondition( plot, condition ) then matchCondition = true end
-				end
-			end
-			if matchCondition then table.insert( plotList, plot ) end
-		end )
-		return plotList
-	end
-	function PutResource( items )
-		local plotNunmber = width * height
-		for k, item in pairs( items ) do
-			local percent = item.percent or 0
-			item.count = math.ceil( plotNunmber * percent * 0.01 )
-			local resource = g_resourceTableMng:GetData( item.id )
-			if resource then
-				local plotList = FindPlotSuitable( resource.conditions )
-				plotList = MathUtility_Shuffle( plotList, g_synRandomizer )
-				for number = 1, #plotList do
-					if number > item.count then break end
-					local plot = plotList[number]					
-					plot.resource = item.id
-					--InputUtility_Pause( "put ", resource.name, "on", plot.x, plot.y )
-				end
-			end
-		end
-	end
 	
-	PutResource( strategicResourceItems )
-	PutResource( bonusResourceItems )
-	PutResource( luxuryResourceItems )
-	--PutResource( artificialResourceItems )
+	self:PutResource( strategicResourceItems )
+	self:PutResource( bonusResourceItems )
+	self:PutResource( luxuryResourceItems )
+	--self:PutResource( artificialResourceItems )
 	
 	--InputUtility_Pause( "finished put resource" )
 	
@@ -294,14 +293,21 @@ function PlotMap:AllocateToCity()
 		local pos = city:GetCoordinate()
 		function AddPlot( list, x, y, settlement )
 			local plot = self:GetPlot( x, y )
-			if plot and ( not plot:GetData() or settlement == maxDistance ) then
-				table.insert( list, plot )
-				plot:SetData( { city = city, settlement = settlement } )
-				return 1
+			if plot then
+				if not plot:HasResource() then
+					plot.resource = 500
+				end
+				if ( not plot:GetData() or settlement == maxDistance ) then
+					table.insert( list, plot )
+					plot:SetData( { city = city, settlement = settlement } )
+					return 1
+				end
 			end
 			return 0
 		end
 		AddPlot( plots, pos.x, pos.y, maxDistance )
+		
+		--allocate adjacent plot to the city
 		local left = city.level	- 1		
 		--ShowText( city.name, x, y, left, #PlotAdjacentOffsets )
 		for k, offset in ipairs( PlotAdjacentOffsets ) do		
@@ -316,16 +322,6 @@ function PlotMap:AllocateToCity()
 
 	--2nd, init plot assets, gather people
 	self:ForeachPlot( function ( plot )
-		--[[
-		local params = {}
-		params.settlement = 0
-		for k, offset in ipairs( PlotAdjacentOffsets ) do
-			local adjaPlot = self:GetPlot( plot.x + offset.x, plot.y + offset.y )
-			if adjaPlot then
-				params.settlement = params.settlement + ( maxDistance - adjaPlot:GetData().distance + 1 )
-			end
-		end
-		]]
 		plot:InitPlotAssets( plot:GetData() )
 	end )
 	

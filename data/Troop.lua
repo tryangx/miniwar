@@ -2,7 +2,7 @@ Troop = class()
 
 function Troop:Generate( data )	
 	self:Load( data )
-	self.tableId = data.id	
+	self.tableId = data.id
 	self:ConvertID2Data()
 end
 

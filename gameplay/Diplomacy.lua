@@ -142,9 +142,9 @@ function Diplomacy:GetRelation( id )
 end
 
 function Diplomacy:CreateRelation( sid, tid )
-	local relation = g_groupRelationDataMng:NewData()
-	relation.sid = self.id
-	relation.tid = id
+	local relation = g_groupRelationDataMng:NewData()	
+	relation.sid = sid
+	relation.tid = tid
 	relation:ConvertID2Data()
 	return relation
 end

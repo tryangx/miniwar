@@ -74,14 +74,14 @@ end
 --[[
 	Call for each in Table with function
 
-	-- @usage MathUtility_Foreach( table, function( v ) print( v ) end )
+	-- @usage MathUtility_Foreach( table, function( ket, value ) print( value ) end )
 ]]
 function MathUtility_Foreach( table, fn )	
 	for k, v in pairs( table ) do
 		if type( v ) == "table" then
-			MathUtility_Foreach( v, fn )
+			MathUtility_Foreach( k, v, fn )
 		else
-			fn( v )
+			fn( k, v )
 		end
 	end
 end
@@ -238,7 +238,11 @@ end
 
 function MathUtility_FindData( table, target, name )
 	if not table then return nil end
-	if name then
+	if not name then
+		for k, v in pairs( table ) do
+			if v == target then return v end
+		end
+	else
 		for k, v in pairs( table ) do
 			if v[name] == target then return v end
 		end

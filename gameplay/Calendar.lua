@@ -64,8 +64,9 @@ function Calendar:SetDate( month, day, year, hour, beforeChrist )
 	self.month = month or self.month	
 	self.day   = day or self.day	
 	self.year  = math.abs( year or self.year )	
-	self.hour  = hour or self.hour	
-	Debug_Log( "Set Date=" .. self.year .. "/" .. self.month .. "/" .. self.day .. " " .. self.hour )
+	self.hour  = hour or self.hour
+	
+	--InputUtility_Pause( self:CreateCurrentDateDesc( true, true ) )
 end
 
 function Calendar:GetDayInMonth()
@@ -109,7 +110,7 @@ function Calendar:ConvertFromDateValue( dateValue )
 end
 
 function Calendar:CreateDateDesc( year, month, day, beforeChrist, byDay, byMonth )
-	local content = ( beforeChrist and "BC " or "AD " )
+	local content = ( beforeChrist ~= 0 and "BC " or "AD " )
 	if byDay then content = content .. year .. "Y" .. month .. "M" .. day .. "D"
 	elseif byMonth then content = content .. year .. "Y" .. month .. "M"
 	else content = content .. year .. "Y" 
@@ -151,7 +152,7 @@ function Calendar:ElapseAMonth()
 	self.month = self.month + 1
 	if self.month > MONTH_IN_YEAR then
 		self.month = self.month - MONTH_IN_YEAR
-		if self.beforeChrist then
+		if self.beforeChrist ~= 0 then
 			self.year  = self.year - 1
 			if self.year == 0 then
 				self.beforeChrist = 1 
@@ -195,9 +196,9 @@ function Calendar:CalcDiffMonth( dateValue )
 	local year, month, day, beforeChrist = self:ConvertFromDateValue( dateValue )
 	
 	if beforeChrist ~= self.beforeChrist then
-		if beforeChrist > 0 then
+		if beforeChrist ~= 0 then
 			return ( year + self.year ) * MONTH_IN_YEAR + ( MONTH_IN_YEAR - month ) + self.month
-		elseif self.beforeChrist > 0 then
+		elseif self.beforeChrist ~= 0 then
 			return ( year + self.year ) * MONTH_IN_YEAR + month + ( MONTH_IN_YEAR - self.month )
 		end
 	end
@@ -216,10 +217,10 @@ function Calendar:CalcDiffDay( dateValue )
 	
 	local diffDays = 0
 	if beforeChrist ~= self.beforeChrist then
-		if beforeChrist > 0 then
+		if beforeChrist ~= 0 then
 			diffDays = ( ( year + self.year ) * MONTH_IN_YEAR + ( MONTH_IN_YEAR - month ) + self.month ) * DAY_IN_MONTH
 			diffDays = diffDays - day + self.day + DAY_IN_MONTH
-		elseif self.beforeChrist > 0 then
+		elseif self.beforeChrist ~= 0 then
 			diffDays = ( year + self.year ) * MONTH_IN_YEAR + month + ( MONTH_IN_YEAR - self.month )
 			diffDays = diffDays + day - self.day + DAY_IN_MONTH
 		end

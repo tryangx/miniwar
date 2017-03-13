@@ -9,12 +9,40 @@ require "Scenario_Demo_EquipTable"
 require "Scenario_Demo_GroupRelationTable"
 require "Scenario_Demo_BattlefieldTable"
 require "Scenario_Demo_TraitTable"
-require "Scenario_Demo_Data"
+require "Scenario_Demo_Data_threekindoms"
+--require "Scenario_Demo_Data_warringstates"
+
+--------------------------
+-- Guard Table
+--------------------------
+local PlotGuardTableData =
+{
+	{ plotNumber = 1, ids = { 510, 500 } },
+	{ plotNumber = 5, ids = { 511, 501 } },		
+	{ plotNumber = 10, ids = { 512, 502 } },
+	{ plotNumber = 999, ids = { 512, 502 } },
+}
+local function ScenarioDemo_QueryPlotGuardIds( plotNumber )
+	for k, data in ipairs( PlotGuardTableData ) do
+		if plotNumber <= data.plotNumber then
+			return data.ids
+		end
+	end
+	return {}
+end
 
 ScenarioDemo = 
 {
 	id   = 1,
 	name = "Demo",
+	
+	begdate = 
+	{
+		year  = 184,
+		month = 1,
+		day   = 1,
+		bc    = 0,
+	},
 	
 	tables = 
 	{
@@ -44,6 +72,10 @@ ScenarioDemo =
 		GROUP_DATA         = { data = Scenario_Demo_Group_Data },
 		CHARA_DATA         = { data = Scenario_Demo_Chara_Data },
 		GROUPRELATION_DATA = { data = Scenario_Demo_GroupRelation_Data },
-		--PLOT_DATA          = { data = Scenario_Demo_Plot_Data },
+	},
+	
+	functions = 
+	{
+		QueryPlotGuardIds = ScenarioDemo_QueryPlotGuardIds,
 	},
 }

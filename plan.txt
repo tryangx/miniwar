@@ -1,0 +1,13 @@
+1. Seperate Group Meeting and City Meeting
+   Group Meeting need to focus on Strategic Decision, just like, Short Term Goal, Corps Dispatch, Personal Rank, Hold by Season
+
+   
+2. Seperate Conscription and Recruitment
+   Conscription low fight power, less or none money to conscript and low maintain, retired after time( or lose exp after time )
+   Recruitment  high fight power, need money to recruit and higher maintain, lead to generate powerful general 
+   
+   
+3. Character Appear from Character Table, not only generate by template
+
+
+4.

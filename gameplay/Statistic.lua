@@ -261,7 +261,7 @@ function Statistic:Dump()
 		ShowText( "  proposals(".. #group.proposals ..")" )
 		group:Dump()
 		for k, desc in ipairs( group.proposals ) do
-			ShowText( "", "", desc )
+			--ShowText( "", "", desc )
 		end
 	end	
 
@@ -272,10 +272,13 @@ function Statistic:Dump()
 	
 	ShowText( "City          = " .. #self.cities )
 	for k, city in ipairs( self.cities ) do
-		print( city.name )
+		print( city.name, "pow=" .. city:GetPower() )
+		--city:Dump( nil, true )
 		local corpsList = city:GetPreparedToAttackCorpsList()
 		local tarList = city:GetAdjacentBelligerentCityList()
-		print( "	ready corps="..#corpsList .."/" .. #city.corps, " tar=" .. Helper_ConcatListName( tarList ) )
+		print( "	ready corps="..#corpsList .."/" .. #city.corps, " tar=" .. Helper_ConcatListName( tarList, function ( city )
+			return "pow=" .. city:GetPower()
+		end ) )
 	end
 		
 	self:DumpCharaDetail()
@@ -305,7 +308,7 @@ function Statistic:Dump()
 	
 	ShowText( "Pass time     = " .. math.floor( self.elapsedTime / 360 ) .. "Y" .. math.floor( ( self.elapsedTime % 360 ) / 30 ) .. "M" .. math.floor( self.elapsedTime % 30 ) .. "D" )
 	
-	ShowText( "Cur Time      = " .. g_calendar:CreateCurrentDateDesc() )
+	ShowText( "Cur Time      = " .. g_calendar:CreateCurrentDateDesc( true, true ) )
 	
 	ShowText( "Seed          = " .. g_syncRandomizer:GetSeed() .. "," .. g_asyncRandomizer:GetSeed() )
 	

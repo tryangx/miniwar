@@ -54,7 +54,7 @@ function MenuUtility:SingleSelect()
 	local c = InputUtility_ReceiveInput()
 	for k, key in pairs( self.keys ) do
 		if self.defaultKey and c == "" then
-			self.defaultKey.fn( key )			
+			self.defaultKey.fn( key )
 			return self.defaultKey.ret or true
 		elseif key.c then
 			if c == string.upper( key.c ) or c == string.lower( key.c ) then

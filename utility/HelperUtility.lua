@@ -62,8 +62,9 @@ end
 function Helper_ConcatListName( list, fn )
 	local content = ""
 	for k, item in pairs( list ) do
-		content = content .. NameIDToString( item ) .. "/"
+		content = content .. NameIDToString( item )
 		if fn then content = content .. fn( item ) end		
+		content = content .. "/"
 	end
 	return content
 end
@@ -212,6 +213,7 @@ function Helper_SetVarb( varbs, varbType, value )
 	table.insert( varbs, { type = varbType, value = value } )
 end
 function Helper_AppendVarb( varbs, varbType, value, maximum )
+	if not value then value = 0 end
 	for k, varb in pairs( varbs ) do
 		if varb.type == varbType then
 			if not maximum or varb.value <= maximum - value then
@@ -288,13 +290,18 @@ function Helper_AbbreviateString( str, length )
 	if len < length then
 		ret = str
 	else
+		local abStr = ""
+		local left = length
 		for word in string.gmatch( str, "%a+" ) do
 			local c = string.sub( word, 1, 1 )		
-			ret = ret .. c
-			if length >= 1 then length = length - 1 else break end
+			abStr = abStr .. c
+			if left >= 1 then left = left - 1 else break end
 		end
-		if length > 0 then		
-			ret = ret .. string.sub( str, len - length + 1, len )
+		if left > 0 then
+			--ret = ret .. string.sub( str, len - left + 1, len )
+			ret = ret .. string.sub( str, 1, length )
+		else
+			ret = abStr
 		end
 	end
 	for k = 1, length - len do
@@ -359,6 +366,6 @@ function Helper_RemoveDataSafety( list, data )
 		k.p = 1
 		return
 	end
-	print( "removed " .. NameIDToString( data ) )
+	--print( "removed " .. NameIDToString( data ) )
 	MathUtility_Remove( list, data )
 end

@@ -118,6 +118,10 @@ function Plot:ConvertID2Data()
 	self.resource = g_resourceTableMng:GetData( self.resource )
 end
 
+function Plot:HasResource()
+	return self.resource ~= 0
+end
+
 function Plot:GetResource()
 	return self.resource
 end
