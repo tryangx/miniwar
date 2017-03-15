@@ -284,7 +284,7 @@ end
 -- Operation
 
 function Corps:MoveToLocation( location )
-	print( NameIDToString( self ) .. " move to location", location.name )
+	--print( NameIDToString( self ) .. " move to location", location.name )
 	self.location = location
 	g_movingActorMng:RemoveActor( MovingActorType.CORPS, self )
 end

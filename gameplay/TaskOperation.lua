@@ -319,7 +319,7 @@ function CityRecruitTroop( city, troopData )
 	--maybe decrease at first
 	city.population = city.population - troop.number
 	
-	--print( "Recruit troop " .. NameIDToString( troop ) .."] in city [" .. city.name .. "]" .. city.population .. "/" .. city:GetMSPopulation() )
+	--print( "Recruit troop " .. NameIDToString( troop ) .."] in city [" .. city.name .. "]" .. city.population .. "/" .. city:GetMilitaryService() )
 end
 
 function CityRecruit( city )
@@ -705,7 +705,7 @@ function CharaHired( chara, city )
 		return false
 	end
 	if chara:GetGroup() then CharaLeaveGroup( chara ) end
-	print( chara.name, "hired by ", city:GetGroup().name, city.name )
+	--print( chara.name, "hired by ", city:GetGroup().name, city.name )
 	CharaJoinGroup( chara, city )
 	chara.job = CharacterJob.OFFICER	
 	g_statistic:RemoveOutChara( chara )
@@ -842,7 +842,7 @@ end
 function TroopLeaveCity( troop, reason )
 	g_movingActorMng:AddActor( MovingActorType.TROOP, troop, { reason = reason } )
 	if troop:GetLeader() then
-		CharaLeaveCity( troop:GetLeader() )
+		CharaLeaveCity( troop:GetLeader(), "troop leave" )
 	end
 end
 

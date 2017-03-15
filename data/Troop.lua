@@ -154,6 +154,10 @@ function Troop:GetLevel()
 	return self.level
 end
 
+function Troop:GetPower()
+	return self.number
+end
+
 -----------------------------------
 -- Operation
 

@@ -371,7 +371,7 @@ function Game:End()
 			city:Dump()
 		end
 	end
-	g_taskMng:DumpResult()
+	--g_taskMng:DumpResult()
 	g_diplomacy:DumpResult()
 	g_statistic:Dump()
 	g_gameMap:DrawAll()
@@ -412,36 +412,6 @@ end
 ----------------------------------------------
 
 function Game:NextTurn()
-	--[[
-		Game Turn Flow ( Ver 1.1 )
-		
-			Event Flow
-			
-			Action Flow
-				Personal Flow
-					Choice to attend meeting, enjoy self, have a rest, etc.
-					
-				Hold Meeting Flow
-					Hold meeting for groups ( Presence people include all members stays in the capital )
-						Political, Diplomatic, Technological
-					Hold meeting for cities ( Presence people include all members stays in the city	)
-					Hold meeting for corps( Presence people include all members stays in the corps )				
-						
-			Update Flow		
-				Update Warfare
-				Update Group
-				Update City
-				Update Corps
-				Update Chara
-				
-		Political     = Modify Policy( Innovate ) / Faction
-		Diplomatic    = Friend / Threaten / Ally / ...
-		Technological = Research 
-		Military      = Recruit / Train Troop / Attack / Create Corps / Modify Troop / Modify Corps / Dispatch Corps				
-		Economic      = Invest / Tax / Build			
-	--]]
-	
-	-- Notice winner
 	if self.winner then Debug_Normal( "Winner is " .. NameIDToString( self.winner ) ) return end
 	
 	self.turn = self.turn + 1
@@ -464,7 +434,7 @@ function Game:NextTurn()
 end
 
 function Game:ActionFlow()	
-	--g_gameMap:DrawGroupMap()
+	--g_gameMap:DrawPowerMap()
 
 	--[[
 	-- Personal Choice

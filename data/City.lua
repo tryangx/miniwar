@@ -238,7 +238,7 @@ function City:UpdatePlots( allocate )
 		print( self.name .. " plot="..#self.plots .. " lv=" .. self.level )
 		--ShowText( plotDesc )
 		print( "popu1=" .. Helper_CreateNumberDesc( self.population ) .. "/" .. Helper_CreateNumberDesc( CalcPlotPopulation( self.livingspace ) ) .. "("..self.livingspace..")" )	
-		print( "popu2=" .. self:GetMinPopulation() .. "(Min)/" .. self:GetMSPopulation() .. "(Serv)" )
+		print( "popu2=" .. self:GetMinPopulation() .. "(Min)/" .. self:GetMilitaryService() .. "(Serv)" )
 		print( "agr="..self.agriculture.."/"..self.maxAgriculture.." Supply="..Helper_CreateNumberDesc( CalcPlotSupply( self.agriculture ) - self.population ) .. "/" .. Helper_CreateNumberDesc( CalcPlotSupply( self.maxAgriculture ) - self.population ) .. " Surplus="..Helper_CreateNumberDesc( CalcPlotSupply( self.agriculture ) - self.population ).."/"..Helper_CreateNumberDesc( CalcPlotSupply( self.maxAgriculture ) - CalcPlotPopulation( self.livingspace ) ) )
 		print( "eco="..self.economy.."/"..self.maxEconomy.. " pro="..self.production.."/"..self.maxProduction .. " sec=" ..self.security )	
 		print( "military=" .. self:GetMilitaryPower() .. "/" .. self:GetReqMilitaryPower() )	
@@ -268,6 +268,10 @@ end
 
 function City:IsCapital()
 	return self:GetGroup() and self:GetGroup():GetCapital() == self
+end
+
+function City:IsNeutral()
+	return self:GetGroup() == nil
 end
 
 function City:IsCharaStayCity( chara )
@@ -355,8 +359,9 @@ end
 
 function City:GetPower()
 	local power =  0
-	for k, troop in ipairs( self.corps ) do
-		power = troop:GetPower()
+	for k, troop in ipairs( self.troops ) do
+	--for k, troop in ipairs( self.corps ) do
+		power = power + troop:GetPower()
 	end
 	return power
 end
@@ -450,7 +455,7 @@ end
 
 function City:GetFreeMilitaryOfficerList()
 	return Helper_ListIf( self.charas, function( chara )
-		return not chara:GetTroop() and chara:IsAtHome() and chara:IsMilitaryOfficer() and not g_taskMng:GetTaskByActor( chara )
+		return chara:IsFreeMilitaryOfficer()
 	end )
 end
 
@@ -546,7 +551,7 @@ function City:GetMinPopulation()
 	return CalcCityMinPopulation( self )
 end
 
-function City:GetMSPopulation()
+function City:GetMilitaryService()
 	local militaryService = self.population - self:GetMinPopulation()
 	--no female, XD
 	militaryService = math.ceil( militaryService * GlobalConst.MALE_PROPORTION )
@@ -701,6 +706,10 @@ function City:IsPopulationEnough()
 	return self:GetMinPopulation() < self.population
 end
 
+function City:CanMaintain()
+	return self:GetMoney() >= self:CalcMaintenanceCost() * CityParams.SAFETY_TROOP_MAINTAIN_TIME / GlobalConst.UNIT_TIME
+end
+
 function City:CanDispatch()
 	return not self:IsInSiege()
 end
@@ -740,9 +749,10 @@ function City:CanPatrol()
 	return not self:IsInSiege() and self.security < PlotParams.SAFETY_PLOT_SECURITY
 end
 function City:CanInstruct()
-	return self.instruction == CityInstruction.NONE and not g_taskMng:IsTaskConflictWithCity( TaskType.CITY_INSTRUCT, self )
+	return self.instruction == CityInstruction.NONE
 end
 function City:CanRecruit()
+	if self.security < GroupParams.RECRUIT.RECRUIT_NEED_SECURITY then return false end
 	return #self:GetRecruitList() > 0 and not self:IsInSiege()-- and self:IsPopulationEnough() 
 end
 function City:CanRecruitTroop( troop )
@@ -789,8 +799,9 @@ end
 
 ----------------------------------------
 
-function City:DumpCharaDetail( indent )
-	if #self.charas == 0 then return end
+function City:DumpCharaDetail( indent, brief )
+	ShowText( indent .. 'Charas         ', #self.charas .. "/" .. QueryCityCharaLimit( self ) )
+	if #self.charas == 0 or brief then return end
 	local content = indent .. "    "
 	for k, chara in ipairs( self.charas ) do
 		content = content .. ( k > 1 and ", " or "" ) .. chara.name
@@ -802,8 +813,9 @@ function City:DumpCharaDetail( indent )
 	ShowText( content )
 end
 
-function City:DumpTroopDetail( indent )
-	if #self.troops == 0 then return end
+function City:DumpTroopDetail( indent, brief )
+	ShowText( indent .. 'Troops+Corps   ', #self.troops .. '+' .. #self.corps )
+	if #self.troops == 0 or brief then return end
 	local inCorps, nonCorps = 0, 0
 	local contentInCorps = indent .. "    "
 	local contentNonCorps = indent .. "    "
@@ -824,8 +836,9 @@ function City:DumpTroopDetail( indent )
 	ShowText( contentNonCorps )
 end
 
-function City:DumpCorpsDetail( indent )
-	if #self.troops == 0 then return end
+function City:DumpCorpsDetail( indent, brief )
+	ShowText( indent .. "Corps          ", #self.corps .. "+" .. #self.troops )
+	if #self.troops == 0 or brief then return end
 	local content = indent .. "    "
 	for k, corps in ipairs( self.corps ) do
 		corps:Dump( indent )
@@ -833,8 +846,9 @@ function City:DumpCorpsDetail( indent )
 end
 
 
-function City:DumpConstructionDetail( indent )
-	if #self.constrs == 0 then return end
+function City:DumpConstructionDetail( indent, brief )
+	ShowText( indent .. 'Construction   ', #self.constrs )
+	if #self.constrs == 0 or brief then return end
 	local content = indent .. "    "
 	for k, constr in ipairs( self.constrs ) do
 		content = content .. ( k > 1 and "," or "" ) .. constr.name
@@ -842,12 +856,12 @@ function City:DumpConstructionDetail( indent )
 	ShowText( content )
 end
 
-function City:DumpAdjacentDetail( indent )
-	if #self.adjacentCities == 0 then return end
-	local content = indent .. "Adja="
+function City:DumpAdjacentDetail( indent, brief )
+	local content = indent .. "Adja=" .. #self.adjacentCities
+	if #self.adjacentCities == 0 or brief then ShowText( content ) return end	
 	local group = self:GetGroup()
 	for k, city in ipairs( self.adjacentCities ) do
-		content = content .. ( k > 1 and "," or "" ) .. city.name
+		content = content .. ( k > 1 and "," or " " ) .. city.name
 		local otherGroup = city:GetGroup()
 		if otherGroup and otherGroup ~= group then
 			content = content .. "-" .. city:GetGroup().name
@@ -862,8 +876,9 @@ function City:DumpAdjacentDetail( indent )
 	ShowText( content )
 end
 
-function City:DumpPlotsDetail( indent )
-	if #self.plots == 0 then return end
+function City:DumpPlotsDetail( indent, brief )
+	ShowText( indent .. 'Plots          ', #self.plots )
+	if #self.plots == 0 or brief then return end
 	local content = indent .. "    "
 	for k, plot in ipairs( self.plots ) do
 		content = content .. ( k > 1 and "," or "" ) .. plot.table.name
@@ -871,11 +886,11 @@ function City:DumpPlotsDetail( indent )
 	ShowText( content )
 end
 
-function City:DumpTagDetail( indent )
-	if #self.tags == 0 then return end
-	local content = indent .. "    "
+function City:DumpTagDetail( indent, brief )
+	local content = indent .. "Tags="..#self.tags
+	if #self.tags == 0 or brief then ShowText( content ) return end
 	for k, tag in ipairs( self.tags ) do
-		content = content .. ( k > 1 and "," or "" ) .. MathUtility_FindEnumName( CityTag, tag.type )
+		content = content .. ( k > 1 and "," or " " ) .. MathUtility_FindEnumName( CityTag, tag.type )
 	end
 	ShowText( content )
 end
@@ -890,25 +905,20 @@ function City:DumpBrief()
 	ShowText( '>>>>>>>>>>>  City >>>>>>>>>>>>>>>>>' )
 	ShowText( indent .. '[City] #' .. self.id .. ' Name=' .. self.name .. ' Group=' .. ( self.group and self.group.name or "[none]" ) )
 	self:DumpAdjacentDetail( indent )
-	ShowText( indent .. 'Popu/Mil Serv  ', Helper_CreateNumberDesc( self.population ) .. "/" .. Helper_CreateNumberDesc( self:GetMSPopulation() ) .. "(Mil)+" .. self.militaryService )
+	ShowText( indent .. 'Popu/Mil Serv  ', Helper_CreateNumberDesc( self.population ) .. "/" .. Helper_CreateNumberDesc( self:GetMilitaryService() ) .. "(Mil)+" .. self.militaryService )
 	ShowText( indent .. 'Agri+Ecom+Prod ', self.agriculture .. "/" .. self.maxAgriculture .. " " .. self.economy .. "/" .. self.maxEconomy .. " " .. self.production .. "/" .. self.maxProduction )
 	ShowText( indent .. 'Secu/Min Popu  ', self.security .. "/" .. Helper_CreateNumberDesc( self:GetReqPopulation() ) .. "(Req)/" .. Helper_CreateNumberDesc( self:GetMinPopulation() ) .. "(Min)" )
 	ShowText( indent .. 'Money / Food   ', Helper_CreateNumberDesc( self.money ) .. ' / ' .. Helper_CreateNumberDesc( self.food ) .. "+" .. ( self:GetConsumeFood() > 0 and math.floor( self.food / self:GetConsumeFood() ) or "*" ) )
 	ShowText( indent .. 'Supply/Harvest ', Helper_CreateNumberDesc( self:GetSupply() ) .. ' / ' .. Helper_CreateNumberDesc( self:GetHarvestFood() ) )	
 	ShowText( indent .. 'Power/Req Pow  ', self:GetMilitaryPower() .. "/" .. self:GetReqMilitaryPower() )
-	ShowText( indent .. 'Leader         ', ( self.leader and self.leader.name or "" ) )
-	ShowText( indent .. 'Charas         ', #self.charas )	
-	--self:DumpCharaDetail( indent )
-	ShowText( indent .. 'Troops+Corps   ', #self.troops .. '+' .. #self.corps )
-	--self:DumpTroopDetail( indent )
-	--self:DumpCorpsDetail( indent )
-	ShowText( indent .. 'Construction   ', #self.constrs )
-	--self:DumpConstructionDetail( indent )
-	ShowText( indent .. 'Plots          ', #self.plots )	
-	--self:DumpPlotsDetail( indent )
-	ShowText( indent .. 'Tags           ', #self.tags )
+	ShowText( indent .. 'Leader         ', ( self.leader and self.leader.name or "" ) )	
 	self:DumpTagDetail( indent )
-	ShowText( "<<<<<<<<<<<<<<< City <<<<<<<<<<<<<" )
+	local corpsList = self:GetPreparedToAttackCorpsList()
+	local tarList = self:GetAdjacentBelligerentCityList()
+	ShowText( indent ..  "ready corps="..#corpsList .."/" .. #self.corps, " tar=" .. Helper_ConcatListName( tarList, function ( city )
+		return "pow=" .. city:GetPower() .. "@" .. ( city:GetGroup() and city:GetGroup().name or "" )
+	end ) )
+	--ShowText( "<<<<<<<<<<<<<<< City <<<<<<<<<<<<<" )
 end
 
 function City:Dump( indent, force )
@@ -920,7 +930,7 @@ function City:Dump( indent, force )
 	ShowText( '>>>>>>>>>>>  City >>>>>>>>>>>>>>>>>' )
 	ShowText( indent .. '[City] #' .. self.id .. ' Name=' .. self.name .. ' Group=' .. ( self.group and self.group.name or "[none]" ) )
 	self:DumpAdjacentDetail( indent )
-	ShowText( indent .. 'Popu/Mil Serv  ', Helper_CreateNumberDesc( self.population ) .. "/" .. Helper_CreateNumberDesc( self:GetMSPopulation() ) .. "(Mil)+" .. self.militaryService )
+	ShowText( indent .. 'Popu/Mil Serv  ', Helper_CreateNumberDesc( self.population ) .. "/" .. Helper_CreateNumberDesc( self:GetMilitaryService() ) .. "(Mil)+" .. self.militaryService )
 	ShowText( indent .. 'Agri+Ecom+Prod ', self.agriculture .. "/" .. self.maxAgriculture .. " " .. self.economy .. "/" .. self.maxEconomy .. " " .. self.production .. "/" .. self.maxProduction )
 	ShowText( indent .. 'Secu/Min Popu  ', self.security .. "/" .. Helper_CreateNumberDesc( self:GetReqPopulation() ) .. "(Req)/" .. Helper_CreateNumberDesc( self:GetMinPopulation() ) .. "(Min)" )
 	ShowText( indent .. 'Money / Food   ', Helper_CreateNumberDesc( self.money ) .. ' / ' .. Helper_CreateNumberDesc( self.food ) .. "+" .. ( self:GetConsumeFood() > 0 and math.floor( self.food / self:GetConsumeFood() ) or "*" ) )
@@ -935,7 +945,7 @@ function City:Dump( indent, force )
 	ShowText( indent .. 'Construction   ', #self.constrs )
 	self:DumpConstructionDetail( indent )
 	ShowText( indent .. 'Plots          ', #self.plots )	
-	--self:DumpPlotsDetail( indent )
+	self:DumpPlotsDetail( indent )
 	ShowText( indent .. 'Tags           ', #self.tags )
 	self:DumpTagDetail( indent )
 	ShowText( "<<<<<<<<<<<<<<< City <<<<<<<<<<<<<" )
@@ -1160,7 +1170,7 @@ end
 
 function City:SelectLeader( leader )
 	--Helper_DumpName( self.charas, function ( chara ) return MathUtility_FindEnumName( CharacterStatus, chara.status ) end )
-	if #self.charas ~= 0 then
+	if #self.charas ~= 0 and not leader then
 		print( self.name, " vote leader=".. NameIDToString( leader ), " old=" .. NameIDToString( self.leader ), "chara=", #self.charas )
 	end
 	self.leader = leader

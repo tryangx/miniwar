@@ -17,9 +17,7 @@ function Warfare:IsLocationUnderAttackBy( location, atkGroup )
 	end
 	local combatAtkGroup = combat:GetSideGroup( CombatSide.ATTACKER )
 	local ret = combatAtkGroup == atkGroup
-	if not ret then
-		InputUtility_Pause( combatAtkGroup.name, atkGroup.name, "@" .. location.name, location:GetGroup() and location:GetGroup().name .. "" )
-	end
+	--if not ret then InputUtility_Pause( combatAtkGroup.name, atkGroup.name, "@" .. location.name, ( location:GetGroup() and location:GetGroup().name .. "" ) ) end
 	return ret
 end
 
@@ -35,6 +33,10 @@ function Warfare:AddWarfarePlan( corps, city )
 		InputUtility_Pause( "No need to attack", corps.name, city.name )
 		g_taskMng:TerminateTaskByActor( corps, "city already belong to us" )
 		return
+	end
+	
+	if city:IsNeutral() then
+		--different corps capture the city
 	end
 	
 	-- only support siege combat now
@@ -66,7 +68,7 @@ function Warfare:Update( elapasedTime )
 					quickSimulate = true
 					]]					
 					print( existCombat:CreateDesc() )
-					print( "existCombat=", existCombat.id )
+					--print( "existCombat=", existCombat.id )
 					local reinforcer = plan.attacker:GetGroup()
 					if reinforcer == attacker then
 						print( "reinforcer="..reinforcer.name, "attacker="..attacker.name )

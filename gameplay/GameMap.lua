@@ -3,9 +3,9 @@ GameMap = class()
 function GameMap:__init()
 	self.map  = nil
 	self.xInc = 6
-	self.cityNameLen = 4
-	self.groupNameLen = 2
-	self.blankLength = 6
+	self.cityNameLen = 3
+	self.groupNameLen = 3
+	self.blankLength = 8
 	self.blank = string.rep( " ", self.blankLength )
 end
 
@@ -67,6 +67,26 @@ function GameMap:DrawAll()
 	self:DrawResourceMap( true )
 	self:DrawCityMap( true )
 	self:DrawGroupMap( true )	
+	self:DrawPowerMap( true )
+end
+
+function GameMap:DrawPowerMap( invalidate )
+	if not invalidate then self:UpdateMap() end
+	print( "Power Map" )
+	self:DrawMapTable( function( x, y, data )
+		local city = data	
+		if city then			
+			local content = ""
+			if city:GetGroup() then
+				local str = Helper_CreateNumberDesc( city:GetPower() )
+				content = content .. Helper_AbbreviateString( city:GetGroup().name, self.groupNameLen + 1 ) .. "+" .. Helper_AbbreviateString( str, 4 )
+			else
+				content = content .. Helper_AbbreviateString( string.lower( city.name ), self.cityNameLen + 4 )
+			end
+			return content
+		end
+		return self.blank
+	end )
 end
 
 function GameMap:DrawGroupMap( invalidate )
@@ -83,7 +103,6 @@ function GameMap:DrawGroupMap( invalidate )
 			end
 			return content
 		end
-		--InputUtility_Pause( "<"..self.blank..">" )
 		return self.blank
 	end )
 end

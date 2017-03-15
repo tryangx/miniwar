@@ -221,7 +221,9 @@ end
 function Character:IsDiplomatic()
 	return self.job == CharacterJob.DIPLOMATIC
 end
-
+function Character:IsFreeMilitaryOfficer()
+	return not self:GetTroop() and self:IsAtHome() and self:IsMilitaryOfficer() and not g_taskMng:GetTaskByActor( self )
+end
 
 ----------------------------------
 -- Getter

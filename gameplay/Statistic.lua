@@ -48,6 +48,7 @@ function Statistic:__init()
 	
 	--Tasks
 	self.cancelTasks= {}
+	self.focusTasks = {}	
 end
 
 function Statistic:ClearCharaList()
@@ -67,6 +68,10 @@ end
 
 function Statistic:CancelTask( desc )
 	table.insert( self.cancelTasks, desc )
+end
+
+function Statistic:FocusTask( desc )
+	table.insert( self.focusTasks, desc )
 end
 
 -------------------------------------
@@ -212,7 +217,8 @@ function Statistic:GroupFall( group )
 end
 
 function Statistic:CityFall( city, group )
-	table.insert( self.fallenCities, city.name .. " by " .. group.name .. " " .. g_calendar:CreateCurrentDateDesc() )
+	local oldGroup = city:GetGroup()
+	table.insert( self.fallenCities, city.name .. " " .. ( oldGroup and oldGroup.name or "" ) .. "->" .. group.name	 .. " " .. g_calendar:CreateCurrentDateDesc() )
 end
 
 function Statistic:Update()
@@ -248,55 +254,38 @@ function Statistic:Dump()
 	
 	ShowText( "Activate Group=" .. #self.activateGroups )
 	for k, group in ipairs( self.activateGroups ) do
-		ShowText( "", group.name, " city=" .. #group.cities.."("..group:GetPlotNumber()..")", " chara="..#group.charas .. "/" .. QueryGroupCharaLimit( group ), " corps="..#group.corps.. " troops="..#group.troops, " soldier=" .. group:GetMilitaryPower(), " popu=" .. group:GetPopulation() )
+		local content = group.name .. " city=" .. #group.cities.."("..group:GetPlotNumber()..")" .. " chara="..#group.charas .. "/" .. QueryGroupCharaLimit( group ) .. " corps="..#group.corps.. " troops="..#group.troops .. " soldier=" .. group:GetMilitaryPower() .. " popu=" .. group:GetPopulation()
+		content = content .. " MilServ=" .. group:GetMilitaryService()
+		ShowText( "", content )
 		local deps = group:GetDependencyRelations()
-		if #deps > 0 then 
+		if #deps > 0 then
 			ShowText( "    Dep=" )
-			for k, relation in ipairs( deps ) do
-				if relation._targetGroup then
-					ShowText( "        " .. relation._targetGroup.name .. "+" .. relation._targetGroup:GetPower() .. " " .. MathUtility_FindEnumName( GroupRelationType, relation.type ) )
-				end
-			end		
+			for k, relation in ipairs( deps ) do if relation._targetGroup then ShowText( "        " .. relation._targetGroup.name .. "+" .. relation._targetGroup:GetPower() .. " " .. MathUtility_FindEnumName( GroupRelationType, relation.type ) ) end end		
 		end
 		ShowText( "  proposals(".. #group.proposals ..")" )
 		group:Dump()
-		for k, desc in ipairs( group.proposals ) do
-			--ShowText( "", "", desc )
-		end
+		--for k, desc in ipairs( group.proposals ) do ShowText( "", "", desc ) end
 	end	
 
-	ShowText( "Cancel Task   = " .. #self.cancelTasks )
-	for k, desc in ipairs( self.cancelTasks ) do
-	--	ShowText( "    " .. desc )
-	end
-	
 	ShowText( "City          = " .. #self.cities )
 	for k, city in ipairs( self.cities ) do
 		print( city.name, "pow=" .. city:GetPower() )
-		--city:Dump( nil, true )
-		local corpsList = city:GetPreparedToAttackCorpsList()
-		local tarList = city:GetAdjacentBelligerentCityList()
-		print( "	ready corps="..#corpsList .."/" .. #city.corps, " tar=" .. Helper_ConcatListName( tarList, function ( city )
-			return "pow=" .. city:GetPower()
-		end ) )
+		city:DumpBrief( nil, true )		
 	end
-		
-	self:DumpCharaDetail()
 
-	ShowText( "Fallen   Group:" )
-	for k, desc in ipairs( self.fallenGroups ) do
-		ShowText( "", desc )
-	end
+	self:DumpCharaDetail()
 	
-	ShowText( "Fallen   City:" )
-	for k, desc in ipairs( self.fallenCities ) do
-		ShowText( "", desc )
-	end
+	ShowText( "Cancel Task   = " .. #self.cancelTasks )
+	--MathUtility_Dump( self.cancelTasks )
 	
-	ShowText( "Combat Occured= " .. self.numOfCombatOccured )
-	for k, desc in ipairs( self.combatDetails ) do
-		ShowText( "", desc )
-	end	
+	MathUtility_Dump( self.focusTasks )
+
+	ShowText( "Fallen   Group:" ) for k, desc in ipairs( self.fallenGroups ) do ShowText( "", desc ) end
+	
+	ShowText( "Fallen   City:" ) for k, desc in ipairs( self.fallenCities ) do ShowText( "", desc ) end
+	
+	ShowText( "Combat Occured= " .. self.numOfCombatOccured ) for k, desc in ipairs( self.combatDetails ) do ShowText( "", desc ) end
+	
 	ShowText( "Die in Combat = " .. self.numOfDieInCombat )
 	ShowText( "Soldier       = " .. self.numOfSoldier .. "(cur)/" .. self.maxNumOfSoldier .. "(max)" )
 	ShowText( "Corps         = " .. self.numOfCorps )

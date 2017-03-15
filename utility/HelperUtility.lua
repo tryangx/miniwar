@@ -69,7 +69,7 @@ function Helper_ConcatListName( list, fn )
 	return content
 end
 
-function Helper_CreateNumberDesc( number, digit )
+function Helper_CreateNumberDesc( number, digit, decimal )
 	if digit == 2 then
 		digit = 100
 	else
@@ -83,13 +83,18 @@ function Helper_CreateNumberDesc( number, digit )
 	local chi_units = 
 	{
 		{ range = 1000000, unit = "百万", },
+		{ range = 100000, unit = "十万", },
 		{ range = 10000, unit = "万", },
+		{ range = 1000, unit = "千", },
+		--{ range = 100, unit = "百", },
 	}
 	local items = chi_units--eng_units
 	for k, v in ipairs( items ) do
 		if math.abs( number ) > v.range then
 			local integer = number * digit / v.range
-			local ret = math.floor( integer / digit ) .. "." .. ( math.floor( integer ) % digit ) .. v.unit
+			local ret = math.floor( integer / digit )
+			if decimal then ret = ret .. "." .. ( math.floor( integer ) % digit ) end
+			ret = ret .. v.unit
 			--print( number .. "->" .. ret )
 			return ret
 		end

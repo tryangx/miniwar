@@ -155,7 +155,7 @@ g_combatDataMng = DataManager( "COMBAT_DATA", Combat )
 
 -- Lock step
 local seed = os.time()
---seed = 1488531422
+--seed = 1489483472
 g_syncRandomizer = Randomizer( seed )
 
 -- Local game

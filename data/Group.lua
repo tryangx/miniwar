@@ -422,6 +422,14 @@ function Group:GetPower()
 	return self:GetMilitaryPower()
 end
 
+function Group:GetMilitaryService()
+	local militaryService = 0
+	for k, city in ipairs( self.cities ) do
+		militaryService = militaryService + city:GetMilitaryService()
+	end
+	return militaryService
+end
+
 function Group:GetDependencePower()
 	local power = 0
 	for k, relation in ipairs( self.relations ) do
@@ -777,10 +785,13 @@ end
 
 function Group:CanResearch()
 	if self.researchTechId ~= 0 then return false end
-	if g_taskMng:IsTaskConflictWithCity( TaskType.TECH_RESEARCH, self ) then return false end	
 	return #self._canResearchTechs > 0
 end
 
+function Group:CanMaintain()
+	--to do
+	return true	
+end
 
 ----------------------------------------------
 
