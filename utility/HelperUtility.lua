@@ -51,10 +51,14 @@ function NameIDToString( data )
 	return content
 end
 
-function Helper_DumpName( list, fn )
+function Helper_DumpList( list, fn )
 	for k, item in pairs( list ) do
-		local content = NameIDToString( item )
-		if fn then content = content .. fn( item ) end
+		local content
+		if fn then
+			content = fn( item )
+		else
+			content = NameIDToString( item )
+		end
 		print( content )
 	end
 end
@@ -83,7 +87,6 @@ function Helper_CreateNumberDesc( number, digit, decimal )
 	local chi_units = 
 	{
 		{ range = 1000000, unit = "百万", },
-		{ range = 100000, unit = "十万", },
 		{ range = 10000, unit = "万", },
 		{ range = 1000, unit = "千", },
 		--{ range = 100, unit = "百", },

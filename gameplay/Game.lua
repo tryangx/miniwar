@@ -193,7 +193,7 @@ function Game:Init()
 	Debug_SetFileMode( false )	
 
 	self.turn = 0
-	self.maxTurn = 240
+	self.maxTurn = 400
 	
 	g_gameEvent:InitData()
 	

@@ -102,7 +102,7 @@ require "Behavior"
 require "BehaviorNode"
 
 Behavior_Test()
-]]
+--]]
 
 require "FileUtility"
 

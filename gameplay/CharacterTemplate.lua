@@ -147,6 +147,7 @@ function CharacterTemplate:GenerateOutChara( city )
 end
 
 function CharacterTemplate:Update( elapsedTime )
+	if 1 then return end
 	if #g_statistic.outCharacterList > math.ceil( g_plotMap:GetNumOfPlot() * GlobalConst.LIMIT_OUTCHARA_BY_PLOT_MODULUS ) then return end
 
 	local numberOfChara = Random_SyncGetRange( GlobalConst.MIN_GENERATE_OUTCHARA_PER_TURN, GlobalConst.MAX_GENERATE_OUTCHARA_PER_TURN )

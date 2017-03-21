@@ -192,6 +192,9 @@ function Combat:__init()
 	self.defNumber = 0
 	self.atkKill = 0
 	self.defKill = 0
+	self.atkHit = 0
+	self.defHit = 0
+	self.updateTime = 0
 end
 
 local logUtility = LogUtility( "qcombat.log", LogFileMode.WRITE_MANUAL, LogPrinterMode.ON, LogWarningLevel.DEBUG )
@@ -220,16 +223,22 @@ function Combat:Brief()
 	content = content .. ( self.atkGroup and self.atkGroup.name or "Neutral" ) .. "+" .. atkNum .. "/" .. atkMaxNum .. "("..atkTroop..")"
 	content = content .. " VS "
 	content = content .. ( self.defGroup and self.defGroup.name or "Neutral" ) .. "+" .. defNum .. "/" .. defMaxNum .. "("..defTroop..")" 
+	content = content .. " corps=" .. #self.corps .. " troop=" .. self:GetTroopNumber( CombatSide.ATTACKER ) .. "/" .. self:GetTroopNumber( CombatSide.DEFENDER )
 	self:ShowText( content )
 end
 
 function Combat:CreateDesc()
+	if not self.endDate then self.endDate = g_calendar:GetDateValue() end
 	local desc = self.id .. " " .. ( self.atkGroup and self.atkGroup.name or "Neutral" ) .. " v " .. ( self.defGroup and self.defGroup.name or "Neutral" )
 	desc = desc .. " @" .. ( self.location and self.location.name or "" )
+	desc = desc .. " up=" .. self.updateTime
 	desc = desc .. " date=" .. g_calendar:CreateDateDescByValue( self.begDate, true, true ) .."->"..g_calendar:CreateDateDescByValue( self.endDate, true, true )
 	desc = desc .. " rslt=" .. MathUtility_FindEnumName( CombatResult, self.result )
 	desc = desc .. " soldier=" .. self.atkNumber .. "/" .. self.defNumber
 	desc = desc .. " died=" .. self.defKill .. "/" .. self.atkKill
+	desc = desc .. " corps=" .. #self.corps .. " corps_vs=" .. self:GetCorpsNumber( CombatSide.ATTACKER ) .. "/" .. self:GetCorpsNumber( CombatSide.DEFENDER )
+	desc = desc .. " troop=" .. #self.troops .. " troops_vs=" .. self:GetTroopNumber( CombatSide.ATTACKER ) .. "/" .. self:GetTroopNumber( CombatSide.DEFENDER )
+	desc = desc .. " reinforce=" .. ( self.reinforce or "" )
 	return desc
 end
 
@@ -303,7 +312,7 @@ function Combat:AddTroopToSide( side, troop )
 			if relation and not relation:IsAllyOrDependence() then
 				quickSimulate = false
 				print( self.id )
-				Helper_DumpName( self.troops, function ( t )
+				Helper_DumpList( self.troops, function ( t )
 					return NameIDToString( t ) .. " " .. ( t:GetGroup() and t:GetGroup().name or "" )
 				end )
 				print( NameIDToString( troop ), NameIDToString( troop:GetCorps() ) )
@@ -319,9 +328,6 @@ function Combat:AddTroopToSide( side, troop )
 	--init side
 	troop._combatSide = side	
 	
-	if self.id == 6 then
-		print( "@"..self.location.name .. " " .. self.id .. "->" .. NameIDToString( troop ), "troop_side=".. MathUtility_FindEnumName( CombatSide, side ), ( troop:GetLocation() and "troop_loc="..troop:GetLocation().name or "" ) )		
-	end
 	if ( side == CombatSide.ATTACKER and troop:GetGroup() == self.defGroup ) then		
 		InputUtility_Pause( NameIDToString( troop ), troop:GetGroup().name, self.defGroup.name, "DefSide error!!!", troop._combatId )
 	elseif ( side == CombatSide.DEFENDER and troop:GetGroup() == self.atkGroup ) then
@@ -357,6 +363,14 @@ function Combat:AddCorpsToSide( side, corps )
 
 	for k, troop in ipairs( corps.troops ) do
 		self:AddTroopToSide( side, troop )
+	end
+end
+
+function Combat:Reinforce()
+	if not self.reinforce then
+		self.reinforce = 1
+	else
+		self.reinforce = self.reinforce + 1
 	end
 end
 
@@ -501,6 +515,28 @@ function Combat:GetSideGroup( side )
 		return self.defGroup
 	end
 	return nil
+end
+
+function Combat:GetCorpsNumber( side )
+	local number = 0
+	for k, corps in ipairs( self.corps ) do
+		if corps:GetGroup() == self.atkGroup and side == CombatSide.ATTACKER then
+			number = number + 1
+		elseif corps:GetGroup() == self.defGroup and side == CombatSide.DEFENDER then
+			number = number + 1
+		end
+	end
+	return number
+end
+
+function Combat:GetTroopNumber( side )
+	local number = 0
+	for k, troop in ipairs( self.troops ) do
+		if troop._combatSide == side then
+			number = number + 1
+		end
+	end
+	return number
 end
 
 function Combat:GetPurpose( side )
@@ -648,6 +684,8 @@ function Combat:Run()
 		return
 	end
 	
+	self.updateTime = self.updateTime + 1
+
 	-- update elapsed
 	self._elapsedTime = CombatParams.DEFAULT_ELAPSED_TIME
 		

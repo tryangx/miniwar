@@ -143,6 +143,11 @@ function Character:ConvertID2Data()
 	self.troop = g_troopDataMng:GetData( self.troop )
 end
 
+function Character:CreateBrief()
+	local content = NameIDToString( self ) .. " loc=" .. self.location.name .. " stu=" .. MathUtility_FindEnumName( CharacterStatus, self.status ), "task=" .. ( g_taskMng:GetTaskByActor( self ) and "busy" or "idle" ), " troop=" .. ( self:GetTroop() and self:GetTroop().name or "" )
+	return content
+end
+
 function Character:Dump( indent )
 	if not indent then indent = "" end	
 	local content = indent .. "Chara " .. NameIDToString( self )
@@ -173,7 +178,21 @@ function Character:HasPriviage( checkPriviage )
 	return false
 end
 
+function Character:IsLeaderJob()
+	return self.job >= CharacterJob.LEADER_JOB
+end
+function Character:IsImportantJob()
+	return self.job < CharacterJob.LEADER_JOB and self.job >= CharacterJob.IMPORTANT_JOB
+end
+function Character:IsHighRankJob()
+	return self.job < CharacterJob.IMPORTANT_JOB and self.job >= CharacterJob.HIGH_RANK_JOB
+end
+function Character:IsLowRankJob()
+	return self.job < CharacterJob.HIGH_RANK_JOB
+end
+
 function Character:IsMoreImportant( chara )
+	if not char then return true end
 	if self:GetJob() % 100 > chara:GetJob() % 100 then return true end
 	if self.trust > reference.trust then return true end
 	if self.contribution > reference.contribution  then return true end
@@ -209,9 +228,6 @@ function Character:GetTroop()
 end
 
 -- Job Relative
-function Character:IsMoreImportant()
-	return self.job >= CharacterJob.IMPORTANT_JOB
-end
 function Character:IsCivialOfficial()
 	return self:HasPriviage( "CITY_AFFAIRS" )
 end
@@ -368,16 +384,14 @@ function Character:GetPromoteList()
 end
 
 function Character:IsFree()
-	return not self:GetTroop() and not self:IsMoreImportant() and self:IsAtHome() and not g_taskMng:GetTaskByActor( self )
+	return not self:GetTroop() and self:IsAtHome() and not g_taskMng:GetTaskByActor( self )
 end
 
 function Character:SubmitProposal( proposal )
 	self._submitProposal = proposal
 	if proposal.type <= CharacterProposal.PROPOSAL_COMMAND or proposal.type == CharacterProposal.PLAYER_GIVEUP_PROPOSAL then
 		self._hasSubmitProposal = true
-		--if proposal.type == CharacterProposal.ATTACK_CITY then debugMeeting = true end
 		local desc = Meeting:CreateProposalDesc( proposal, true, true )
-		--if debugMeeting then print( desc ) end
 		g_statistic:SubmitProposal( desc )
 	end
 end

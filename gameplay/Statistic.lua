@@ -35,7 +35,7 @@ function Statistic:__init()
 	self.minTotalPopulation = DEFAULT_MAXIMUM
 
 	--Combat
-	self.numOfCorps = 0
+	self.corpsList = {}
 	self.numOfTroop = 0
 	self.numOfDieInCombat = 0
 	self.numOfCombatOccured = 0
@@ -76,6 +76,16 @@ end
 
 -------------------------------------
 -- Chara
+
+function Statistic:CalcOutCharaNumber( city )
+	local number = 0
+	for k, chara in ipairs( g_statistic.outCharacterList ) do
+		if chara:GetLocation() == city then
+			number = number + 1
+		end
+	end
+	return number
+end
 
 function Statistic:AddActivateChara( chara )
 	table.insert( self.activateCharaList, chara )
@@ -150,10 +160,10 @@ end
 
 function Statistic:CountCorps( corps )
 	if not corps then
-		self.numOfCorps = 0
+		self.corpsList = {}
 		return
 	end
-	self.numOfCorps = self.numOfCorps + 1
+	table.insert( self.corpsList, corps )
 end
 
 function Statistic:CountTroop( troop )
@@ -218,7 +228,7 @@ end
 
 function Statistic:CityFall( city, group )
 	local oldGroup = city:GetGroup()
-	table.insert( self.fallenCities, city.name .. " " .. ( oldGroup and oldGroup.name or "" ) .. "->" .. group.name	 .. " " .. g_calendar:CreateCurrentDateDesc() )
+	table.insert( self.fallenCities, Helper_AbbreviateString( city.name, 12 ) .. "	" .. ( oldGroup and oldGroup.name or "Neutral" ) .. "->" .. group.name	 .. " " .. g_calendar:CreateCurrentDateDesc() )
 end
 
 function Statistic:Update()
@@ -228,7 +238,6 @@ function Statistic:Update()
 
 	self:CountPopulation( nil )
 	
-	self.numOfCorps = 0
 	self.numOfTroop = 0
 	self:CountSoldier( nil )
 end
@@ -236,7 +245,7 @@ end
 function Statistic:DumpCharaDetail()	
 	function DumpList( list )
 		for k, item in ipairs( list ) do
-			--ShowText( "", NameIDToString( item ), item.location.name, MathUtility_FindEnumName( CharacterStatus, item.status ) )
+			print( "", item:CreateBrief() )
 		end
 	end
 	ShowText( "ActChara      = ".. #self.activateCharaList )
@@ -268,12 +277,9 @@ function Statistic:Dump()
 	end	
 
 	ShowText( "City          = " .. #self.cities )
-	for k, city in ipairs( self.cities ) do
-		print( city.name, "pow=" .. city:GetPower() )
-		city:DumpBrief( nil, true )		
-	end
+	--for k, city in ipairs( self.cities ) do city:DumpBrief( nil, true ) end
 
-	self:DumpCharaDetail()
+	--self:DumpCharaDetail()
 	
 	ShowText( "Cancel Task   = " .. #self.cancelTasks )
 	--MathUtility_Dump( self.cancelTasks )
@@ -284,11 +290,12 @@ function Statistic:Dump()
 	
 	ShowText( "Fallen   City:" ) for k, desc in ipairs( self.fallenCities ) do ShowText( "", desc ) end
 	
-	ShowText( "Combat Occured= " .. self.numOfCombatOccured ) for k, desc in ipairs( self.combatDetails ) do ShowText( "", desc ) end
+	ShowText( "Combat Occured= " .. self.numOfCombatOccured )
+	for k, desc in ipairs( self.combatDetails ) do ShowText( "", desc ) end
 	
 	ShowText( "Die in Combat = " .. self.numOfDieInCombat )
 	ShowText( "Soldier       = " .. self.numOfSoldier .. "(cur)/" .. self.maxNumOfSoldier .. "(max)" )
-	ShowText( "Corps         = " .. self.numOfCorps )
+	ShowText( "Corps         = " .. #self.corpsList )
 	ShowText( "Troop         = " .. self.numOfTroop )
 	
 	ShowText( "Die Natural   = " .. self.numOfDieNatural )

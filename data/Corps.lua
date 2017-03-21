@@ -210,8 +210,7 @@ function Corps:GetMedianFatigue()
 end
 
 function Corps:GetVacancyNumber()
-	--ShowText( "check vacancy", CorpsParams.NUMBER_OF_TROOP_MAXIMUM, #self.troops )
-	return math.max( 0, CorpsParams.NUMBER_OF_TROOP_MAXIMUM - #self.troops )
+	return math.max( 0, QueryCorpsTroopLimit( self ) - #self.troops )
 end
 
 function Corps:GetTrainingEval()

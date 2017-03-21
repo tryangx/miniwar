@@ -98,6 +98,8 @@ MeetingSubFlow =
 	SUB_EXPEDITION       = 62,
 	SUB_CONTROL_PLOT     = 63,
 	SUB_DISPATCH_CORPS   = 64,
+	SUB_SIEGE_CITY       = 65,
+	SUB_MEET_ATTACK      = 66,
 }
 
 Meeting = class()
@@ -463,7 +465,16 @@ function Meeting:ConfirmProposalFlow( proposal )
 			--ShowText( "subflow=" .. MathUtility_FindEnumName( MeetingSubFlow, self.subFlow ), self.subFlow, proposal.type, MathUtility_FindEnumKey( CharacterProposal, proposal.type )  )			
 		else
 			--print( "!!!Issue " .. self:CreateProposalDesc( proposal ) .. " by " .. proposal.proposer.name )
-			g_taskMng:IssueTaskByProposal( proposal )
+			--multiple actor
+			if proposal.type == CharacterProposal.SIEGE_CITY then
+				local IssueProposal = MathUtility_Copy( proposal )
+				for k, corps in ipairs( proposal.data ) do
+					proposal.actor = corps
+					g_taskMng:IssueTaskByProposal( proposal )
+				end
+			else
+				g_taskMng:IssueTaskByProposal( proposal )
+			end			
 		end
 	end
 

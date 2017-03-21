@@ -43,6 +43,8 @@ TaskType =
 	EXPEDITION         = 141,
 	CONTROL_PLOT       = 142,
 	DISPATCH_CORPS     = 143,
+	SIEGE_CITY         = 144,
+	MEET_ATTACK        = 145,
 	
 	--------------------
 	--Diplomacy
@@ -82,7 +84,7 @@ TaskStatus =
 	NONE      = 0,
 	EXECUTING = 1,	
 	SUCCESSED = 2,		
-	FAILED    = 3,	
+	FAILED    = 3,
 	SUSPENDED = 4,
 }
 
@@ -106,13 +108,18 @@ function Task:__init()
 	self.type        = TaskType.NONE
 	self.category    = TaskCategory.NORMAL
 	self.status      = TaskStatus.NONE
-	self.actor       = nil
+
 	self.contributor = nil
+	self.actor       = nil
 	self.target      = nil
-	self.destination = nil
+	self.destination = nil	
+	self.datas       = nil
+
+	--Time & Duration
 	self.remain      = nil
 	self.progress    = nil
-	self.datas       = nil
+
+	--Date
 	self.begDate     = nil
 	self.endDate     = nil
 end
@@ -125,13 +132,14 @@ function Task:Save()
 end
 
 function Task:CreateDesc()
-	local content = "id"..self.id .. " "
+	local content = "id="..self.id .. " "
 	content = content .. MathUtility_FindEnumName( TaskType, self.type )
 	content = content .. " " .. NameIDToString( self.actor )
 	content = content .. "-" .. ( self.actor:GetGroup() and self.actor:GetGroup().name or "" )
 	content = content .. " loc=" .. self.actor:GetLocation().name
 	content = content .. " dst=" .. NameIDToString( self.destination )
 	content = content .. " tar=" .. ( self.target and self.target.name or "" )
+	content = content .. " beg=" .. g_calendar:CreateDateDescByValue( self.begDate, true, true )
 	content = content .. " end=" .. g_calendar:CreateDateDescByValue( self.endDate, true, true )
 	content = content .. " use=" .. self.progress
 	content = content .. " rst=" .. MathUtility_FindEnumName( TaskStatus, self.status )
@@ -158,7 +166,7 @@ function Task:MoveOn()
 		--InputUtility_Pause( self.actor.name, self.actor:GetLocation().name )
 	else
 		local location = self.path[1]		
-		if #self.path <= 1 then			
+		if #self.path <= 1 then
 			self.path = nil
 			self.actor:MoveToLocation( location )
 			self.remain = 0			
@@ -282,6 +290,7 @@ function Task:Update( elapsedTime )
 			InputUtility_Pause( self:CreateDesc() )
 		elseif self.destination:IsInSiege() then
 			if not self.destination:IsNeutral() and not g_warfare:IsLocationUnderAttackBy( self.destination, self.actor:GetGroup() ) then
+				self:Suspend()
 				print( "task suspend", self:CreateDesc(), self.destination.name .. " is in siege" )
 				return
 			end
@@ -404,9 +413,12 @@ function Task:Update( elapsedTime )
 	elseif self.type == TaskType.EXPEDITION then
 		CorpsAttack( self.actor, self.destination )
 		self:Suspend()
+	elseif self.type == TaskType.SIEGE_CITY then
+		CorpsSiegeCity( self.actor, self.destination )
+		self:Suspend()
 	elseif self.type == TaskType.DISPATCH_CORPS then
 		CorpsDispatchToCity( self.actor, self.destination, true )
-		self:Succeed( TaskContribution.LITTLE )	
+		self:Succeed( TaskContribution.LITTLE )		
 		
 	--Diplomacy
 	elseif self.type == TaskType.FRIENDLY_DIPLOMACY then
@@ -438,7 +450,15 @@ function Task:Update( elapsedTime )
 end
 
 function Task:DumpIssue()
+	if self.type == TaskType.DISPATCH_CORPS 
+		or self.type == TaskType.HR_DISPATCH 
+		or self.type == TaskType.HR_HIRE
+		or self.type == TaskType.HR_LOOKFORTALENT
+		then
+		--g_statistic:FocusTask( self:CreateDesc() )
+	end
 	if not focusTaskType or focusTaskType == self.type then
+		--focus records
 		if not self.actor then
 			InputUtility_Pause( "?issue task=" ..self.id, " type=" .. MathUtility_FindEnumName( TaskType, self.type ) )
 		end
@@ -621,9 +641,17 @@ function Task:IssueByProposal( proposal )
 		self.target   = proposal.target
 		self.destination = proposal.target
 		self.remain   = CalcCorpsSpendTimeOnRoad( self.actor:GetLocation(), self.destination )
+	elseif proposal.type == CharacterProposal.SIEGE_CITY then
+		self.category = TaskCategory.MILITARY_AFFAIRS
+		self.type     = TaskType.SIEGE_CITY
+		self.target   = proposal.target
+		self.datas    = proposal.data
+		self.destination = proposal.target
+		self.remain   = CalcCorpsSpendTimeOnRoad( self.actor:GetLocation(), self.destination )
 	elseif proposal.type == CharacterProposal.DISPATCH_CORPS then
 		self.category = TaskCategory.MILITARY_AFFAIRS
 		self.type     = TaskType.DISPATCH_CORPS
+		self.target      = proposal.target
 		self.destination = proposal.target
 		self.remain   = CalcSpendTimeOnRoad( self.actor:GetLocation(), self.destination )
 		self.contributor = self.actor:GetLeader()
@@ -707,7 +735,6 @@ function Task:IssueByProposal( proposal )
 		or self.type == TaskType.HR_CALL then
 		CharaLeaveCity( self.actor, "call/dispatch " .. self.type .. "+" .. self.id )
 	elseif self.type == TaskType.CORPS_MOVETO then
-		InputUtility_Pause( "1" )
 		CorpsLeaveCity( self.actor, "dispatch corps" )
 	elseif self.type == TaskType.TROOP_MOVETO then
 		TroopLeaveCity( self.actor )
@@ -737,17 +764,11 @@ function TaskManager:Clear()
 	self.removeList = {}
 end
 
-function TaskManager:CreateTaskDesc( task )
-	if not task.destination then print( MathUtility_FindEnumName( TaskType, task.type ) .. " has no destination" ) end
-	local content = task.id .. ">>>" .. MathUtility_FindEnumName( TaskType, task.type ) .. " 	actor=" .. NameIDToString( task.actor ) .. " loc=" .. ( task.destination and task.destination.name or "" ).. " sta=" .. MathUtility_FindEnumName( TaskStatus, task.status ) .. " remain=" .. task.remain
-	return content
-end
-
 function TaskManager:Dump()
 	ShowText( ">>>>>>>>>>>>>>>>>Task Statistic" )
 	ShowText( "Active Task=" .. #self.taskList )
 	for k, task in ipairs( self.taskList ) do
-		ShowText( task:CreateDesc() )--self:CreateTaskDesc( task ) )
+		ShowText( task:CreateDesc() )
 	end
 	ShowText( "----------------")
 	--[[
@@ -759,7 +780,7 @@ function TaskManager:Dump()
 	for k, task in pairs( self.actorTaskList ) do
 		ShowText( task.id, task.type, k.name, k.id )
 	end
-	]]	
+	]]
 	ShowText( "<<<<<<<<<<<<<<<<" )
 end
 
@@ -909,7 +930,7 @@ function TaskManager:IssueTaskTroopMoveTo( actor )
 		self:AddActorData( task.actor, task )
 	end
 end
-function TaskManager:IssueTaskByProposal( proposal )	
+function TaskManager:IssueTaskByProposal( proposal )
 	local newId = self.taskAllocateId + 1
 	local task = Task()
 	task.id = newId
@@ -929,7 +950,7 @@ function TaskManager:IssueTaskByProposal( proposal )
 	end
 
 	table.insert( self.taskList, task )
-	
+			
 	------------------------------
 	-- Add conflict check data
 	------------------------------
@@ -1024,11 +1045,7 @@ function TaskManager:EndTask( task )
 		local content = NameIDToString( task.actor ) .. " Finished id=" .. task.id .. " " .. MathUtility_FindEnumName( TaskType, task.type ) .. " In [" .. ( task.destination and task.destination.name or "" ) .. "] Beg=" .. g_calendar:CreateDateDescByValue( task.begDate, true, true ) .. " End="..g_calendar:CreateDateDescByValue( task.endDate, true, true ) .. " Use=" .. task.progress
 		print( content )
 	end
-	
-	if task.type == TaskType.DISPATCH_CORPS then
-		g_statistic:FocusTask( task:CreateDesc() )
-	end
-	
+		
 	--TaskBrief( task )	
 	table.insert( self.removeList, task )--{ type=task.type } )	
 	

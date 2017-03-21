@@ -37,7 +37,9 @@ local function Sequence( behavior, node )
 	for k, child in pairs( node.children ) do		
 		behavior:SetCurrentNode( node )
 		local fn = behavior.functions[child.type]
-		if fn and fn( behavior, child ) == false then return false end
+		if fn and fn( behavior, child ) == false then
+			return false
+		end
 	end
 	return true
 end
@@ -173,16 +175,25 @@ end
 function Behavior_Test()		
 	data = 
 	{
-		type = "RANDOM_SELECTOR", desc = "Root", children = 
+		type = "SEQUENCE", children =
 		{
-			--military
-			{ 
-				type = "CONDITION_ACTION", desc = "military", condition = function() print( "check military" ) end, action = function() print( "execute military" ) end, children = {},
-			},
-			--develop
-			{
-				type = "CONDITION_ACTION", desc = "develop", condition = function() print( "check develop" ) end, action = function() print( "execute develop" ) end, children = {},
-			},
+			{ type = "FILTER", condition = function() print( "check2" ) return false end },			
+			{ type = "ACTION", action = function() print( "act1" ) end },
+		}
+	}
+	data2 = 
+	{
+		type = "SEQUENCE", children =
+		{
+			{ type = "FILTER", condition = function() print( "check2" ) return true end },			
+			{ type = "ACTION", action = function() print( "act2" ) end },
+		}
+	}
+	data3 = 
+	{
+		type = "SEQUENCE", children = { 		
+			data1,
+			data2,
 		},
 	}
 	tree = BehaviorNode()

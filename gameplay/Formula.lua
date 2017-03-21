@@ -16,6 +16,7 @@ function QueryGroupCharaLimit( group )
 	if not number then
 		number = CharacterParams.SUBORDINATE_LIMIT.DEFAULT
 	end
+	number = number + math.floor( group:GetPlotNumber() * 0.35 )
 	return number
 end
 
@@ -24,8 +25,9 @@ end
 
 function QueryCityGuardsLimit( city )
 	local plotNumber = #city.plots
-	local number = math.ceil( plotNumber ^ 1.3 ) * 100
-	return number
+	local number = ( plotNumber ^ 1.3 ) * 100
+	if not city:GetGroup() then number = number * 0.5 end
+	return math.ceil( number )
 end
 function QueryCityGuardsRecover( city )
 	local plotNumber = #city.plots
@@ -42,18 +44,40 @@ end
 
 function QueryCityCharaLimit( city )
 	local plotNumber = #city.plots
-	local ret = math.max( 1, math.floor( plotNumber ^ 0.5 ) )
-	if city:IsCapital() then ret = ret + CityParams.CAPITAL_EXTRA_CHARA_LIMIT end
-	return ret
+	local ret = plotNumber * 0.5
+	local extraReq = 0
+	if city:IsCapital() then
+		extraReq = extraReq + CityParams.CAPITAL_EXTRA_CHARA_LIMIT
+	else
+		if city:IsFrontier() then extraReq = extraReq + CityParams.FRONTIER_EXTRA_CHARA_LIMIT end
+		if city:IsImportance() then extraReq = extraReq + CityParams.IMPORTANCE_EXTRA_CHARA_LIMIT end
+	end
+	return math.min( math.ceil( ret ), CityParams.MAX_CHARA_LIMIT )
 end
 
 function QueryCityNeedChara( city )
 	local plotNumber = #city.plots
-	local ret = math.max( 1, math.floor( plotNumber ^ 0.5 ) + CityParams.NONCAPITAL_EXTRA_CHARA_REQUIREMENT )
-	if city:IsCapital() then ret = ret + CityParams.CAPITAL_EXTRA_CHARA_REQUIREMENT end
-	--fortress modification?
-	--print( city.name, " need=", ret )
-	return ret
+	local ret = math.max( 1, math.floor( plotNumber ^ 0.5 ) )
+	local minReq =  CityParams.NONCAPITAL_MIN_CHARA_REQUIREMENT
+	if city:IsCapital() then
+		minReq = minReq + CityParams.CAPITAL_MIN_CHARA_REQUIREMENT
+	else
+		if city:IsFrontier() then minReq = minReq + CityParams.FRONTIER_MIN_CHARA_REQUIREMENT end
+		if city:IsImportance() then minReq = minReq + CityParams.IMPORTANCE_MIN_CHARA_REQUIREMENT end
+	end
+	return math.max( ret, minReq )
+end
+
+function QueryCityReqMilitaryPower( city )
+local plotNumber = #city.plots
+	if city:IsInDanger() then
+		plotNumber = plotNumber * 1.5
+	end
+	local req = plotNumber * CityParams.MILITARY.SAFETY_MILITARYPOWER_PER_PLOT
+	if city:IsBattleFront() then req = req + plotNumber * CityParams.MILITARY.BATTLEFRONT_MILITARYPOWER_PER_PLOT end
+	if city:IsFrontier() then req = req + plotNumber * CityParams.MILITARY.FRONTIER_MILITARYPOWER_PER_PLOT end
+	if city:IsCapital() then req = req + plotNumber * CityParams.MILITARY.SECURITY_MILITARYPOWER_PER_PLOT end
+	return math.ceil( req )
 end
 
 ------------------------------
@@ -106,7 +130,7 @@ end
 -- City
 
 function GuessCityPower( city )
-	local power = city:GetReqMilitaryPower()
+	local power = city:GetReqMilitaryPower() + city.guards
 	return power
 end
 
@@ -282,6 +306,22 @@ function EvaluateDiplomacySuccessRate( method, relation, group, target )
 	end
 	return math.floor( prob )
 end
+
+------------------------------
+-- Corps Relative
+function QueryCorpsTroopLimit( corps )
+	local leader = corps:GetLeader()
+	local support = CorpsParams.JOB_TROOP_LIMIT.NONE_JOB
+	if leader then
+		if leader:IsLeaderJob() then support = CorpsParams.JOB_TROOP_LIMIT.LEADER_JOB
+		elseif leader:IsImportantJob() then support = CorpsParams.JOB_TROOP_LIMIT.IMPORTANT_JOB
+		elseif leader:IsHighRankJob() then support = CorpsParams.JOB_TROOP_LIMIT.HIGH_RANK_JOB
+		elseif leader:IsLowRankJob() then support = CorpsParams.JOB_TROOP_LIMIT.LOW_RANK_JOB
+		end
+	end
+	return support
+end
+
 ------------------------------
 -- Troop relative
 function QueryRecruitTroopNumber( troop )

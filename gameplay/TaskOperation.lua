@@ -461,7 +461,7 @@ function CharaEstablishCorps( city )
 	end
 	local movement = nil
 	for k, troop in ipairs( idleTroopList ) do
-		if #corps.troops >= CorpsParams.NUMBER_OF_TROOP_MAXIMUM then break end
+		if #corps.troops >= QueryCorpsTroopLimit( corps ) then break end
 		corps:AddTroop( troop )
 	end
 	if #corps.troops == 0 and #idleTroopList > 0 then
@@ -595,6 +595,11 @@ function CorpsAttack( corps, city )
 	Debug_Normal( "[".. corps.name .."] attack ["..city.name.."]" )
 end
 
+function CorpsSiegeCity( corps, city, isSiege )
+	CorpsMoveToLocation( corps, city )
+	g_warfare:AddWarfarePlan( corps, city, isSiege )
+end
+
 function CorpsExpedition( corps, city )
 	g_warfare:AddWarfarePlan( corps, city )	
 	corps.location = city
@@ -603,10 +608,10 @@ function CorpsExpedition( corps, city )
 end
 
 function CorpsDispatchToCity( corps, city, includeAll )
-	print( NameIDToString( corps ), "dispatch to", city.name )
+	--print( NameIDToString( corps ), "dispatch to", city.name )
 	local home = corps:GetHome()
 	if home and home ~= city then
-		print( NameIDToString( corps ) .. " leave home=" .. home.name )
+		--print( NameIDToString( corps ) .. " leave home=" .. home.name )
 		home:Dump( nil, true )
 		home:RemoveCorps( corps )
 	end
@@ -987,7 +992,7 @@ function TroopLoseGroup( chara )
 
 	local group = chara:GetGroup()
 	if #group.cities > 0 then
-		Helper_DumpName( originalGroup.cities )
+		Helper_DumpList( originalGroup.cities )
 		CharaJoinCity( chara, group:GetCapital() )
 		g_taskMng:IssueTaskCharaBackHome( chara )
 		InputUtility_Pause()

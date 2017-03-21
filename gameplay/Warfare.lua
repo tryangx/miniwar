@@ -22,7 +22,7 @@ function Warfare:IsLocationUnderAttackBy( location, atkGroup )
 end
 
 --Add siege
-function Warfare:AddWarfarePlan( corps, city )
+function Warfare:AddWarfarePlan( corps, city, siege )
 	local locationPlan = self.plans[city]
 	if not locationPlan then
 		locationPlan = { siege = true, plans = {} }
@@ -30,7 +30,7 @@ function Warfare:AddWarfarePlan( corps, city )
 	end
 	
 	if corps:GetGroup() == city:GetGroup() then
-		InputUtility_Pause( "No need to attack", corps.name, city.name )
+		--InputUtility_Pause( "No need to attack", corps.name, city.name )
 		g_taskMng:TerminateTaskByActor( corps, "city already belong to us" )
 		return
 	end
@@ -46,6 +46,7 @@ function Warfare:AddWarfarePlan( corps, city )
 	plan.attacker = corps
 	plan.defender = nil
 	plan.siege    = true
+	plan.field    = false	
 	table.insert( locationPlan.plans, plan )
 	
 	--InputUtility_Pause( "Add combat plan" )
@@ -57,7 +58,11 @@ function Warfare:Update( elapasedTime )
 	
 	-- process all plans
 	for city, locationPlan in pairs( self.plans ) do
-		if locationPlan.siege == true then
+		if locationPlan.field == true then			
+			for k, plan in ipairs( locationPlan.plans ) do
+				self:AddFieldCombat( plan.attacker, plan.defender, nil )
+			end
+		else
 			for k, plan in ipairs( locationPlan.plans ) do
 				local existCombat = self:GetCombatByLocation( city )
 				local attacker = existCombat and existCombat:GetSideGroup( CombatSide.ATTACKER ) or nil
@@ -67,19 +72,19 @@ function Warfare:Update( elapasedTime )
 					existCombat:Dump()
 					quickSimulate = true
 					]]					
-					print( existCombat:CreateDesc() )
+					--print( existCombat:CreateDesc() )
 					--print( "existCombat=", existCombat.id )
 					local reinforcer = plan.attacker:GetGroup()
 					if reinforcer == attacker then
 						print( "reinforcer="..reinforcer.name, "attacker="..attacker.name )
 						--reinforce
-						self:AddSiegeCombat( plan.attacker, plan.to )
+						self:AddSiegeCombat( plan.attacker, plan.to, plan.siege, true )
 					elseif reinforcer then
 						local relation = attacker:GetGroupRelation( reinforcer.id )
 						if relation:IsAllyOrDependence() then
 							--ally reinforce
 							print( "ally="..reinforcer.name, "attacker="..attacker.name )
-							self:AddSiegeCombat( plan.attacker, plan.to )
+							self:AddSiegeCombat( plan.attacker, plan.to, plan.siege )
 						else
 							--retreat
 							g_taskMng:TerminateTaskByActor( plan.attacker, "attack target is in siege" )
@@ -88,10 +93,6 @@ function Warfare:Update( elapasedTime )
 				else
 					self:AddSiegeCombat( plan.attacker, plan.to )
 				end
-			end
-		else
-			for k, plan in ipairs( locationPlan.plans ) do
-				self:AddFieldCombat( plan.attacker, plan.defender, nil )
 			end
 		end
 	end	
@@ -103,7 +104,7 @@ function Warfare:GetCombatInLocation( city )
 	return city and self.combats[city] or nil
 end
 
-function Warfare:AddSiegeCombat( corps, city )
+function Warfare:AddSiegeCombat( corps, city, isSiege )
 	print( NameIDToString( corps ) .. " attack " .. city.name .. "@" .. ( city:GetGroup() and city:GetGroup().name or "Neutral" ) )
 	city:AppendTag( CityTag.SIEGE, 1 )
 	local combat = nil
@@ -116,7 +117,7 @@ function Warfare:AddSiegeCombat( corps, city )
 		combat:SetClimate( 1 )
 		combat:SetGroup( CombatSide.ATTACKER, corps:GetGroup() )
 		combat:SetGroup( CombatSide.DEFENDER, city:GetGroup() )
-		combat:SetSide( CombatSide.ATTACKER, { purpose=CombatPurpose.CONVENTIONAL } )
+		combat:SetSide( CombatSide.ATTACKER, { purpose=CombatPurpose.PROBING } )
 		combat:SetSide( CombatSide.DEFENDER, { purpose=CombatPurpose.CONVENTIONAL } )	
 		
 		print( "combatid="..combat.id, corps:GetGroup().name, ( city:GetGroup() and city:GetGroup().name or "" ) )
@@ -124,7 +125,7 @@ function Warfare:AddSiegeCombat( corps, city )
 		--not in corps	
 		for k, defender in ipairs( city.troops ) do
 			if not defender:GetCorps() and defender:IsAtHome() then
-				print( "Add troop", NameIDToString( defender ) )
+				--print( "Add troop", NameIDToString( defender ) )
 				g_taskMng:TerminateTaskByActor( defender, "home is under attack" )
 				combat:AddTroopToSide( CombatSide.DEFENDER, defender )
 			end
@@ -136,7 +137,7 @@ function Warfare:AddSiegeCombat( corps, city )
 				if defender:GetHome() ~= city then
 					InputUtility_Pause( "oh my god", defender:GetHome().name, city.name )
 				end
-				print( "Add corps", NameIDToString( defender ) )
+				--print( "Add corps", NameIDToString( defender ) )
 				g_taskMng:TerminateTaskByActor( defender, "home is under attack" )					
 				combat:AddCorpsToSide( CombatSide.DEFENDER, defender )
 			end
@@ -170,7 +171,11 @@ function Warfare:AddSiegeCombat( corps, city )
 		combat:Init()
 	else
 		combat = findCombat
-		--InputUtility_Wait( "reinforce in combat", "next" )
+
+		combat:Reinforce()
+
+		--adjust attitude
+		combat:SetSide( CombatSide.ATTACKER, { purpose=CombatPurpose.CONVENTIONAL } )
 	end
 	
 	-- troop sequence
@@ -263,6 +268,9 @@ end
 
 function Warfare:ProcessCombatResult( combat )
 	print( "CombatEnd=" .. combat.id, combat:GetLocation().name )
+
+	g_statistic:CombatOccured( combat:CreateDesc() )
+
 	--combat:Dump()
 	combat:EndCombat()
 	
@@ -306,7 +314,7 @@ function Warfare:ProcessCombatResult( combat )
 			--Garrisson into the city
 			for k, corps in ipairs( atkCorpsList ) do
 				--print( NameIDToString( corps ) .. " belong " .. corps:GetGroup().name )
-				print( NameIDToString( corps ), "garrison", city.name )
+				--print( NameIDToString( corps ), "garrison", city.name )
 				CorpsDispatchToCity( corps, city, true )
 			end
 			--Vote Leader
@@ -333,7 +341,6 @@ function Warfare:ProcessCombatResult( combat )
 			end
 		end )
 	end
-	g_statistic:CombatOccured( combat:CreateDesc() )
 end
 
 function Warfare:EndCombat( combat )

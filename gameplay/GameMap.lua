@@ -64,10 +64,26 @@ end
 
 function GameMap:DrawAll()
 	self:UpdateMap()
-	self:DrawResourceMap( true )
-	self:DrawCityMap( true )
-	self:DrawGroupMap( true )	
+	--self:DrawResourceMap( true )
+	--self:DrawCityMap( true )
+	--self:DrawGroupMap( true )
+	self:DrawCharaMap( true )
 	self:DrawPowerMap( true )
+end
+
+function GameMap:DrawCharaMap( invalidate )
+	if not invalidate then self:UpdateMap() end
+	print( "Chara Map" )
+	self:DrawMapTable( function( x, y, data )
+		local city = data	
+		if city then			
+			local content = ""
+			content = content .. #city.charas .. "/"
+			content = content .. g_statistic:CalcOutCharaNumber( city )
+			return content
+		end
+		return self.blank
+	end )
 end
 
 function GameMap:DrawPowerMap( invalidate )
@@ -81,7 +97,9 @@ function GameMap:DrawPowerMap( invalidate )
 				local str = Helper_CreateNumberDesc( city:GetPower() )
 				content = content .. Helper_AbbreviateString( city:GetGroup().name, self.groupNameLen + 1 ) .. "+" .. Helper_AbbreviateString( str, 4 )
 			else
-				content = content .. Helper_AbbreviateString( string.lower( city.name ), self.cityNameLen + 4 )
+				local str = Helper_CreateNumberDesc( city.guards )
+				content = content .. Helper_AbbreviateString( city:GetGroup().name, self.groupNameLen + 1 ) .. "=" .. Helper_AbbreviateString( str, 4 )
+				--content = content .. Helper_AbbreviateString( string.lower( city.name ), self.cityNameLen + 4 )
 			end
 			return content
 		end

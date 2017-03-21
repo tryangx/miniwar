@@ -15,7 +15,6 @@ PlotAdjacentOffsets = {
 	{ x = 1,  y = 2,  distance = 2, },
 	{ x = 0,  y = 2,  distance = 2, },
 	{ x = -1, y = 2,  distance = 2, },	
-	{ x = -2, y = 1,  distance = 2, },
 	{ x = -2, y = 0,  distance = 2, },
 	{ x = -2, y = -1, distance = 2, },
 	
@@ -297,9 +296,17 @@ CorpsTag =
 
 CorpsParams =
 {
-	NUMBER_OF_TROOP_TO_ESTALIBSH = 1,
-	NUMBER_OF_TROOP_MAXIMUM      = 10,
-	
+	NUMBER_OF_TROOP_TO_ESTALIBSH = 3,
+
+	JOB_TROOP_LIMIT =
+	{
+		NONE_JOB      = 5,
+		LOW_RANK_JOB  = 10,
+		HIGH_RANK_JOB = 15,
+		IMPORTANT_JOB = 20,
+		LEADER_JOB    = 25,
+	},
+
 	--
 	REINFORCE_NEED_TIME          = 5,
 	
@@ -384,6 +391,14 @@ CityTag =
 	
 	--Military Power is less than required power
 	WEAK        = 13,
+
+	--Place need gather troops
+	--Condition : 
+	IMPORTANCE  = 14,
+
+	--Attributes leads, like economic center, agriculture center
+	--Condition : 
+	CENTER      = 15,
 	
 	--Economic is well
 	--Good: More tax
@@ -406,6 +421,9 @@ CityTag =
 	--Bad : People become refugee
 	DESTRUCTION = 31,
 	
+	--Bad : Cann't [LevyTax]
+	DISSATISFIED = 32,
+	
 	MAX_VALUE = 
 	{
 		SIEGE       = 3,
@@ -416,6 +434,7 @@ CityTag =
 		BANKRUPT    = 3,
 		STARVATION  = 10,
 		DESTRUCTION = 3,
+		DISSATISFIED = 10,
 	},
 }
 
@@ -427,10 +446,20 @@ CityParams =
 	
 	SAFETY_FOOD_CONSUME_TIME        = 180,
 	
+	--Chara Limition
+	MAX_CHARA_LIMIT                    = 20,
 	CAPITAL_EXTRA_CHARA_LIMIT          = 5,	
-	CAPITAL_EXTRA_CHARA_REQUIREMENT    = 5,
-	CAPITAL_EXTRA_CORPS_REQUIREMENT    = 2,
-	NONCAPITAL_EXTRA_CHARA_REQUIREMENT = -3,
+	FRONTIER_EXTRA_CHARA_LIMIT         = 3,
+	IMPORTANCE_EXTRA_CHARA_LIMIT       = 3,
+	
+	--Chara Requiration
+	CAPITAL_MIN_CHARA_REQUIREMENT      = 3,
+	FRONTIER_MIN_CHARA_REQUIREMENT     = 2,
+	IMPORTANCE_MIN_CHARA_REQUIREMENT   = 2,
+	NONCAPITAL_MIN_CHARA_REQUIREMENT   = 1,
+	
+	--Corps
+	CAPITAL_EXTRA_CORPS_REQUIREMENT    = 2,		
 	
 	-----------------------------	
 	
@@ -460,11 +489,12 @@ CityParams =
 		INDANGER_ADJACENT_AVERAGEPOWER_MODULUS = 2,
 		
 		--Very important, affect how many solider the city required.
-		REQUIRE_MILITARYPOWER_LIMITATION_MODULUS   = 4,
-		SAFETY_MILITARYPOWER_PER_PLOT      = 200,
-		SECURITY_MILITARYPOWER_PER_PLOT    = 400,
-		FRONTIER_MILITARYPOWER_PER_PLOT    = 600,
-		BATTLEFRONT_MILITARYPOWER_PER_PLOT = 1000,
+		REQUIRE_MILITARYPOWER_LIMITATION_MODULUS   = 10,
+		SAFETY_MILITARYPOWER_PER_PLOT      = 100,
+		SECURITY_MILITARYPOWER_PER_PLOT    = 200,
+		IMPORTANCE_MILITARYPOWER_PER_PLOT  = 200,
+		FRONTIER_MILITARYPOWER_PER_PLOT    = 300,
+		BATTLEFRONT_MILITARYPOWER_PER_PLOT = 300,
 		SAFETY_ADJACENT_SINGLE_MILITARY_POWER_RATE = 0.5,
 		SAFETY_ADJACENT_TOTAL_MILITARY_POWER_RATE  = 0.35,
 	},
@@ -504,97 +534,7 @@ CityParams =
 		INCOME_POPULATION_MODULUS     = 0.1,
 	},
 		
-	-----------------------------
-	--[[
-	--Village
-	[1] = 
-	{
-		STANDARD_AGRICULTURE = 20,
-		STANDARD_ECONOMY     = 10,
-		STANDARD_PRODUCTION  = 0,
-		INVEST_FUND     = 50,		
-		MIN_POPULATION  = 1000,
-		MAX_POPULATION  = 2000,
-		SECURITY_MILITARY_MODULUS    = 0.01,
-		SAFETY_MILITARY_MODULUS      = 0.05,
-		BATTLEFRONT_MILITARY_MODULUS = 0.08,
-		SUPPLY_MILITARY_MODULUS      = 0.1,		
-	},
-	--Town
-	[2] = 
-	{
-		STANDARD_AGRICULTURE = 50,
-		STANDARD_ECONOMY     = 20,
-		STANDARD_PRODUCTION  = 20,
-		INVEST_FUND     = 200,
-		MAX_AGRICULTURE = 100,
-		MIN_POPULATION  = 3000,
-		MAX_POPULATION  = 10000,
-		SECURITY_MILITARY_MODULUS    = 0.01,
-		SAFETY_MILITARY_MODULUS      = 0.05,
-		BATTLEFRONT_MILITARY_MODULUS = 0.08,
-		SUPPLY_MILITARY_MODULUS      = 0.1,
-	},
-	--CITY
-	[3] = 
-	{
-		STANDARD_AGRICULTURE = 100,
-		STANDARD_ECONOMY     = 50,
-		STANDARD_PRODUCTION  = 50,
-		INVEST_FUND     = 400,
-		MAX_AGRICULTURE = 300,
-		MIN_POPULATION  = 15000,
-		MAX_POPULATION  = 50000,
-		SECURITY_MILITARY_MODULUS    = 0.01,
-		SAFETY_MILITARY_MODULUS      = 0.05,
-		BATTLEFRONT_MILITARY_MODULUS = 0.08,
-		SUPPLY_MILITARY_MODULUS      = 0.1,
-	},
-	--Large City
-	[4] = 
-	{
-		STANDARD_AGRICULTURE = 150,
-		STANDARD_ECONOMY     = 80,
-		STANDARD_PRODUCTION  = 80,
-		INVEST_FUND     = 600,
-		MAX_AGRICULTURE = 500,
-		MIN_POPULATION  = 80000,
-		MAX_POPULATION  = 200000,
-		SECURITY_MILITARY_MODULUS    = 0.01,
-		SAFETY_MILITARY_MODULUS      = 0.05,
-		BATTLEFRONT_MILITARY_MODULUS = 0.08,
-		SUPPLY_MILITARY_MODULUS      = 0.1,
-	},
-	--Huge City
-	[5] = 
-	{
-		STANDARD_AGRICULTURE = 200,
-		STANDARD_ECONOMY     = 120,
-		STANDARD_PRODUCTION  = 100,
-		INVEST_FUND     = 1000,
-		MAX_AGRICULTURE = 700,
-		MIN_POPULATION  = 250000,
-		MAX_POPULATION  = 500000,
-		SECURITY_MILITARY_MODULUS    = 0.01,
-		SAFETY_MILITARY_MODULUS      = 0.05,
-		BATTLEFRONT_MILITARY_MODULUS = 0.08,
-		SUPPLY_MILITARY_MODULUS      = 0.1,
-	},
-	--Metropolis
-	[6] = 
-	{
-		STANDARD_AGRICULTURE = 250,
-		STANDARD_ECONOMY     = 150,
-		STANDARD_PRODUCTION  = 120,
-		MAX_AGRICULTURE = 2000,
-		MIN_POPULATION  = 600000,
-		MAX_POPULATION  = 1000000,
-		SECURITY_MILITARY_MODULUS    = 0.01,
-		SAFETY_MILITARY_MODULUS      = 0.05,
-		BATTLEFRONT_MILITARY_MODULUS = 0.08,
-		SUPPLY_MILITARY_MODULUS      = 0.1,
-	},
-	]]
+	-----------------------------	
 }
 
 ----------------------------------------
@@ -1687,6 +1627,8 @@ CharacterProposal =
 	EXPEDITION       = 62,
 	CONTROL_PLOT     = 63,--Need AI
 	DISPATCH_CORPS   = 64,
+	SIEGE_CITY       = 65,
+	MEET_ATTACK      = 66,
 	MILITARY_AFFAIRS_END = 69,
 
 	-- Diplomacy
