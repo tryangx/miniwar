@@ -67,7 +67,7 @@ function GameMap:DrawAll()
 	--self:DrawResourceMap( true )
 	--self:DrawCityMap( true )
 	--self:DrawGroupMap( true )
-	self:DrawCharaMap( true )
+	--self:DrawCharaMap( true )
 	self:DrawPowerMap( true )
 end
 
@@ -95,10 +95,10 @@ function GameMap:DrawPowerMap( invalidate )
 			local content = ""
 			if city:GetGroup() then
 				local str = Helper_CreateNumberDesc( city:GetPower() )
-				content = content .. Helper_AbbreviateString( city:GetGroup().name, self.groupNameLen + 1 ) .. "+" .. Helper_AbbreviateString( str, 4 )
+				content = content .. Helper_AbbreviateString( city:GetGroup().name, self.cityNameLen + 1 ) .. "=" .. Helper_AbbreviateString( str, 4 )
 			else
 				local str = Helper_CreateNumberDesc( city.guards )
-				content = content .. Helper_AbbreviateString( city:GetGroup().name, self.groupNameLen + 1 ) .. "=" .. Helper_AbbreviateString( str, 4 )
+				content = content .. Helper_AbbreviateString( city.name, self.groupNameLen + 1 ) .. " " .. Helper_AbbreviateString( str, 4 )
 				--content = content .. Helper_AbbreviateString( string.lower( city.name ), self.cityNameLen + 4 )
 			end
 			return content

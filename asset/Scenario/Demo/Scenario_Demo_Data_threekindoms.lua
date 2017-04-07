@@ -399,7 +399,7 @@ local CityData =
 		coordinate = { x = 66, y = 9 },
 		level = 10,
 		--charas = { 100, 101, 102, 103 },
-		adjacentCities = { 101, 103 },
+		adjacentCities = { 100, 103 },
 	},
 	[102] = 
 	{
@@ -418,7 +418,7 @@ local CityData =
 	[104] = 
 	{
 		name = "Ye",
-		coordinate = { x = 42, y = 27 },
+		coordinate = { x = 42, y = 18 },
 		level = 11,
 		adjacentCities = { 102, 103, 200 },
 	},

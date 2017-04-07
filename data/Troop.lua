@@ -158,6 +158,19 @@ function Troop:GetPower()
 	return self.number
 end
 
+function Troop:GetCombatPower()
+	local closeWeapon = self:GetCloseWeapon()
+	local chargeWeapon = self:GetChargeWeapon()
+	if not closeWeapon and not chargeWeapon then return 0 end
+	return math.floor( self.number * math.max( closeWeapon.power, chargeWeapon.power ) * 0.01 )
+end
+function Troop:GetSiegePower()
+	local siegeWeapon = self:GetSiegeWeapon()
+	local rangeWeapon = self:GetRangeWeapon()	
+	if not siegeWeapon and not rangeWeapon then return 0 end
+	return math.floor( self.number * math.max( siegeWeapon.power, rangeWeapon.power ) * 0.01 )
+end
+
 -----------------------------------
 -- Operation
 
@@ -172,6 +185,10 @@ end
 
 -----------------------------------
 -- Combat Getter
+
+function Troop:IsNoneTask()
+	return not g_taskMng:GetTaskByActor( self ) and not g_taskMng:GetTaskByActor( self.corps )
+end
 
 function Troop:IsAtHome()
 	return self.location == self.home and not g_movingActorMng:HasActor( MovingActorType.TROOP, self )
@@ -222,19 +239,19 @@ function Troop:IsEnemy( target )
 end
 
 function Troop:CanAct()
-	return self._combatCD <= 0
+	return self._combatCD <= 0 and self:IsCombatUnit() and not self:IsActed()
 end
 
 function Troop:CanForward()
-	return self.table.category == TroopCategory.INFANTRY or self.table.category == TroopCategory.CAVALRY
+	return self.table.category == TroopCategory.FOOTSOLDIER or self.table.category == TroopCategory.CAVALRY
 end
 
 function Troop:CanSiegeAttack()
 	return self:GetSiegeWeapon() ~= nil
 end
 
-function Troop:CanFire()
-	return self:GetFireWeapon() ~= nil
+function Troop:CanShoot()
+	return self:GetRangeWeapon() ~= nil
 end
 
 function Troop:CanCharge()
@@ -372,7 +389,7 @@ function Troop:GetWeapon( condition )
 	return selWeapon
 end
 
-function Troop:GetFireWeapon()
+function Troop:GetRangeWeapon()
 	if self._combatWeapon then
 		if self._combatWeapon:IsFireWeapon() then
 			return self._combatWeapon

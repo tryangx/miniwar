@@ -83,7 +83,7 @@ GlobalConst =
 	ELPASED_TIME  = 30,
 	UNIT_TIME     = 30,
 	TIME_PER_YEAR = 360,
-	MOVE_TIME     = 5,
+	MOVE_TIME     = 2,
 	
 	--assets
 	INVALID_MONEY = 100000000,
@@ -167,6 +167,13 @@ WarfarePlanParams =
 -----------------------------------------
 -- Combat
 
+CombatPower = 
+{
+	MELEE = 1,
+	SHOOT = 2,
+	SIEGE = 3,
+}
+
 CombatType =
 {
 	FIELD_COMBAT  = 0,	
@@ -199,7 +206,7 @@ CombatResult =
 	TACTICAL_LOSE     = 2,
 	---------------------------
 	--Seperator
-	COMBAT_END_RESULT = 3,	
+	COMBAT_END_RESULT = 2.5,	
 	---------------------------
 	--All enemy neutralized or fled
 	STRATEGIC_VICTORY = 3,		
@@ -237,7 +244,7 @@ CombatTactic =
 TroopCategory =
 {
 	CATEGORY_BEG = 10,
-	INFANTRY     = 10,
+	FOOTSOLDIER  = 10,
 	ARTILLERY    = 20,	
 	CAVALRY      = 30,	
 	SIEGE_WEAPON = 40,	

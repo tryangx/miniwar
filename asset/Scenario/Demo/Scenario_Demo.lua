@@ -31,6 +31,15 @@ local function ScenarioDemo_QueryPlotGuardIds( plotNumber )
 	return {}
 end
 
+local function ScenarioDemo_IsPlotGuard( checkId )
+	for k, data in ipairs( PlotGuardTableData ) do
+		for k2, id in ipairs( data.ids ) do
+			return id == checkId
+		end
+	end
+	return false
+end
+
 ScenarioDemo = 
 {
 	id   = 1,
@@ -77,5 +86,6 @@ ScenarioDemo =
 	functions = 
 	{
 		QueryPlotGuardIds = ScenarioDemo_QueryPlotGuardIds,
+		IsPlotGuard       = ScenarioDemo_IsPlotGuard,
 	},
 }

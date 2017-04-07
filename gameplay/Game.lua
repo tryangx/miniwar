@@ -1,3 +1,9 @@
+--[[
+	Explore
+	Exploit
+	Expand
+	Exterminate
+]]
 -- Blueprint
 --	1. Two city in war
 --
@@ -89,6 +95,13 @@ function Game:PopupSystemMenu()
 	end
 	index = index + 1
 	if self.turn > 0 then
+		table.insert( menus, { c = nil, content = "View Data", fn = function()
+			self:ViewData()
+		end } )
+		index = index + 1
+	end
+	index = index + 1
+	if self.turn > 0 then
 		table.insert( menus, { c = nil, content = "Next Turn", fn = function()
 		end } )
 		index = index + 1
@@ -98,6 +111,12 @@ end
 
 function Game:MainMenu()	
 	self:PopupSystemMenu()
+end
+
+----------------------------
+
+function Game:ViewData()
+	
 end
 
 ----------------------------
@@ -193,7 +212,7 @@ function Game:Init()
 	Debug_SetFileMode( false )	
 
 	self.turn = 0
-	self.maxTurn = 400
+	self.maxTurn = 300
 	
 	g_gameEvent:InitData()
 	
@@ -355,7 +374,10 @@ function Game:TestCombat()
 		
 	self:PreprocessGameData()
 	
-	Warfare:Test( { g_corpsDataMng:GetData( 1 ) }, { g_corpsDataMng:GetData( 2 ) } )
+	local atkCorps = GenerateCorps( { 1000, })-- 1000, 1001, 1001, } )
+	local defCorps = GenerateCorps( { 501, })-- 501, 511, 511, } )
+	
+	Warfare:Test( { atkCorps }, { defCorps } )
 	
 	self.gameMode = GameMode.COMBAT_GAME
 

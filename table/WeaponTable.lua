@@ -12,16 +12,21 @@ WeaponDamageType =
 
 WeaponBallistic =
 {
-	-- Siege weapon
-	CLOSE      = 1,	
+	-- Siege weapon	
+	CLOSE      = 1,
+
 	-- Normal weapon like sword, knife, fork
-	MELEE      = 2,
+	MELEE      = 2,	
+	
 	-- Only use in charge attack
 	CHARGE     = 3,	
+
 	-- Anti charge attack
 	LONG       = 4,	
+
 	-- CrossBow or rifle
 	SHOOT      = 5,	
+	
 	-- Bow or high ballistic
 	MISSILE    = 6,
 }

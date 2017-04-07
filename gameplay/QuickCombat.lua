@@ -63,7 +63,19 @@
 -- Siege Combat[Besiege]
 -- 1. Siege Weapon Shoot
 --
---
+-- Siege Combat
+--[[
+	DEFENCE = DEFENCE / GATE /TOWER,
+	BACK    = CAVALRY,
+	FRONT   = ARTILLERY / FOOTSOLDIER,
+	CHARGE  = ,
+	MELEE   = ,
+--]]
+--[[
+
+	!!!!!!Cavalry may stop when siege city
+
+]]
 
 CombatStatus = 
 {
@@ -148,13 +160,14 @@ CombatParams =
 
 CombatRound = 
 {
-	PREPARE_ROUND = 0,
-	SHOOT_ROUND   = 1,
-	CHARGE_ROUND  = 2,
-	FORWARD_ROUND = 3,
-	FIGHT_ROUND   = 4,
-	PURSUE_ROUND  = 5,
-	END_ROUND     = 6,
+	PREPARE_ROUND         = 0,
+	SHOOT_ROUND           = 1,
+	CHARGE_ROUND          = 2,
+	FORWARD_ROUND         = 3,
+	FIGHT_ROUND           = 4,
+	DESPERATE_FIGHT_ROUND = 5,
+	PURSUE_ROUND          = 6,
+	END_ROUND             = 7,
 }
 
 --------------------------------------------
@@ -194,20 +207,23 @@ function Combat:__init()
 	self.defKill = 0
 	self.atkHit = 0
 	self.defHit = 0
-	self.updateTime = 0
+	self.updateTime  = 0
+	self.shootRound  = 0
+	self.fowardRound = 0
+	self.fightRound  = 0
 end
 
 local logUtility = LogUtility( "qcombat.log", LogFileMode.WRITE_MANUAL, LogPrinterMode.ON, LogWarningLevel.DEBUG )
 
 function Combat:ShowText( content )
-	if not quickSimulate then 
-	print( content ) 
+	if not quickSimulate or not self.location then 
+		print( content ) 
 	end
 end
 
 function Combat:Log( content )
-	--print( content )
-	logUtility:WriteLog( content, LogWarningLevel.NORMAL )	
+	if not quickSimulate then print( content ) end
+	--logUtility:WriteLog( content, LogWarningLevel.NORMAL )	
 end
 
 function Combat:FlushLog()
@@ -231,7 +247,7 @@ function Combat:CreateDesc()
 	if not self.endDate then self.endDate = g_calendar:GetDateValue() end
 	local desc = self.id .. " " .. ( self.atkGroup and self.atkGroup.name or "Neutral" ) .. " v " .. ( self.defGroup and self.defGroup.name or "Neutral" )
 	desc = desc .. " @" .. ( self.location and self.location.name or "" )
-	desc = desc .. " up=" .. self.updateTime
+	desc = desc .. " up=" .. self.updateTime .. " round=" .. self.shootRound .. "/" .. self.fowardRound .. "/" .. self.fightRound
 	desc = desc .. " date=" .. g_calendar:CreateDateDescByValue( self.begDate, true, true ) .."->"..g_calendar:CreateDateDescByValue( self.endDate, true, true )
 	desc = desc .. " rslt=" .. MathUtility_FindEnumName( CombatResult, self.result )
 	desc = desc .. " soldier=" .. self.atkNumber .. "/" .. self.defNumber
@@ -327,12 +343,14 @@ function Combat:AddTroopToSide( side, troop )
 	
 	--init side
 	troop._combatSide = side	
-	
+
+--[[
 	if ( side == CombatSide.ATTACKER and troop:GetGroup() == self.defGroup ) then		
 		InputUtility_Pause( NameIDToString( troop ), troop:GetGroup().name, self.defGroup.name, "DefSide error!!!", troop._combatId )
 	elseif ( side == CombatSide.DEFENDER and troop:GetGroup() == self.atkGroup ) then
 		InputUtility_Pause( NameIDToString( troop ), troop:GetGroup().name, self.atkGroup.name, "AtkSide error!!!", troop._combatId )
 	end
+	]]	
 	
 	troop._combatId = self.id
 
@@ -372,6 +390,10 @@ function Combat:Reinforce()
 	else
 		self.reinforce = self.reinforce + 1
 	end
+end
+
+function Combat:SetEndDay( day )
+	self.endDay = day
 end
 
 function Combat:SetType( combatType )
@@ -420,6 +442,7 @@ function Combat:SetSide( side, data )
 end
 
 function Combat:EndCombat()
+	--InputUtility_Pause()
 	self.endDate = g_calendar:GetDateValue()
 	
 	for k, troop in ipairs( self.troops ) do
@@ -463,6 +486,7 @@ function Combat:Embattle()
 			table.insert( self.defenders, troop )
 		end
 		troop._startNumber = troop.number
+		--Field Stand Line
 		if self.type == CombatType.FIELD_COMBAT then
 			troop._startLine = troop.table.startLine
 			if troop.table.startLine == TroopStartLine.FRONT then			
@@ -474,17 +498,10 @@ function Combat:Embattle()
 			elseif troop.table.startLine == TroopStartLine.CHARGE then
 				table.insert( self.chargeLine, troop )
 			end
-		else
+
+		elseif self.type == CombatType.SIEGE_COMBAT then
+			local purpose = self:GetPurpose( CombatSide.ATTACKER )
 			if troop.table.startLine == TroopStartLine.FRONT then				
-				--[[
-				if troop.table.category == TroopCategory.SIEGE_WEAPON then
-					troop._startLine = TroopStartLine.CHARGE
-					table.insert( self.charge, troop )
-				else
-					troop._startLine = TroopStartLine.FRONT
-					table.insert( self.frontLine, troop )
-				end
-				]]
 				troop._startLine = TroopStartLine.FRONT
 				table.insert( self.frontLine, troop )
 			elseif troop.table.startLine == TroopStartLine.BACK then
@@ -494,8 +511,8 @@ function Combat:Embattle()
 				troop._startLine = TroopStartLine.DEFENCE
 				table.insert( self.defenceLine, troop )
 			elseif troop.table.startLine == TroopStartLine.CHARGE then
-				troop._startLine = TroopStartLine.BACK
-				table.insert( self.backLine, troop )
+				troop._startLine = TroopStartLine.FRONT
+				table.insert( self.frontLine, troop )
 			end
 			--self:ShowText( "embattle siege", troop.name, MathUtility_FindEnumName( TroopStartLine, troop._startLine ) )
 		end
@@ -557,7 +574,7 @@ end
 
 
 function Combat:IsCombatEnd()
-	return self.result > CombatResult.TACTICAL_LOSE
+	return self.result > CombatResult.TACTICAL_LOSE or ( self.endDay and self.endDay < self.day )
 end
 
 function Combat:IsDayEnd()
@@ -711,8 +728,7 @@ function Combat:Run()
 	if self.type == CombatType.FIELD_COMBAT then
 		if self.round == CombatRound.PREPARE_ROUND then
 			self.round = CombatRound.SHOOT_ROUND
-		end
-		if self.round == CombatRound.SHOOT_ROUND then
+		elseif self.round == CombatRound.SHOOT_ROUND then
 			self:Shoot()
 		elseif self.round == CombatRound.CHARGE_ROUND then
 			self:Charge()
@@ -720,18 +736,30 @@ function Combat:Run()
 			self:Forward()
 		elseif self.round == CombatRound.FIGHT_ROUND then
 			self:Fight()
+			local atkPurpose = self:GetPurpose( CombatSide.ATTACKER )
+			local defPurpose = self:GetPurpose( CombatSide.DEFENDER )
+			if atkPurpose ~= CombatPurpose.DESPERATE and defPurpose ~= CombatPurpose.DESPERATE then
+				self.round = self.round + 1
+			end
+		elseif self.round == CombatRound.DESPERATE_FIGHT_ROUND then
+			self:Fight()
 		elseif self.round == CombatRound.PURSUE_ROUND then
 			if self:HasStatus( CombatStatus.SIDE_FLEE ) then				
 				self:Pursue()
 			end
 		end
 		self.round = self.round + 1
+
 	elseif self.type == CombatType.SIEGE_COMBAT then
-		self:Batter()
-		self:CityDefence()
+		--siege weapon
+		self:SiegeWeaponAttack()
+		--defence construction
+		self:CityDefenceAttack()
+
 		if self.round == CombatRound.PREPARE_ROUND then
 			self.round = CombatRound.SHOOT_ROUND
-		elseif self.round == CombatRound.SHOOT_ROUND then			
+		elseif self.round == CombatRound.SHOOT_ROUND then
+			self.shootRound = self.shootRound + 1
 			self:Shoot()
 			local purpose = self:GetPurpose( CombatSide.ATTACKER )
 			if purpose == CombatPurpose.DESPERATE then
@@ -742,15 +770,20 @@ function Combat:Run()
 				self.round = CombatRound.END_ROUND
 			end
 		elseif self.round == CombatRound.FORWARD_ROUND then
+			self.fowardRound = self.fowardRound + 1
 			self:Forward()
 			self:Fight()
-			local purpose = self:GetPurpose( CombatSide.ATTACKER )
+			self.round = CombatRound.FIGHT_ROUND
+		elseif self.round == CombatRound.FIGHT_ROUND then
+			self.fightRound = self.fightRound + 1
+			self:Fight()
 			if purpose == CombatPurpose.DESPERATE then
-				self.round = CombatRound.FIGHT_ROUND
+				self.round = CombatRound.DESPERATE_FIGHT_ROUND
 			else
 				self.round = CombatRound.END_ROUND
 			end
-		elseif self.round == CombatRound.FIGHT_ROUND then
+		elseif self.round == CombatRound.DESPERATE_FIGHT_ROUND then
+			self.fightRound = self.fightRound + 1
 			self:Fight()
 			self.round = CombatRound.END_ROUND
 		elseif self.round == CombatRound.PURSUE_ROUND then
@@ -824,34 +857,34 @@ function Combat:NextTurn()
 	end
 end
 
-function Combat:FindTargetInLine( troop, line )
-	local troops = {}
-	local lineTroops = nil
-	if line == TroopStartLine.FRONT then
-		lineTroops = self.frontLine
-	elseif line == TroopStartLine.BACK then	
-		lineTroops = self.backLine
-	elseif line == TroopStartLine.DEFENCE then		
-		lineTroops = self.defenceLine
-	elseif line == TroopStartLine.CHARGE then
-		lineTroops = self.chargeLine
-	elseif line == TroopStartLine.MELEE then
-		lineTroops = self.meleeLine
-	end	
-	--self:ShowText( "find line", MathUtility_FindEnumName( TroopStartLine, line ), lineTroops and #lineTroops or 0 )
-	if not lineTroops then return nil end
-	for k, target in ipairs( lineTroops ) do
-		if target:IsInCombat() and target._combatSide ~= troop._combatSide then
-			table.insert( troops, target)
+function Combat:SelectTarget( line, side, fn )
+	if not line then return nil end
+	local targetList = {}
+	for _, target in ipairs( line ) do
+		if target:IsInCombat() and target._combatSide ~= side and fn( target ) then
+			table.insert( targetList, target )
 		end
 	end
-	if #troops == 0 then return nil end
-	local index = Random_SyncGetRange( 1, #troops, "Random Target" )
-	--self:ShowText( "total target=" .. #troops, #lineTroops, MathUtility_FindEnumName( TroopStartLine, line ), " index=", index )
-	return troops[index]
+	if #targetList == 0 then return nil end
+	local index = Random_SyncGetRange( 1, #targetList, "Random Target" )
+	return targetList[index]
 end
 
-function Combat:FindTarget( troop )
+function Combat:FindTargetInLine( troop, line )
+	local lineTroops = nil
+	if line == TroopStartLine.FRONT then lineTroops = self.frontLine
+	elseif line == TroopStartLine.BACK then lineTroops = self.backLine
+	elseif line == TroopStartLine.DEFENCE then lineTroops = self.defenceLine
+	elseif line == TroopStartLine.CHARGE then lineTroops = self.chargeLine
+	elseif line == TroopStartLine.MELEE then lineTroops = self.meleeLine
+	end	
+	--self:ShowText( "find line", MathUtility_FindEnumName( TroopStartLine, line ), lineTroops and #lineTroops or 0 )
+	return self:SelectTarget( lineTroops, troop._combatSide, function ( target )
+			return true
+		end )
+end
+
+function Combat:FindLinetarget( troop )
 	local target = nil
 	for line = TroopStartLine.MELEE, TroopStartLine.BACK, -1 do
 		target = self:FindTargetInLine( troop, line )
@@ -861,24 +894,43 @@ function Combat:FindTarget( troop )
 	return target
 end
 
-function Combat:FindDefenceTarget( troop, params )
-	local targetList = {}
-	for _, target in ipairs( self.defenceLine ) do
-		if target._combatSide ~= troop._combatSide then
-			if ( params.isGate and target.table.category == TroopCategory.GATE )
-			or ( params.isWall and target.table.category == TroopCategory.DEFENCE )
-			or ( params.isTower and target.table.category == TroopCategory.TOWER )
-			or target:IsDefence() then
-				table.insert( targetList, target )
-			end
-		end
+function Combat:FindShootTarget( troop )
+	local weapon = troop:GetRangeWeapon()
+	local target = nil
+	for line = TroopStartLine.MELEE, TroopStartLine.FRONT, -1 do
+		target = self:FindTargetInLine( troop, line )
+		if target then break end 
 	end
-	if #targetList == 0 then return nil end
-	local index = Random_SyncGetRange( 1, #targetList, "Random Target" )
-	return targetList[index]
+	--self:ShowText( NameIDToString( troop ) .. " Find target=" .. ( target and target.name or "" ) )
+	return target
 end
 
-function Combat:FindFledTarget( troop )
+function Combat:FindGateTarget( troop, params )
+	return self:SelectTarget( self.defenceLine, troop._combatSide, function ( target )
+			return target.table.category == TroopCategory.GATE
+		end )
+end
+function Combat:FindDefenceTarget( troop, params )
+	return self:SelectTarget( self.defenceLine,troop._combatSide, function ( target )
+			return target.table.category == TroopCategory.DEFENCE
+		end )
+end
+function Combat:FindTowerTarget( troop, params )
+	return self:SelectTarget( self.defenceLine,troop._combatSide, function ( target )
+			return target.table.category == TroopCategory.TOWER
+		end )
+end
+
+function Combat:FindSiegeTarget( troop, params )
+	return self:SelectTarget( self.defenceLine,troop._combatSide, function ( target )
+			return target:IsDefence()
+		end )
+end
+
+--[[
+	Purse target: in Line of "Melee, Charge"
+]]
+function Combat:FindPursueTarget( troop )
 	local targetList = {}
 	for _, target in ipairs( self.troops ) do
 		if target:IsCombatUnit() and target._combatSide ~= troop._combatSide then
@@ -892,7 +944,30 @@ function Combat:FindFledTarget( troop )
 	return targetList[index]
 end
 
+--[[
+	Defence Construction Target: in Line of "Melee, Charge"
+]]
+function Combat:FindDefenceTarget( troop )
+	local target = nil
+	for line = TroopStartLine.MELEE, TroopStartLine.CHARGE, -1 do
+		target = self:FindTargetInLine( troop, line )
+		if target then break end 
+	end
+	--self:ShowText( NameIDToString( troop ) .. " Find target=" .. ( target and target.name or "" ) )
+	return target
+end
+
+--------------------------------------------------
+
+---------------------------------
+-- Very Important function !!!!
+--
+---------------------------------
 function Combat:CalcDamage( troop, target, weapon, armor, params )
+	------------------------------------
+	-- 		Calculate Base Damage	
+	------------------------------------
+	-- Level modification
 	local lvRate = 100
 	if params.isMelee then
 		local t1 = troop:GetLevel()
@@ -901,46 +976,62 @@ function Combat:CalcDamage( troop, target, weapon, armor, params )
 		range = t1 > t2 and range or -range
 		trainingRate = MathUtility_Clamp( 100 + range, CombatParams.LEVEL_BONUS_TO_DAMAGE_MIN_FACTOR, CombatParams.LEVEL_BONUS_TO_DAMAGE_MAX_FACTOR )
 	end
-
+	-- Number modification
 	local number = troop.number
 	if params.isMelee and troop.number ~= target.number then
 		number = troop.number > target.number and math.floor( target.number * ( troop.number / target.number ) ^ 0.5 ) or math.floor( troop.number * ( target.number / troop.number ) ^ 0.5 )
 		--self:ShowText( "!!!!ismelee number", number )
 	end
-	local modNumber = math.floor( number < self.battlefield.width and number or self.battlefield.width + ( number - self.battlefield.width ) / 2 )
-	
+	local modNumber = math.floor( number < self.battlefield.width and number or self.battlefield.width + ( number - self.battlefield.width ) / 2 )	
+	-- Weapon & Armor modification
 	local weaponRate = armor and math.max( 10, ( weapon.power - armor.protection ) ) / ( 100 + armor.protection ) or 1
-	
+	-- Calculate Base Damage Value
 	local dmg = modNumber * weaponRate * lvRate * 0.0035
-		
 	--self:ShowText( "    num=" .. modNumber, "weapon=" .. math.floor( weaponRate * 350 ) .. "("..weapon.power..","..armor.protection..")", "lv=" .. lvRate )
-	
-	local modulus = 1
-	
-	-- Critical
+
+	------------------------------------
+	-- 		Critical Modification
+	------------------------------------
 	if params.isMelee then
 		local criticalProb = ( troop.morale - target.morale ) * 10000 / ( troop.morale + target.morale )
 		if criticalProb > 0 and Random_SyncGetRange( 1, RandomParams.MAX_PROBABILITY, "critical prob" ) < criticalProb then dmg = dmg * 1.5 end
 	end
-	
-	--self:ShowText( "first dmg=", dmg )
-	
-	-- Damage Modification
+
+	------------------------------------
+	-- 		Damage Modification
+	------------------------------------
+	--	Counter Attack Reduce
 	if params.isCounter then dmg = dmg * 0.65 end
-	if params.isMissile and target._startLine == TroopStartLine.CHARGE then dmg = dmg * 0.65 self:ShowText( "!!!!!!!!!!!!!!shoot moving" ) end	
+	--	Move & Hit
+	if params.isMissile and target._startLine == TroopStartLine.CHARGE then dmg = dmg * 0.65 end
+	--	Reduction after ATTACK too many times
 	if target:IsAttacked() then dmg = dmg * MathUtility_Clamp( 1 - 0.35 * target:IsAttacked(), 0.2, 2 ) end
+	--	Addtion after DEFEND too many times
 	if target:IsDefended() then dmg = dmg * MathUtility_Clamp( 1 + 0.35 * target:IsDefended(), 0.3, 2.5 ) end
-	if troop._combatSide == CombatSide.ATTACKER and self.type == CombatType.SIEGE_COMBAT then		
-		dmg = dmg * 0.25
+	--	Siege Combat, Attacker penalty
+	if troop._combatSide == CombatSide.ATTACKER and self.type == CombatType.SIEGE_COMBAT then
+		local ratio = 0.25
+		if self:HasStatus( CombatStatus.GATE_BROKEN ) then
+			ratio = ratio + 0.25
+		end
+		if self:HasStatus( CombatStatus.WALL_BROKEN ) then
+			ratio = ratio + 0.25
+		end
+		dmg = dmg * ratio
 	end
+	--	Siege Combat, Defender penalty
 	if troop._combatSide == CombatSide.DEFENDER and self.type == CombatType.SIEGE_COMBAT then
 		dmg = dmg * 0.5
 	end
 	
-	-- Trait
+	-----------------------------
+	-- 		Trait
+	-- to do!!!
+	-----------------------------
 	
-	
-	-- Weather penalty
+	-----------------------------
+	-- 		Weather penalty
+	------------------------------------
 	if self.weatherTable then
 		if params.isMelee and self.weatherTable.meleePenalty ~= 0 then
 			local penaltyAdd = self:GetTraitValue( troop, TraitEffectType.WEATHER_MALADAPTION, 0 )
@@ -954,6 +1045,7 @@ function Combat:CalcDamage( troop, target, weapon, armor, params )
 			--self:Log( "Weather Missile Penalty=" .. self.weatherTable.missilePenalty .. " dmg=" .. dmg )
 		end
 	end
+	-----------------------------
 	
 	return math.floor( dmg )
 end
@@ -1004,42 +1096,59 @@ function Combat:DealDamage( troop, target, damage )
 	return damage
 end
 
+-----------------------------------
+-- Very important function!!!!!!!!
+-----------------------------------
 function Combat:Hit( troop, target, params )
-	if not params then return end	
-	if not troop:IsAlive() then return end
-	if target:IsFled() and not params.isPursue then return end
+	if not params or not troop:IsAlive() then
+		return
+	end
+	if target:IsFled() and not params.isPursue then
+		return
+	end
 	
+	-------------------------------------
+	-- Choose Weapon & Armor
+	-------------------------------------	
 	local atkWeapon = nil
-	if params.isMissile then atkWeapon = troop:GetFireWeapon()
+	if params.isMissile then atkWeapon = troop:GetRangeWeapon()
 	elseif params.isCharge then atkWeapon = troop:GetChargeWeapon()
-	elseif params.isMelee then atkWeapon = troop:GetCloseWeapon()	
-	elseif params.isTower then atkWeapon = troop:GetFireWeapon()
+	elseif params.isMelee then atkWeapon = troop:GetCloseWeapon()		
 	elseif params.isSiege then atkWeapon = troop:GetSiegeWeapon()
+	elseif params.isTower then atkWeapon = troop:GetRangeWeapon()
 	end
 	if not atkWeapon then 
 		self:ShowText( NameIDToString( troop ) .. " don't have right weapon", params.isMissile, params.isCharge, params.isMelee, params.isCounter )
 		return
 	end
 	local defArmor = target:GetDefendArmor( atkWeapon )
-	local damage = self:CalcDamage( troop, target, atkWeapon, defArmor, params )
-	--statistic
-	g_statistic:DieInCombat( damage )
-	
-	--weapon & armor
 	troop:UseWeapon( atkWeapon )
 	target:UseArmor( defArmor )
 
-	local oldNumber = target.number
-	--damage
-	self:DealDamage( troop, target, damage )	
-	
+	-------------------------------------
+	-- Calculate Damage
+	-------------------------------------		
+	local damage = self:CalcDamage( troop, target, atkWeapon, defArmor, params )
+
+	-------------------------------------
+	-- Statistic
+	-------------------------------------	
+	g_statistic:DieInCombat( damage )	
+
+	-------------------------------------
+	-- Deal Damage
+	-------------------------------------	
+	local oldNumber = target.number	
+	self:DealDamage( troop, target, damage )		
 	if params.isCounter then
 		self:Log( NameIDToString( troop ) .. "use ["..atkWeapon.name.."] counter " .. NameIDToString( target ) .. " deal dmg=" .. damage .. " left=" .. target.number )
 	else
 		self:Log( NameIDToString( troop ) .. "use ["..atkWeapon.name.."] " .. ( params.isPursue and "pursue " or "hit " ) .. NameIDToString( target ) .. " deal dmg=" .. damage .. " left=" .. target.number )
 	end
 	
-	--score
+	-------------------------------------
+	-- Calculate Score( Victory Point )
+	-------------------------------------
 	local rate = damage / oldNumber
 	local score = 0
 	for k, data in ipairs( CombatParams.DAMAGE_SCORE ) do
@@ -1056,7 +1165,10 @@ function Combat:Hit( troop, target, params )
 		self.defScore = self.defScore + score
 	end
 	
-	if target:IsInCombat() and not params.isCounter and not params.isPursue and ( params.isMelee or params.isCharge ) then
+	-------------------------------------
+	-- Counterattack
+	-------------------------------------
+	if target:CanAct() and not params.isCounter and not params.isPursue and ( params.isMelee or params.isCharge ) then
 		if troop._startLine ~= TroopStartLine.CHARGE or target:IsAttacked() < 1 then
 			self:Hit( target, troop, { isCounter = true, isMelee = true } )
 		end
@@ -1067,8 +1179,9 @@ end
 function Combat:Shoot()
 	local lineTroops = MathUtility_Shuffle( self.troops, g_syncRandomizer )
 	for k, troop in ipairs( lineTroops ) do
-		if troop:IsInCombat() and troop:IsSiegeWeapon() and troop:CanFire() then
-			local target = self:FindTarget( troop )
+		if troop:CanAct() then			
+			local target = troop:CanShoot() and self:FindShootTarget( troop ) or nil
+			--InputUtility_Pause( NameIDToString( troop ), troop:CanShoot(), target )
 			if target then
 				self:Hit( troop, target, { isMissile = true } )
 			end
@@ -1076,12 +1189,12 @@ function Combat:Shoot()
 	end
 end
 
-function Combat:Batter()
+function Combat:SiegeWeaponAttack()
 	if not self:HasStatus( CombatStatus.GATE_BROKEN ) then
-		local lineTroops = MathUtility_Shuffle( self.frontLine, g_syncRandomizer )
-		for k, troop in ipairs( lineTroops ) do			
-			if troop:IsInCombat() and troop:IsSiegeWeapon() and troop:CanSiegeAttack() then
-				local target = self:FindDefenceTarget( troop, { isGate = true } )
+		local lineTroops = MathUtility_Shuffle( self.meleeLine, g_syncRandomizer )
+		for k, troop in ipairs( lineTroops ) do
+			if troop:CanAct() and troop:IsSiegeWeapon() then
+				local target = self:FindGateTarget( troop )
 				if not target then
 					--todo
 					self:AddStatus( CombatStatus.GATE_BROKEN )
@@ -1092,31 +1205,32 @@ function Combat:Batter()
 			end
 		end
 	end
-	if not self:HasStatus( CombatStatus.WALL_BROKEN ) or not self:HasStatus( CombatStatus.TOWER_BROKEN ) then
+	if not self:HasStatus( CombatStatus.TOWER_BROKEN ) then
+		local lineTroops = MathUtility_Shuffle( self.meleeLine, g_syncRandomizer )
+		for k, troop in ipairs( lineTroops ) do
+			if troop:CanAct() and troop:IsSiegeWeapon() then
+				local target = self:FindTowerTarget( troop )
+				if not target then
+					--todo
+					self:AddStatus( CombatStatus.TOWER_BROKEN )
+					break
+				else
+					self:Hit( troop, target, { isSiege = true } )
+				end
+			end
+		end
+	end
+	if not self:HasStatus( CombatStatus.WALL_BROKEN ) then
 		local lineTroops = MathUtility_Shuffle( self.backLine, g_syncRandomizer )
 		for k, troop in ipairs( lineTroops ) do
-			if troop:IsInCombat() and troop:CanSiegeAttack() then
+			if troop:CanAct() and troop:IsSiegeWeapon() then
 				local target = nil
 				if not self:HasStatus( CombatStatus.WALL_BROKEN ) then
-					target = self:FindDefenceTarget( troop, { isWall = true } )
+					target = self:FindDefenceTarget( troop )
 					if not target then
 						--todo
 						self:AddStatus( CombatStatus.WALL_BROKEN )
-						if self:HasStatus( CombatStatus.TOWER_BROKEN ) then
-							return
-						end
-					else
-						self:Hit( troop, target, { isSiege = true } )
-					end
-				end				
-				if not target or not self:HasStatus( CombatStatus.TOWER_BROKEN ) then
-					target = self:FindDefenceTarget( troop, { isTower = true } )
-					if not target then
-						--todo
-						self:AddStatus( CombatStatus.TOWER_BROKEN )
-						if self:HasStatus( CombatStatus.WALL_BROKEN ) then
-							return
-						end
+						break
 					else
 						self:Hit( troop, target, { isSiege = true } )
 					end
@@ -1131,45 +1245,61 @@ function Combat:Charge()
 	local lineTroops = MathUtility_Shuffle( self.chargeLine, g_syncRandomizer )
 	for k, troop in ipairs( lineTroops ) do
 		if troop:IsInCombat() and troop:CanCharge() then
-			local target = self:FindTarget( troop )
+			local target = self:FindLinetarget( troop )
 			if target then
 				self:Hit( troop, target, { isCharge = true } )
 			end
-		end
+		end		
 	end
+	for k, troop in ipairs( lineTroops ) do
+		troop._startLine = TroopStartLine.MELEE
+	end
+	self.meleeLine = self.chargeLine
+	self.chargeLine = {}
 end
 
 -- 3. Forward Round -- Actor [ All footman / All archer ]
 function Combat:Forward()
 	local removes = {}
+
+	------------------------------------
+	-- Move forward from CHARGE
 	for k, troop in ipairs( self.chargeLine ) do
+		InputUtility_Pause( NameIDToString( troop ), "move to melee line")
 		troop._startLine = TroopStartLine.MELEE
 	end
 	self.meleeLine = self.chargeLine
-	self.chargeLine = {}
+	------------------------------------
 
+	------------------------------------
+	-- Move forward from FRONT
+	local line = {}
 	for k, troop in ipairs( self.frontLine ) do
 		if troop:IsInCombat() and troop:CanForward() then
-			if self.type == CombatType.FIELD_COMBAT or troop._combatSide == CombatSide.DEFENDER or troop.table.category == TroopCategory.INFANTRY then
-				troop._startLine = TroopStartLine.MELEE
-				table.insert( self.meleeLine, troop )
-				table.insert( removes, troop )
-			end
-		end
-	end
-	for k, target in ipairs( removes ) do
-		MathUtility_Remove( self.frontLine, target )
-	end	
-	for k, troop in ipairs( self.backLine ) do
-		if troop:IsInCombat() and troop:CanForward() and troop._combatSide == CombatSide.DEFENDER then
 			troop._startLine = TroopStartLine.MELEE
 			table.insert( self.meleeLine, troop )
-			table.insert( removes, troop )
+		else
+			table.insert( line, troop )
 		end
 	end
-	for k, target in ipairs( removes ) do
-		MathUtility_Remove( self.backLine, target )
+	self.frontLine = line
+	------------------------------------
+	
+	------------------------------------
+	--Move DEFENDERS
+	if self.type == CombatType.SIEGE_COMBAT then
+		local line = {}
+		for k, troop in ipairs( self.backLine ) do
+			if troop:IsInCombat() and troop:CanForward() and troop._combatSide == CombatSide.DEFENDER then
+				troop._startLine = TroopStartLine.MELEE
+				table.insert( self.meleeLine, troop )
+			else
+				table.insert( line, troop )
+			end
+		end	
+		self.backLine = line
 	end
+	------------------------------------
 end
 
 -- 4. Fight Round   -- Actor[ All footman / All cavalry / All archer ] Target [ Charge Line / Front Line / Back Line ]
@@ -1177,7 +1307,7 @@ function Combat:Fight()
 	local lineTroops = MathUtility_Shuffle( self.meleeLine, g_syncRandomizer )
 	for k, troop in ipairs( lineTroops ) do
 		if troop:IsInCombat() then
-			local target = self:FindTarget( troop )
+			local target = self:FindLinetarget( troop )
 			if target then
 				self:Hit( troop, target, { isMelee = true } )
 			end
@@ -1190,7 +1320,7 @@ function Combat:Pursue()
 	local lineTroops = MathUtility_Shuffle( self.meleeLine, g_syncRandomizer )
 	for k, troop in ipairs( lineTroops ) do				
 		if troop.table.category == TroopCategory.CAVALRY and troop:IsInCombat() and not troop:IsFled() then			
-			local target = self:FindFledTarget( troop )			
+			local target = self:FindPursueTarget( troop )			
 			if target then				
 				self:Hit( troop, target, { isMelee = true, isPursue = true } )
 			end
@@ -1198,10 +1328,10 @@ function Combat:Pursue()
 	end
 end
 
-function Combat:CityDefence()
+function Combat:CityDefenceAttack()
 	for k, troop in ipairs( self.defenceLine ) do
 		if troop.table.category == TroopCategory.TOWER then
-			local target = self:FindTarget( troop )
+			local target = self:FindDefenceTarget( troop )
 			if target then
 				self:Hit( troop, target, { isTower = true } )
 			end

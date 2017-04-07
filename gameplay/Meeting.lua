@@ -1496,6 +1496,7 @@ function Meeting:HoldCityMeeting( game, city )
 		local cityList = city:GetAdjacentBelligerentCityList()
 		local corpsList = city:GetPreparedToAttackCorpsList()
 		self._group:ExecuteProposal( "[" .. city.name .. "] NoProposal " .. " chara=" .. #charaList .. " adjaBelli="..#cityList .. " readyCorp=" ..#corpsList  .. " " .. g_calendar:CreateCurrentDateDesc( true, true ) )
+		g_statistic:SubmitProposal( "No proposal" .. g_calendar:CreateCurrentDateDesc( true ), city )
 	end
 	--ShowText( "++++++++++ City Meeting End ++++++++++++++++" )
 	--ShowText( "" )

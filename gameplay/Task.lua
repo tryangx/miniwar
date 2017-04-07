@@ -82,10 +82,11 @@ TaskCategory =
 TaskStatus = 
 {
 	NONE      = 0,
-	EXECUTING = 1,	
-	SUCCESSED = 2,		
-	FAILED    = 3,
-	SUSPENDED = 4,
+	BEGINNING = 1,
+	EXECUTING = 2,	
+	SUCCESSED = 3,		
+	FAILED    = 4,
+	SUSPENDED = 5,
 }
 
 TaskContribution =
@@ -268,7 +269,7 @@ function Task:Update( elapsedTime )
 		return
 	end
 	
-	if self.status == TaskStatus.SUSPENDED then return end
+	if self.status == TaskStatus.SUSPENDED or self.status == TaskStatus.EXECUTING then return end
 
 	local elapsed = elapsedTime
 	if self.type == TaskType.TECH_RESEARCH then
@@ -409,13 +410,13 @@ function Task:Update( elapsedTime )
 		
 	elseif self.type == TaskType.ATTACK_CITY then
 		CorpsAttack( self.actor, self.destination )		
-		self:Suspend()
+		self.status = TaskStatus.EXECUTING
 	elseif self.type == TaskType.EXPEDITION then
 		CorpsAttack( self.actor, self.destination )
-		self:Suspend()
+		self.status = TaskStatus.EXECUTING
 	elseif self.type == TaskType.SIEGE_CITY then
 		CorpsSiegeCity( self.actor, self.destination )
-		self:Suspend()
+		self.status = TaskStatus.EXECUTING
 	elseif self.type == TaskType.DISPATCH_CORPS then
 		CorpsDispatchToCity( self.actor, self.destination, true )
 		self:Succeed( TaskContribution.LITTLE )		
@@ -458,10 +459,6 @@ function Task:DumpIssue()
 		--g_statistic:FocusTask( self:CreateDesc() )
 	end
 	if not focusTaskType or focusTaskType == self.type then
-		--focus records
-		if not self.actor then
-			InputUtility_Pause( "?issue task=" ..self.id, " type=" .. MathUtility_FindEnumName( TaskType, self.type ) )
-		end
 		--print( "issue task=" ..self.id, " type=" .. MathUtility_FindEnumName( TaskType, self.type ), " actor=" .. NameIDToString( self.actor ) .. " tar=" .. ( self.target and self.target.name or "" ) .. " loc=" .. ( self.actor:GetLocation() and self.actor:GetLocation().name or "" ) .. " remain=" .. self.remain .. " dest="..( self.destination and self.destination.name or "" ) .. " proposer=" .. ( self.proposer and self.proposer.name or "" ) )
 	end
 end
@@ -474,7 +471,7 @@ function Task:IssueBack( taskType, actor, home )
 	self.remain   = CalcSpendTimeOnRoad( self.actor:GetLocation(), self.destination )
 	self.progress = 0
 	self.begDate  = g_calendar:GetDateValue()
-	self.status   = TaskStatus.EXECUTING
+	self.status   = TaskStatus.BEGINNING
 	self:DumpIssue()
 end
 
@@ -486,7 +483,7 @@ function Task:IssueByProposal( proposal )
 	
 	self.actor       = proposal.actor
 	self.contributor = nil
-	self.status      = TaskStatus.EXECUTING
+	self.status      = TaskStatus.BEGINNING
 	self.progress    = 0
 	self.begDate     = g_calendar:GetDateValue()
 	self.proposer    = proposal.proposer
@@ -813,6 +810,7 @@ end
 
 -- Check actor is executing any task
 function TaskManager:GetTaskByActors( actor )
+	if not actor then return nil end
 	if typeof( actor ) == "table" then
 		for k, v in ipairs( actor ) do
 			local ret = self.actorTaskList[v]
@@ -822,9 +820,11 @@ function TaskManager:GetTaskByActors( actor )
 	return nil
 end
 function TaskManager:GetTaskByActor( actor )
+	if not actor then return nil end
 	return self.actorTaskList[actor]
 end
 
+-- Add actor data means the actor is executing task
 function TaskManager:AddActorData( actor, task )
 	local existTask = self.actorTaskList[actor]
 	if existTask then
@@ -991,6 +991,7 @@ function TaskManager:IssueTaskByProposal( proposal )
 	elseif task.category == TaskCategory.DIPLOMACY_AFFAIRS then
 		self:AddTargetData( task.target, task )
 	elseif task.category == TaskCategory.MILITARY_AFFAIRS then
+
 		--self:AddTargetData( task.target, task )
 	elseif task.category == TaskCategory.TECH_AFFAIRS then
 		self:AddTargetData( task.datas, task )

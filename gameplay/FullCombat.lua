@@ -452,7 +452,7 @@ function Combat:AddTroopToSide( side, troop )
 			
 	--init tactic
 	if troop.tactic == CombatTactic.DEFAULT then
-		if troop.table.category == TroopCategory.INFANTRY then
+		if troop.table.category == TroopCategory.FOOTSOLDIER then
 			troop.tactic = CombatTactic.ATTACK
 		elseif troop.table.category == TroopCategory.ARTILLERY then
 			troop.tactic = CombatTactic.FIRE
@@ -930,7 +930,7 @@ function Combat:GetFlankTarget( troop, isFriend )
 end
 ]]
 
-function Combat:GetFireTarget( troop )
+function Combat:GetRangeTarget( troop )
 	local targetList = {}	
 	for k, target in pairs( self.troops ) do
 		if target:IsCombatUnit() and troop._combatSide ~= target._combatSide and target:IsInCombat() and not self:IsExposed( target ) then
@@ -1073,7 +1073,7 @@ function Combat:GetAdjacentTarget( troop )
 end
 
 function Combat:IsCombatEnd()
-	return self.result >= CombatResult.COMBAT_END_RESULT
+	return self.result > CombatResult.COMBAT_END_RESULT
 end
 
 function Combat:IsDayEnd()
@@ -1270,7 +1270,7 @@ function Combat:DumpMap()
 				else
 					id = "D"
 				end
-				if troop.table.category == TroopCategory.INFANTRY then
+				if troop.table.category == TroopCategory.FOOTSOLDIER then
 					id = id .. "F"
 				elseif troop.table.category == TroopCategory.ARTILLERY then
 					id = id .. "A"
@@ -1634,7 +1634,7 @@ function Combat:TroopThink( troop )
 		else
 			if self:GetCloseTarget( troop ) then
 				troop._combatAction = CombatAction.ATTACK
-			elseif self:GetFireTarget( troop ) then
+			elseif self:GetRangeTarget( troop ) then
 				troop._combatAction = CombatAction.FIRE
 			elseif self.type == CombatType.FIELD_COMBAT then			
 				troop._combatAction = CombatAction.FORWARD
@@ -1646,7 +1646,7 @@ function Combat:TroopThink( troop )
 		else
 			if self:GetCloseTarget( troop ) then
 				troop._combatAction = CombatAction.ATTACK
-			elseif troop:GetFireWeapon() and self:GetFireTarget( troop ) then
+			elseif troop:GetRangeWeapon() and self:GetRangeTarget( troop ) then
 				troop._combatAction = CombatAction.FIRE
 			elseif troop._combatSide == CombatSide.DEFENDER and self.defenderSally == true then
 				if troop:IsSupport() and not self:GetFrontFriendly( troop ) then
@@ -2472,7 +2472,7 @@ end
 -- return means whether action is finished
 function Combat:Fire( troop, target )
 	--attacker attack
-	local atkWeapon = troop:GetFireWeapon()
+	local atkWeapon = troop:GetRangeWeapon()
 	if not atkWeapon then self:Log( "No range weapon for shooting" ) return false end
 	
 	--out of range

@@ -38,13 +38,14 @@ function Statistic:__init()
 	self.corpsList = {}
 	self.numOfTroop = 0
 	self.numOfDieInCombat = 0
-	self.numOfCombatOccured = 0
 	self.numOfSoldier = 0
 	self.maxNumOfSoldier = 0
 	self.combatDetails = {}
-	
+	self.combatLocations = {}
+
 	--Proposal
 	self.submitProposals = {}
+	self.cityProposals = {}
 	
 	--Tasks
 	self.cancelTasks= {}
@@ -62,8 +63,10 @@ end
 -------------------------------------
 -- Proposal & Task
 
-function Statistic:SubmitProposal( desc )
+function Statistic:SubmitProposal( desc, city )
 	table.insert( self.submitProposals, desc )
+	if not self.cityProposals[city] then self.cityProposals[city] = {} end
+	table.insert( self.cityProposals[city], desc )
 end
 
 function Statistic:CancelTask( desc )
@@ -209,9 +212,9 @@ function Statistic:CountPopulation( population )
 	end
 end
 
-function Statistic:CombatOccured( desc )
+function Statistic:CombatOccured( desc, city )
 	table.insert( self.combatDetails, desc )
-	self.numOfCombatOccured = self.numOfCombatOccured + 1
+	self.combatLocations[city] = self.combatLocations[city] and self.combatLocations[city] + 1 or 1
 end
 
 function Statistic:CountSoldier( number )
@@ -276,8 +279,11 @@ function Statistic:Dump()
 		--for k, desc in ipairs( group.proposals ) do ShowText( "", "", desc ) end
 	end	
 
-	ShowText( "City          = " .. #self.cities )
-	--for k, city in ipairs( self.cities ) do city:DumpBrief( nil, true ) end
+	ShowText( "City          = " .. #self.cities ) 
+	for k, city in ipairs( self.cities ) do
+		city:DumpBrief( nil, true )
+		city:DumpCorpsBrief()
+	end
 
 	--self:DumpCharaDetail()
 	
@@ -290,7 +296,7 @@ function Statistic:Dump()
 	
 	ShowText( "Fallen   City:" ) for k, desc in ipairs( self.fallenCities ) do ShowText( "", desc ) end
 	
-	ShowText( "Combat Occured= " .. self.numOfCombatOccured )
+	ShowText( "Combat Occured= " .. #self.combatDetails )
 	for k, desc in ipairs( self.combatDetails ) do ShowText( "", desc ) end
 	
 	ShowText( "Die in Combat = " .. self.numOfDieInCombat )
@@ -307,6 +313,18 @@ function Statistic:Dump()
 	ShowText( "Cur Time      = " .. g_calendar:CreateCurrentDateDesc( true, true ) )
 	
 	ShowText( "Seed          = " .. g_syncRandomizer:GetSeed() .. "," .. g_asyncRandomizer:GetSeed() )
+
+	for k, city in ipairs( self.cities ) do
+		if not self.combatLocations[city] then
+			print( city.name .. " occured=" .. ( self.combatLocations[city] and self.combatLocations[city] or "0" ) )
+		end
+	end
 	
 	--MathUtility_Dump( self.submitProposals )
+	for city, list in pairs( self.cityProposals ) do
+		print( city.name .. "=" .. #list )
+		for k, desc in ipairs( list ) do
+			print( "", desc )
+		end
+	end
 end

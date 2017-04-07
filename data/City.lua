@@ -1,5 +1,4 @@
 City = class()
-
 function City:Generate( data )
 	self:Load( data )
 	self:ConvertID2Data()
@@ -405,6 +404,12 @@ function City:GetAdjacentBelligerentCityList()
 	end )
 end
 
+function City:GetAdjacentNeutralCityList( ... )
+	return Helper_ListIf( self.adjacentCities, function( city )
+		return not city:GetGroup()
+	end )
+end
+
 function City:GetAdjacentInDangerSelfGroupCityList()
 	return Helper_ListIf( self.adjacentCities, function( city )
 		return city:GetGroup() == self:GetGroup() and city:IsInDanger()
@@ -436,7 +441,7 @@ end
 -- character who can attend meeting
 function City:GetNumOfIdleChara()
 	return Helper_CountIf( self.charas, function( chara )
-		return chara:IsAtHome() and not g_taskMng:GetTaskByActor( chara )
+		return chara:IsAtHome() and chara:IsNoneTask()
 	end )
 end
 
@@ -465,72 +470,73 @@ end
 
 function City:GetIdleCorpsList()
 	return Helper_ListIf( self.corps, function( corps )
-		return corps:IsAtHome() and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsAtHome() and corps:IsNoneTask()
 	end )
 end
 
 function City:GetPreparedToAttackCorpsList( hint )
 	return Helper_ListIf( self.corps, function( corps )
-		return corps:IsAtHome() and corps:IsPreparedToAttack() and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsAtHome() and corps:IsPreparedToAttack() and corps:IsNoneTask()
 	end )
 end
 
 -- Idle corps means Staying in city
 function City:GetNumOfIdleCorps()
 	return Helper_CountIf( self.corps, function( corps )
-		return not corps:IsAtHome() and not g_taskMng:GetTaskByActor( corps )
+		return not corps:IsAtHome() and corps:IsNoneTask()
 	end )
 end
 
 function City:GetNumOfVacancyCorps()
 	return Helper_CountIf( self.corps, function ( corps )
-		return corps:IsAtHome() and corps:GetVacancyNumber() > 0 and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsAtHome() and corps:GetVacancyNumber() > 0 and corps:IsNoneTask()
 	end )
 end
 function City:GetVacancyCorpsList()
 	return Helper_ListIf( self.corps, function ( corps )
-		return corps:IsAtHome() and corps:GetVacancyNumber() > 0 and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsAtHome() and corps:GetVacancyNumber() > 0 and corps:IsNoneTask()
 	end )
 end
 function City:GetUnderstaffedCorpsList()
 	return Helper_ListIf( self.corps, function ( corps )
-		return corps:IsAtHome() and corps:IsUnderstaffed() and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsAtHome() and corps:IsUnderstaffed() and corps:IsNoneTask()
 	end )
 end
 function City:GetNumOfUnderstaffedCorps()
 	return Helper_CountIf( self.corps, function ( corps )
-		return corps:IsAtHome() and corps:IsUnderstaffed() and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsAtHome() and corps:IsUnderstaffed() and corps:IsNoneTask()
 	end )
 end
 function City:GetUntrainedCorpsList()
 	return Helper_ListIf( self.corps, function ( corps )
-		return corps:IsAtHome() and corps:IsUntrained() and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsAtHome() and corps:IsUntrained() and corps:IsNoneTask()
 	end )
 end
 function City:GetNumOfUntrainedCorps()
 	return Helper_CountIf( self.corps, function ( corps )
-		return corps:IsAtHome() and corps:IsUntrained() and not g_taskMng:GetTaskByActor( corps )
+		return corps:IsAtHome() and corps:IsUntrained() and corps:IsNoneTask()
 	end )
 end
 function City:GetNumOfNonLeaderTroop()
 	return Helper_CountIf( self.troops, function ( troop )	
-		return ( not troop:GetCorps() or troop:GetCorps():IsAtHome() ) and not troop:GetLeader() and not g_taskMng:GetTaskByActor( troop )
+		return troop:IsAtHome() and not troop:GetLeader() and troop:IsNoneTask()
 	end )
 end
 function City:GetNonLeaderTroopList()
+	local city = self
 	return Helper_ListIf( self.troops, function( troop )
-		return ( not troop:GetCorps() or troop:GetCorps():IsAtHome() ) and not troop:GetLeader() and not g_taskMng:GetTaskByActor( troop )
+		return troop:IsAtHome() and not troop:GetLeader() and troop:IsNoneTask()
 	end )
 end
 
 function City:GetNumOfNonCorpsTroop()
 	return Helper_CountIf( self.troops, function( troop )
-		return not troop:GetCorps() and not g_taskMng:GetTaskByActor( troop )
+		return not troop:GetCorps() and troop:IsNoneTask()
 	end )
 end
 function City:GetNonCorpsTroopList()
 	return Helper_ListIf( self.troops, function( troop )
-		return not troop:GetCorps() and not g_taskMng:GetTaskByActor( troop )
+		return not troop:GetCorps() and troop:IsNoneTask()
 	end )
 end
 
@@ -666,6 +672,7 @@ function City:GetRecruitList()
 	for k, troop in ipairs( self.group._canRecruitTroops ) do
 		local match = self:CanRecruitTroop( troop )
 		if match then
+			--InputUtility_Pause( NameIDToString( troop ) )
 			table.insert( self._canRecruitTroops, troop )
 		end
 	end
@@ -857,7 +864,7 @@ function City:DumpAdjacentDetail( indent, brief )
 	if #self.adjacentCities == 0 or brief then ShowText( content ) return end	
 	local group = self:GetGroup()
 	for k, city in ipairs( self.adjacentCities ) do
-		content = content .. ( k > 1 and "," or " " ) .. city.name
+		content = content .. ( k > 1 and "," or " " ) .. city.name .. " pow=" .. city:GetPower()
 		local otherGroup = city:GetGroup()
 		if otherGroup and otherGroup ~= group then
 			content = content .. "-" .. city:GetGroup().name
@@ -900,7 +907,19 @@ function City:CreateMilitaryBreif()
 	return self.name .. "@" .. ( self.group and self.group.name or "" ) .. " pow=" .. self:GetMilitaryPower() .. " guard=" .. self.guards
 end
 
+function City:DumpCorpsBrief()
+	if self.id ~= 801 then return end
+	print( "corps brief" )
+	for k, corps in ipairs( self.corps ) do
+		local task = g_taskMng:GetTaskByActor( corps )
+		if task then
+			print( task:CreateDesc() )
+		end		
+	end
+end
+
 function City:DumpBrief()
+	if self.id ~= 801 then return end
 	local indent = ""
 	ShowText( '>>>>>>>>>>>  City >>>>>>>>>>>>>>>>>' )
 	ShowText( indent .. '[City] #' .. self.id .. ' Name=' .. self.name .. ' Group=' .. ( self.group and self.group.name or "[none]" ) )
@@ -967,6 +986,7 @@ function City:RemoveTroop( troop )
 	Helper_RemoveDataSafety( self.troops, troop )
 end
 function City:AddChara( chara )
+	--if chara.id == 312 then InputUtility_Pause( "add sp chara", chara.name, self.name, self.group.name ) end
 	Helper_AddDataSafety( self.charas, chara )
 end
 function City:RemoveChara( chara )
@@ -1354,7 +1374,6 @@ function City:Update()
 		if localPower * CityParams.MILITARY.INDANGER_ADJACENT_AVERAGEPOWER_MODULUS < avgPower then
 			content = content .. " tot=" .. localPower * CityParams.MILITARY.INDANGER_ADJACENT_TOTALPOWER_MODULUS .. "/" .. totalPower
 		end
-		--print( content )
 		self:AppendTag( CityTag.INDANGER, 1 )
 	else
 		self:RemoveTag( CityTag.INDANGER )

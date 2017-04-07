@@ -6,7 +6,7 @@ function TroopTable:Load( data )
 	
 	self.name = data.name or ""
 		
-	self.category = data.category and TroopCategory[data.category] or TroopCategory.INFANTRY
+	self.category = data.category and TroopCategory[data.category] or TroopCategory.FOOTSOLDIER
 	
 	------------------------------------
 	-- Attributes

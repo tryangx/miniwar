@@ -215,6 +215,10 @@ function Character:IsCityLeader()
 	return self.home and self.home:GetLeader() == self
 end
 
+function Character:IsNoneTask()
+	return not g_taskMng:GetTaskByActor( self ) and ( not self.troop or self.troop:IsNoneTask() )
+end
+
 function Character:IsAtHome()
 	return self.location == self.home and not g_movingActorMng:HasActor( MovingActorType.CHARACTER, self )
 end
@@ -238,7 +242,7 @@ function Character:IsDiplomatic()
 	return self.job == CharacterJob.DIPLOMATIC
 end
 function Character:IsFreeMilitaryOfficer()
-	return not self:GetTroop() and self:IsAtHome() and self:IsMilitaryOfficer() and not g_taskMng:GetTaskByActor( self )
+	return not self:GetTroop() and self:IsAtHome() and self:IsMilitaryOfficer() and self:IsNoneTask()
 end
 
 ----------------------------------
@@ -338,7 +342,7 @@ function Character:GetProposal()
 end
 
 function Character:CanSubmitProposal()
-	return self.stamina > CharacterParams.STAMINA["SUBMIT_PROPOSAL"] and self._hasSubmitProposal ~= true and not g_taskMng:GetTaskByActor( self )
+	return self.stamina > CharacterParams.STAMINA["SUBMIT_PROPOSAL"] and self._hasSubmitProposal ~= true and self:IsNoneTask()
 end
 
 function Character:CanAssignProposal()
@@ -350,7 +354,7 @@ function Character:CanAcceptProposal()
 end
 
 function Character:CanExecuteProposal()
-	return self.stamina > CharacterParams.STAMINA["EXECUTE_PROPOSAL"] and not g_taskMng:GetTaskByActor( self )
+	return self.stamina > CharacterParams.STAMINA["EXECUTE_PROPOSAL"] and self:IsNoneTask()
 end
 
 function Character:CanLead()
@@ -384,7 +388,7 @@ function Character:GetPromoteList()
 end
 
 function Character:IsFree()
-	return not self:GetTroop() and self:IsAtHome() and not g_taskMng:GetTaskByActor( self )
+	return not self:GetTroop() and self:IsAtHome() and self:IsNoneTask()
 end
 
 function Character:SubmitProposal( proposal )
@@ -392,7 +396,7 @@ function Character:SubmitProposal( proposal )
 	if proposal.type <= CharacterProposal.PROPOSAL_COMMAND or proposal.type == CharacterProposal.PLAYER_GIVEUP_PROPOSAL then
 		self._hasSubmitProposal = true
 		local desc = Meeting:CreateProposalDesc( proposal, true, true )
-		g_statistic:SubmitProposal( desc )
+		g_statistic:SubmitProposal( desc, self.home )
 	end
 end
 

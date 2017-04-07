@@ -80,6 +80,10 @@ local plotNumber = #city.plots
 	return math.ceil( req )
 end
 
+function QueryCitySupportSoldier()
+	
+end
+
 ------------------------------
 -- Invest / Farm
 
@@ -180,6 +184,7 @@ function CalcSpendTimeOnRoad( currentCity, targetCity )
 	local pos1 = currentCity:GetCoordinate()
 	local pos2 = targetCity:GetCoordinate()
 	local distance = math.abs( pos1.x - pos2.x ) + math.abs( pos1.y - pos2.y )
+	--InputUtility_Pause( "distance", currentCity.name, targetCity.name, distance, distance * GlobalConst.MOVE_TIME )
 	return distance * GlobalConst.MOVE_TIME
 end
 

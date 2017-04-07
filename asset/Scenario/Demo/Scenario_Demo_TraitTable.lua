@@ -29,8 +29,8 @@ local TraitTableData =
 		category = "COMBAT",		
 		effects =
 		{
-			{ effect="TROOP_MASTER", value=20, cond="INFANTRY" },
-			{ effect="TROOP_RESIST", value=20, cond="INFANTRY" },
+			{ effect="TROOP_MASTER", value=20, cond="FOOTSOLDIER" },
+			{ effect="TROOP_RESIST", value=20, cond="FOOTSOLDIER" },
 		},
 	},
 		

@@ -177,7 +177,7 @@ local function QueryCityData( dataname )
 		value = _city:GetNonLeaderTroopList()		
 	elseif dataname == "PREPAREDTOATTACK_CORPSLIST" then
 		value = _city:GetPreparedToAttackCorpsList()
-		--if #value > 0 then print( "Prepared to attack corps=", #value ) end
+		--if _city.id == 801 then print( "Prepared to attack corps=", #value, #_city.corps ) end
 	elseif dataname == "NONCORPS_TROOPLIST" then
 		value = _city:GetNonCorpsTroopList()
 	elseif dataname == "VACANCY_CORPSLIST" then
@@ -192,6 +192,9 @@ local function QueryCityData( dataname )
 		value = _city:GetAdjacentHostileCityList()
 	elseif dataname == "ADJACENT_BELLIGERENT_CITYLIST" then
 		value = _city:GetAdjacentBelligerentCityList()
+		--if #value > 0 then print( "Adjacent Belligerent Cities=", #value ) end
+	elseif dataname == "ADJACENT_NEUTRAL_CITYLIST" then
+		value = _city:GetAdjacentNeutralCityList()
 		--if #value > 0 then print( "Adjacent Belligerent Cities=", #value ) end
 	elseif dataname == "ADJACENT_INDANGER_SELFGROUP_CITYLIST" then
 		value = _city:GetAdjacentInDangerSelfGroupCityList()
@@ -1353,6 +1356,14 @@ local function LeadTroopProposal()
 	local troop = troopList[index]
 	
 	_actor = chara
+
+if chara.id == -408 then	
+	for k, troop in ipairs( troopList ) do
+		local task = g_taskMng:GetTaskByActor( troop )
+		print( NameIDToString( troop ), NameIDToString( troop.corps ), "loc="..troop.location.name, "city=".._blackboard.city.name )
+	end
+	--InputUtility_Pause()
+end
 	
 	_chara:SubmitProposal( { type = CharacterProposal.LEAD_TROOP, target = troop, data = chara, proposer = _chara, actor = _actor } )
 end
@@ -1418,14 +1429,14 @@ local function CheckAttackCityPlan()
 	end
 	local findCity = nil
 	local cityList = _register["CITYLIST"]
-	--print( NameIDToString( city ), "targetcity="..#cityList )
+	--if city.id == 801 then InputUtility_Pause( NameIDToString( city ), "pow="..maxCorpsPower .. " targetcity="..#cityList ) end
 	for k, adjaCity in ipairs( cityList ) do
 		local power = GuessCityPower( adjaCity )
-		--print( adjaCity.name, "pow="..power )
+		--if adjaCity:GetGroup() then print( "NeutralCity="..adjaCity.name, "pow="..power ) end
 		if power > maxCorpsPower then
 			if power < maxCorpsPower * WarfarePlanParams.MAX_TARGETCITY_POWER_MODULUS then
 				local prob = 3000 * ( power / maxCorpsPower )				
-				print( "prob=", prob, adjaCity.name )
+				print( "pow="..power .. " prob=".. prob, adjaCity.name, adjaCity:GetGroup() )
 				if not findCity or _ai:RandomProb() < prob then
 					findCity = adjaCity
 				end
@@ -1483,8 +1494,8 @@ local function ExpeditionProposal()
 end
 
 local function IsCityInDanger()
-	local _city = _blackboard.city
-	return _city:IsInDanger()
+	local city = _blackboard.city
+	return city:IsInDanger()
 end
 
 local function DispatchCorpsProposal()
@@ -1510,12 +1521,12 @@ local CharacterAI_AttackCityProposal =
 {
 	type = "SEQUENCE", desc = "ATTACK", children =
 	{
-		{ type = "NEGATE", children = { { type = "FILTER", condition = IsCityInDanger }, } },--??
+		{ type = "NEGATE", children = { { type = "FILTER", condition = IsCityInDanger }, } },
 		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "PREPAREDTOATTACK_CORPSLIST", memname = "CORPSLIST" } },
-		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "CORPSLIST", number = 0 } },		
-		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "ADJACENT_BELLIGERENT_CITYLIST", memname = "CITYLIST" } },		
-		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "CITYLIST", number = 0 } },
-		{ type = "FILTER", condition = CheckProposal, params = { type="ATTACK_CITY" } },
+		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "CORPSLIST", number = 0 } },				
+		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "ADJACENT_BELLIGERENT_CITYLIST", memname = "CITYLIST" } },
+		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "CITYLIST", number = 0 } },	
+		{ type = "FILTER", condition = CheckProposal, params = { type="ATTACK_CITY" } },		
 		{ type = "FILTER", condition = CheckAttackCityPlan },
 		{ type = "ACTION", action = AttackProposal },
 	}
@@ -1684,6 +1695,56 @@ local CharacterAI_MilitaryBranch =
 	},
 }
 
+
+local CharacterAI_ExpandToAdjacentCityProposal =
+{
+	type = "SEQUENCE", desc = "ATTACK", children =
+	{
+		{ type = "NEGATE", children = { { type = "FILTER", condition = IsCityInDanger }, } },
+		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "PREPAREDTOATTACK_CORPSLIST", memname = "CORPSLIST" } },
+		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "CORPSLIST", number = 0 } },		
+		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "ADJACENT_NEUTRAL_CITYLIST", memname = "CITYLIST" } },		
+		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "CITYLIST", number = 0 } },
+		{ type = "FILTER", condition = CheckProposal, params = { type="ATTACK_CITY" } },
+		{ type = "FILTER", condition = CheckAttackCityPlan },
+		{ type = "ACTION", action = AttackProposal },
+	}
+}
+
+local CharacterAI_ExpandLeakMilitaryProposal = 
+{
+	type = "SEQUENCE", desc = "ATTACK", children =
+	{
+		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "ADJACENT_NEUTRAL_CITYLIST", memname = "CITYLIST" } },		
+		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "CITYLIST", number = 0 } },
+		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "PREPAREDTOATTACK_CORPSLIST", memname = "CORPSLIST" } },
+		{ type = "FILTER", condition = CompareCityData, params = { compare = "LESS_THAN", datamem = "CORPSLIST", number = 1 } },				
+		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "UNDERSTAFFED_CROPSLIST", memname = "CORPSLIST" } },
+		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "CORPSLIST", number = 0 } },
+		debugProposal,
+		{ type = "FILTER", condition = NeedReinforceCorps },
+		hintProposal,
+		{ type = "FILTER", condition = CheckProposal, params = { type="REINFORCE_CORPS" } },
+		{ type = "ACTION", action = ReinforceCorpsProposal },
+	}
+}
+
+local CharacterAI_ExpandBranch =
+{
+	type = "SEQUENCE", children = {
+		{ type = "FILTER", condition = CheckSwitchMode, params = { mode="MILITARY_AFFAIRS" } },
+		{ type = "SEQUENCE", desc = "START Military proposal", children =
+			{
+				{ type = "NEGATE", children = { { type = "FILTER", condition = IsCityInSiege }, } },
+				{ type = "FILTER", condition = HaveJobPriviage, params = { affair = "MILITARY_AFFAIRS" } },
+				{ type = "FILTER", condition = CheckInstruction, params = { flow = "MILITARY" } },
+				CharacterAI_ExpandToAdjacentCityProposal,
+				CharacterAI_ExpandLeakMilitaryProposal,
+			}
+		},
+	},
+}
+
 ---------------------------------------------
 
 local function SelectMeetingProposal()
@@ -1809,10 +1870,19 @@ local HRRecruitPriorityProposal =
 
 local MilitaryPriorityProposal = 
 {
-	type = "SEQUENCE", children = {	
-		{ type = "FILTER", condition = CheckPriority, params = { category="AT_WAR" } },
-		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", dataname= "PREPAREDTOATTACK_CORPSLIST", number = 0 } },
-		CharacterAI_MilitaryBranch,
+	type = "SELECTOR", children = {	
+		{ type = "SEQUENCE", desc="attack neutral", children = 
+			{
+				CharacterAI_ExpandBranch,
+			}
+		},
+		{ type = "SEQUENCE", desc="War Priority", children = 
+			{
+				{ type = "FILTER", condition = CheckPriority, params = { category="AT_WAR" } },
+				{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", dataname= "PREPAREDTOATTACK_CORPSLIST", number = 0 } },
+				CharacterAI_MilitaryBranch,
+			}
+		},
 	},
 }
 

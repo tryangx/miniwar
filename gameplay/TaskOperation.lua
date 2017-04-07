@@ -1,8 +1,20 @@
 function GenerateTroop( id )
 	local troop = g_troopDataMng:GenerateData( id, g_troopTableMng )
-	troop.tableId = id
 	troop.number  = troop.maxNumber
 	return troop
+end
+
+function GenerateCorps( ids )
+	local corps = g_corpsDataMng:NewData()
+	g_corpsDataMng:SetData( corps.id, corps )
+
+	for k, id in ipairs( ids ) do
+		local troop = g_troopDataMng:GenerateData( id, g_troopTableMng )
+		troop.number = troop.maxNumber
+		corps:AddTroop( troop )
+	end	
+
+	return corps
 end
 
 --------------------------------------------
@@ -201,7 +213,7 @@ function CaptureCity( group, city )
 		end
 	end
 		
-	--recover lost group
+	--recover fallen group
 	if #group.cities == 1 then
 		for k, corps in ipairs( group.corps ) do
 			if not corps:GetHome() then
@@ -395,35 +407,29 @@ end
 --
 --------------------------
 function CharaEstablishCorpsByTroop( city, idleTroopList )
-	local corps = Corps()
-	corps.id = g_corpsDataMng:AllocateId()
-		
+	--local corps = Corps()
+	--corps.id = g_corpsDataMng:AllocateId()		
+	local corps = g_corpsDataMng:NewData()
+	
+	--put corps into data manager
+	g_corpsDataMng:SetData( corps.id, corps )
+	
 	local idleTroopNum = #idleTroopList
 	local troopNum = {}
 	local movement = nil
 	for k, troop in ipairs( idleTroopList ) do
 		ShowText( "Add troop [".. NameIDToString( troop ) .."] to corps" )
 		corps:AddTroop( troop )
-		if not movement or movement > troop.movement then
-			movement = troop.movement
-		end
-	end
-	
-	
-	if corps.id == 5 then
-		InputUtility_Pause( #idleTroopList )
+		if not movement or movement > troop.movement then movement = troop.movement end
 	end
 	
 	corps.location   = city
-	corps.home = city
+	corps.home       = city
 	corps.formation  = formation
 	corps.movement   = movement
-	
+
 	corps:JoinGroup( city:GetGroup() )
-	
-	--put corps into data manager
-	g_corpsDataMng:SetData( corps.id, corps )
-	
+
 	--put corps into city
 	city:EstablishCorps( corps )
 end
@@ -591,8 +597,6 @@ end
 function CorpsAttack( corps, city )
 	CorpsMoveToLocation( corps, city )
 	g_warfare:AddWarfarePlan( corps, city )
-	
-	Debug_Normal( "[".. corps.name .."] attack ["..city.name.."]" )
 end
 
 function CorpsSiegeCity( corps, city, isSiege )
@@ -608,10 +612,14 @@ function CorpsExpedition( corps, city )
 end
 
 function CorpsDispatchToCity( corps, city, includeAll )
+	if city:GetGroup() ~= corps:GetGroup() then
+		--InputUtility_Pause( NameIDToString( corps ), city.name, city:GetGroup().name, corps:GetGroup().name )
+		g_taskMng:IssueTaskBackEncampment( corps )
+		return
+	end
 	--print( NameIDToString( corps ), "dispatch to", city.name )
 	local home = corps:GetHome()
 	if home and home ~= city then
-		--print( NameIDToString( corps ) .. " leave home=" .. home.name )
 		home:Dump( nil, true )
 		home:RemoveCorps( corps )
 	end
@@ -670,14 +678,15 @@ function TroopJoinGroup( troop, city, includeAll )
 end
 
 function TroopDispatchToCity( troop, city, includeAll )
-	--print( troop.name, "dipsatch from", troop:GetHome().name, "to", city.name, "loc", troop:GetLocation().name )
 	local home = troop:GetHome()
 	if home and home ~= city then home:RemoveTroop( troop ) end
 	city:AddTroop( troop )
 	troop:JoinCity( city )
 	troop:MoveToLocation( city )
 	
-	if includeAll then CharaDispatchToCity( troop:GetLeader(), city ) end
+	if includeAll then
+		CharaDispatchToCity( troop:GetLeader(), city )
+	end
 end
 
 function TroopMoveToLocation( troop, location )
@@ -772,9 +781,14 @@ function CharaDispatchToCity( chara, city )
 	city:AddChara( chara )
 	chara:JoinCity( city )
 	chara:MoveToLocation( city )
+	--if chara.id == 312 then InputUtility_Pause( chara.name .. " disp to " .. city.name, "troop="..NameIDToString( chara.troop ) ) end
 end
 
 function CharaLeadTroop( chara, troop )
+	if chara.location ~= troop.location then
+		InputUtility_Pause( chara.name .. " loc="..chara.location.name, " not in troop_loc="..troop.location.name, NameIDToString( troop ) )
+		return
+	end
 	local oldTroop = chara:GetTroop()
 	if oldTroop then
 		oldTroop:LeadByChara( nil )
@@ -798,6 +812,12 @@ function CharaLeadTroop( chara, troop )
 		end
 	end
 	chara:LeadTroop( troop )
+	if nil and chara.id == 312 then		
+		if troop.corps then
+			print( "corps=", NameIDToString( troop.corps ), "loc="..troop.corps.location.name .."/" .. troop.corps.home.name )
+		end
+		InputUtility_Pause( chara.name, "lead", NameIDToString( troop ), "at="..chara.home.name .."/"..chara.location.name.."/"..troop.location.name )
+	end
 end
 
 function CharaMoveToLocation( chara, location )
@@ -862,7 +882,11 @@ function CorpsEsacpeToCity( corps, city )
 		for k, troop in ipairs( corps.troops ) do
 			home:RemoveTroop( troop )
 			local leader = troop:GetLeader()
-			if leader then home:RemoveChara( leader ) end
+			if leader then
+				print( "escape debug:", leader.name, "home="..leader.home.name, "loc="..leader.location.name, "troophome="..troop.home.name, "corpshome="..home.name, "group="..leader.group.name )
+				print( "	", troop.name, troop.home.name )
+				home:RemoveChara( leader )
+			end
 		end
 	end
 	

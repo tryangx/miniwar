@@ -35,10 +35,6 @@ function Warfare:AddWarfarePlan( corps, city, siege )
 		return
 	end
 	
-	if city:IsNeutral() then
-		--different corps capture the city
-	end
-	
 	-- only support siege combat now
 	local plan     = {}
 	plan.from     = plan.from
@@ -49,7 +45,7 @@ function Warfare:AddWarfarePlan( corps, city, siege )
 	plan.field    = false	
 	table.insert( locationPlan.plans, plan )
 	
-	--InputUtility_Pause( "Add combat plan" )
+	--if city.id == 101 then quickSimulate = false InputUtility_Pause( "Add combat plan" ) end
 end
 
 function Warfare:Update( elapasedTime )
@@ -117,7 +113,7 @@ function Warfare:AddSiegeCombat( corps, city, isSiege )
 		combat:SetClimate( 1 )
 		combat:SetGroup( CombatSide.ATTACKER, corps:GetGroup() )
 		combat:SetGroup( CombatSide.DEFENDER, city:GetGroup() )
-		combat:SetSide( CombatSide.ATTACKER, { purpose=CombatPurpose.PROBING } )
+		combat:SetSide( CombatSide.ATTACKER, { purpose=CombatPurpose.CONVENTIONAL } )
 		combat:SetSide( CombatSide.DEFENDER, { purpose=CombatPurpose.CONVENTIONAL } )	
 		
 		print( "combatid="..combat.id, corps:GetGroup().name, ( city:GetGroup() and city:GetGroup().name or "" ) )
@@ -230,8 +226,8 @@ function Warfare:Test( atks, defs )
 	combat = g_combatDataMng:NewData()
 
 	--now only support city, extend to field in the future
-	--combat:SetType( CombatType.SIEGE_COMBAT )
-	combat:SetType( CombatType.FIELD_COMBAT )
+	combat:SetType( CombatType.SIEGE_COMBAT )
+	--combat:SetType( CombatType.FIELD_COMBAT )
 	combat:SetLocation( 10 )
 	combat:SetBattlefield( 3 )
 	combat:SetClimate( 1 )
@@ -260,6 +256,8 @@ function Warfare:Test( atks, defs )
 		--add militia, just for test
 		combat:AddTroopToSide( CombatSide.DEFENDER, g_troopDataMng:GetData( 500 ) )	
 	end
+
+	combat:SetEndDay( 30 )
 	
 	combat:Init()
 	
@@ -267,9 +265,11 @@ function Warfare:Test( atks, defs )
 end
 
 function Warfare:ProcessCombatResult( combat )
+	if not combat:GetLocation() then return end
+
 	print( "CombatEnd=" .. combat.id, combat:GetLocation().name )
 
-	g_statistic:CombatOccured( combat:CreateDesc() )
+	g_statistic:CombatOccured( combat:CreateDesc(), combat:GetLocation() )
 
 	--combat:Dump()
 	combat:EndCombat()
@@ -279,8 +279,9 @@ function Warfare:ProcessCombatResult( combat )
 	--remove guards first
 	local deadGuard = 0
 	for k, troop in ipairs( combat.troops ) do
-		if not troop:GetGroup() then
-			--InputUtility_Pause( "remove guard", NameIDToString( troop ) )
+		--if not troop:GetGroup() then
+		if g_scenario:CallFunction( "IsPlotGuard", troop.tableId ) then
+			InputUtility_Pause( "remove guard", NameIDToString( troop ) )
 			deadGuard = deadGuard + troop.maxNumber - troop.number
 			g_troopDataMng:RemoveData( troop.id )
 		end
@@ -291,11 +292,7 @@ function Warfare:ProcessCombatResult( combat )
 
 	local winner = combat:GetWinner()
 	local atkGroup = combat:GetSideGroup( CombatSide.ATTACKER )
-	local defGroup = combat:GetSideGroup( CombatSide.DEFENDER )	
-	if not atkGroup then
-		--test
-		return		
-	end	
+	local defGroup = combat:GetSideGroup( CombatSide.DEFENDER )		
 	if defGroup then
 		local relation = atkGroup:GetGroupRelation( defGroup.id )
 		if relation then
@@ -313,7 +310,7 @@ function Warfare:ProcessCombatResult( combat )
 			CaptureCity( atkGroup, city )
 			--Garrisson into the city
 			for k, corps in ipairs( atkCorpsList ) do
-				--print( NameIDToString( corps ) .. " belong " .. corps:GetGroup().name )
+				print( NameIDToString( corps ) .. " belong " .. corps:GetGroup().name )
 				--print( NameIDToString( corps ), "garrison", city.name )
 				CorpsDispatchToCity( corps, city, true )
 			end
@@ -344,7 +341,7 @@ function Warfare:ProcessCombatResult( combat )
 end
 
 function Warfare:EndCombat( combat )
-	self.combats[combat:GetLocation()] = nil
+	if combat:GetLocation() then self.combats[combat:GetLocation()] = nil end
 	self:ProcessCombatResult( combat )	
 end
 

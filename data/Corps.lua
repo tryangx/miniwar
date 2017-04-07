@@ -223,6 +223,10 @@ function Corps:GetTrainingEval()
 	return training
 end
 
+function Corps:IsNoneTask()
+	return not g_taskMng:GetTaskByActor( self )
+end
+
 function Corps:IsAtHome()
 	return self.location == self.home and not g_movingActorMng:HasActor( MovingActorType.CORPS, self )
 end
@@ -234,15 +238,27 @@ end
 
 function Corps:IsPreparedToAttack()
 	local rate = 0.6
+	local curNumber, maxNumber = 0, 0
+	local curMorale, maxMorale = 0, 0
 	for k, troop in ipairs( self.troops ) do
-		if troop.number < troop.maxNumber * rate then 
-			--InputUtility_Pause( "number not enough", troop.number, troop.maxNumber )
+		curNumber = curNumber + troop.number
+		maxNumber = maxNumber + troop.maxNumber
+		curMorale = curMorale + troop.morale
+		maxMorale = maxMorale + troop.maxMorale
+		--[[
+		if troop.number < troop.maxNumber * rate then 			
+			if self.home.id == 801 then InputUtility_Pause( "number not enough", troop.number, troop.maxNumber ) end
 			return false
 		end
 		if troop.morale < troop.maxMorale * rate then
-			--InputUtility_Pause( "morale not enough", troop.morale, troop.maxMorale )
+			if self.home.id == 801 then InputUtility_Pause( "morale not enough", troop.morale, troop.maxMorale ) end
 			return false
 		end
+		]]
+	end
+	if curNumber < maxNumber * rate or curMorale < maxMorale * rate then
+		--InputUtility_Pause( "morale or number not enough", curNumber, maxNumber * rate, curMorale, maxMorale * rate )
+		return false
 	end
 	return true
 end
@@ -334,4 +350,15 @@ function Corps:JoinCity( city, includeAll )
 			troop:JoinCity( city, includeAll )
 		end
 	end
+end
+
+---------------------------------------
+
+function Corps:EvaluateCombatPower( combatPowerType )
+	if combatPowerType == CombatPower.MELEE then
+
+	elseif combatPowerType == CombatPower.SHOOT then
+	elseif combatPowerType == CombatPower.SIEGE then
+	end
+	return 0
 end
