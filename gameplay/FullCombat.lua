@@ -422,14 +422,10 @@ end
 
 -----------------------------------------------
 
-local logUtility = LogUtility( "fcombat.log", LogFileMode.WRITE_MANUAL, LogPrinterMode.ON, LogWarningLevel.DEBUG )
+local logUtility = LogUtility( "fcombat.log", LogWarningLevel.DEBUG, true )
 
 function Combat:Log( content )
-	logUtility:WriteLog( content, LogWarningLevel.NORMAL )
-end
-
-function Combat:FlushLog()
-	logUtility:Flush()
+	logUtility:WriteLog( content )
 end
 
 function Combat:AddTroopToSide( side, troop )

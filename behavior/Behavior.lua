@@ -172,12 +172,12 @@ function Behavior:Shuffle( list )
 	end
 end
 
-function Behavior_Test()		
-	data = 
+function Behavior_Test()
+	data1 = 
 	{
 		type = "SEQUENCE", children =
 		{
-			{ type = "FILTER", condition = function() print( "check2" ) return false end },			
+			{ type = "FILTER", condition = function() print( "check1" ) return false end },
 			{ type = "ACTION", action = function() print( "act1" ) end },
 		}
 	}
@@ -185,19 +185,27 @@ function Behavior_Test()
 	{
 		type = "SEQUENCE", children =
 		{
-			{ type = "FILTER", condition = function() print( "check2" ) return true end },			
+			{ type = "FILTER", condition = function() print( "check2" ) return true end },
 			{ type = "ACTION", action = function() print( "act2" ) end },
 		}
 	}
 	data3 = 
 	{
-		type = "SEQUENCE", children = { 		
+		type = "SEQUENCE", children = {
 			data1,
 			data2,
 		},
 	}
+	data4 = 
+	{
+		type = "SELECTOR", children = { 		
+			data1,
+			data2,
+		},
+	}
+
 	tree = BehaviorNode()
-	tree:BuildTree( data )
+	tree:BuildTree( data4 )
 
 	bev = Behavior()
 	bev:Run( tree )

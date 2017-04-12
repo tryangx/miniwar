@@ -213,7 +213,7 @@ function Combat:__init()
 	self.fightRound  = 0
 end
 
-local logUtility = LogUtility( "qcombat.log", LogFileMode.WRITE_MANUAL, LogPrinterMode.ON, LogWarningLevel.DEBUG )
+local logUtility = LogUtility( "qcombat.log", LogWarningLevel.DEBUG, false )
 
 function Combat:ShowText( content )
 	if not quickSimulate or not self.location then 
@@ -223,11 +223,7 @@ end
 
 function Combat:Log( content )
 	if not quickSimulate then print( content ) end
-	--logUtility:WriteLog( content, LogWarningLevel.NORMAL )	
-end
-
-function Combat:FlushLog()
-	logUtility:Flush()
+	--logUtility:WriteLog( content )	
 end
 
 function Combat:Brief()
@@ -252,8 +248,8 @@ function Combat:CreateDesc()
 	desc = desc .. " rslt=" .. MathUtility_FindEnumName( CombatResult, self.result )
 	desc = desc .. " soldier=" .. self.atkNumber .. "/" .. self.defNumber
 	desc = desc .. " died=" .. self.defKill .. "/" .. self.atkKill
-	desc = desc .. " corps=" .. #self.corps .. " corps_vs=" .. self:GetCorpsNumber( CombatSide.ATTACKER ) .. "/" .. self:GetCorpsNumber( CombatSide.DEFENDER )
-	desc = desc .. " troop=" .. #self.troops .. " troops_vs=" .. self:GetTroopNumber( CombatSide.ATTACKER ) .. "/" .. self:GetTroopNumber( CombatSide.DEFENDER )
+	desc = desc .. " corps_vs=" .. self:GetCorpsNumber( CombatSide.ATTACKER ) .. "/" .. self:GetCorpsNumber( CombatSide.DEFENDER )
+	desc = desc .. " troops_vs=" .. self:GetTroopNumber( CombatSide.ATTACKER ) .. "/" .. self:GetTroopNumber( CombatSide.DEFENDER )
 	desc = desc .. " reinforce=" .. ( self.reinforce or "" )
 	return desc
 end
@@ -326,17 +322,12 @@ function Combat:AddTroopToSide( side, troop )
 		if other:GetGroup() ~= troop:GetGroup() and troop:GetGroup() and other._combatSide == side then
 			local relation = other:GetGroup():GetGroupRelation( troop:GetGroup().id )
 			if relation and not relation:IsAllyOrDependence() then
-				quickSimulate = false
-				print( self.id )
-				Helper_DumpList( self.troops, function ( t )
-					return NameIDToString( t ) .. " " .. ( t:GetGroup() and t:GetGroup().name or "" )
-				end )
-				print( NameIDToString( troop ), NameIDToString( troop:GetCorps() ) )
 				InputUtility_Pause( self.id, other:GetGroup().name, troop:GetGroup().name, " is diff", MathUtility_FindEnumName( CombatSide, side ) )
 				break
 			end
 		end
 	end
+--print( "troop="..NameIDToString( troop ) .. " attend combat=" .. self.id )
 	Helper_AddDataSafety( self.troops, troop )
 
 	troop:NewCombat()

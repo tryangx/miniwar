@@ -109,7 +109,7 @@ function Game:PopupSystemMenu()
 	g_menu:PopupMenu( menus )
 end
 
-function Game:MainMenu()	
+function Game:MainMenu()
 	self:PopupSystemMenu()
 end
 
@@ -208,11 +208,10 @@ function Game:SaveGame()
 end
 
 function Game:Init()
-	Debug_SetPrinterNode( true )
-	Debug_SetFileMode( false )	
+	Debug_SetPrinterNode( false )
 
 	self.turn = 0
-	self.maxTurn = 300
+	self.maxTurn = 3*12*5
 	
 	g_gameEvent:InitData()
 	
@@ -262,8 +261,6 @@ function Game:Init()
 	g_charaTableMng:Foreach( function ( data )
 		data:ConvertID2Data()
 	end )
-	
-	self:MainMenu()
 end
 
 function Game:PreprocessGameData()	
@@ -361,11 +358,25 @@ function Game:PreprocessGameData()
 	end )
 end
 
-function Game:StartGame()
-	Debug_Log( "Start Game" )
+----------------------------------------------
 
-	self:PreprocessGameData()
-	
+function Game:IsGameEnd()
+	return self.turn >= self.maxTurn or self.winner
+end
+
+function Game:IsPlayer( chara )
+	return self.player == chara
+end
+
+function Game:IsPlayerGroup( group )
+	return self.player:GetGroup() == group
+end
+
+----------------------------------------------
+
+function Game:StartGame()
+	g_statistic:Start()
+	self:PreprocessGameData()	
 	self:Run()
 end
 
@@ -419,43 +430,69 @@ end
 
 ----------------------------------------------
 
-function Game:IsGameEnd()
-	return self.turn >= self.maxTurn or self.winner
-end
-
-function Game:IsPlayer( chara )
-	return self.player == chara
-end
-
-function Game:IsPlayerGroup( group )
-	return self.player:GetGroup() == group
-end
-
-----------------------------------------------
-
 function Game:NextTurn()
-	if self.winner then Debug_Normal( "Winner is " .. NameIDToString( self.winner ) ) return end
+	if self.winner then
+		Debug_Normal( "Winner is " .. NameIDToString( self.winner ) )
+		EndShowText()
+		return
+	end
 	
 	self.turn = self.turn + 1
-	ShowText( "####################################" )	
-	
+	ShowText( "####################################" )
 		
 	local elapsedTime = GlobalConst.ELPASED_TIME
 	g_statistic:ElapseTime( elapsedTime )	
 	g_calendar:ElapseDay( elapsedTime )		
-	print( "############# Turn=" .. self.turn .. " " .. g_calendar:CreateCurrentDateDesc( true ) )
+	ShowText( "############# Turn=" .. self.turn .. " " .. g_calendar:CreateCurrentDateDesc( true ) .. " seed=" .. g_syncRandomizer:GetSeed(), g_asyncRandomizer:GetSeed() )
 	
 	-- Event Flow	
 	g_gameEvent:Trigger()
 	
 	-- Update Flow
 	self:Update( elapsedTime )
-	
-	-- Action Flow
-	self:ActionFlow()
+
+	self:HoldMeeting()
 end
 
-function Game:ActionFlow()	
+function Game:Update( elpasedTime )
+	ShowText( "************** Update Flow ******************" )
+	local passDay = elpasedTime
+	
+	g_statistic:Update()
+	
+	g_warfare:Update( elpasedTime )	
+	g_diplomacy:Update( elpasedTime )	
+	g_taskMng:Update( elpasedTime )	
+	g_movingActorMng:Update( elpasedTime )
+	g_plotMap:Update( elpasedTime )
+	
+	for k, group in ipairs( self._groupList ) do
+		group:Update()
+		g_statistic:CountGroup( group )
+	end	
+	for k, city in ipairs( self._cityList ) do		
+		city:Update()
+		g_statistic:CountCity( city )
+		g_charaTemplate:CheckNumOfCharaInCity( city )
+	end
+	g_corpsDataMng:Foreach( function ( data )
+		data:Update()
+		g_statistic:CountCorps( data )
+	end )
+	g_troopDataMng:Foreach( function ( data )
+		data:Update()
+		g_statistic:CountTroop( data )
+	end )
+	for k, chara in ipairs( g_statistic.activateCharaList ) do
+		chara:Update( elapsedTime )
+	end
+	g_charaTemplate:Update( elapsedTime )
+	--ProfileResult()
+	
+	--InputUtility_Pause( "" )
+end
+
+function Game:HoldMeeting()	
 	--g_gameMap:DrawPowerMap()
 
 	--[[
@@ -529,43 +566,5 @@ function Game:ActionFlow()
 	]]
 	
 	--execute immediately task
-	g_taskMng:Update( 0 )
-end
-
-function Game:Update( elpasedTime )
-	ShowText( "************** Update Flow ******************" )
-	local passDay = elpasedTime
-	
-	g_statistic:Update()
-	
-	g_warfare:Update( elpasedTime )	
-	g_diplomacy:Update( elpasedTime )	
-	g_taskMng:Update( elpasedTime )	
-	g_movingActorMng:Update( elpasedTime )
-	g_plotMap:Update( elpasedTime )
-	
-	for k, group in ipairs( self._groupList ) do
-		group:Update()
-		g_statistic:CountGroup( group )
-	end	
-	for k, city in ipairs( self._cityList ) do		
-		city:Update()
-		g_statistic:CountCity( city )
-		g_charaTemplate:CheckNumOfCharaInCity( city )
-	end
-	g_corpsDataMng:Foreach( function ( data )
-		data:Update()
-		g_statistic:CountCorps( data )
-	end )
-	g_troopDataMng:Foreach( function ( data )
-		data:Update()
-		g_statistic:CountTroop( data )
-	end )
-	for k, chara in ipairs( g_statistic.activateCharaList ) do
-		chara:Update( elapsedTime )
-	end
-	g_charaTemplate:Update( elapsedTime )
-	--ProfileResult()
-	
-	--InputUtility_Pause( "" )
+	--g_taskMng:Update( 0 )
 end

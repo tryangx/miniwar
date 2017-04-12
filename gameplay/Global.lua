@@ -11,6 +11,7 @@ require "HelperUtility"
 require "InputUtility"
 require "MenuUtility"
 require "ProfileUtility"
+require "LocalizeUtility"
 
 require "Behavior"
 
@@ -57,6 +58,7 @@ require "Scenario_Standard_CombatEvent"
 
 ---------------------------------------
 -- Data Mediator
+require "Proposal"
 require "Character"
 require "CharacterTemplate"
 require "Group"
@@ -90,7 +92,7 @@ require "CharacterGrowth"
 
 ---------------------------------------
 -- AI
-require "MeetingAI"
+require "CharacterAI"
 
 ---------------------------------------
 -- Gameplay
@@ -154,8 +156,9 @@ g_combatDataMng = DataManager( "COMBAT_DATA", Combat )
 -- Randomizer
 
 -- Lock step
-local seed = os.time()
---seed = 1490080719
+g_gameId = os.time()
+local seed = g_gameId
+--seed = 1491810790
 g_syncRandomizer = Randomizer( seed )
 
 -- Local game

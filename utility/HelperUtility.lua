@@ -5,12 +5,28 @@ debugAddRemoveData = true
 quickSimulate = true
 debugMeeting = false
 
+local HelperLog = nil
+local function Helper_GetLog()
+	if not HelperLog then HelperLog = LogUtility( "helper_" .. g_gameId .. ".log", LogWarningLevel.ERROR, true ) end
+	return HelperLog
+end
+
 function IsSimulating()
-	return quickSimulate and not g_game:IsGameEnd()
+	return quickSimulate or not g_game:IsGameEnd()
+end
+
+function ShowDebug( ... )
+	Helper_GetLog():WriteDebug( ... )
 end
 
 function ShowText( ... )
-	if not IsSimulating() then print( ... ) end
+	Helper_GetLog():WriteLog( ... )
+	--if not IsSimulating() then print( ... ) end
+end
+
+function EndShowText()
+	quickSimulate = false
+	debugLog:CloseFile()
 end
 
 -- Randomizer

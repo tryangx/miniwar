@@ -90,10 +90,14 @@ for i = 1, 20 do
 end
 ]]
 
+--Behavior_Test()
+
 --[[]]
 g_game = Game()
 g_game:Init()
-g_game:MainMenu()
+--g_game:MainMenu()
+g_game:NewGame()
+g_game:StartGame()
 --]]
 
 
@@ -103,8 +107,6 @@ require "BehaviorNode"
 
 Behavior_Test()
 --]]
-
-require "FileUtility"
 
 saveData = 
 {

@@ -9,7 +9,7 @@ CharacterAICategory =
 	WAR_PREPAREDNESS_PROPOSAL = 14,
 	MILITARY_PROPOSAL         = 15,
 
-	AI_SELECT_PROPOSAL       = 21,
+	AI_CHOICE_PROPOSAL       = 21,
 	AI_SUBMIT_PROPOSAL       = 22,
 
 	GROUP_DISCUSS_PROPOSAL   = 30,
@@ -51,7 +51,7 @@ local function debugInfo( content )
 end
 
 local hintProposal = { type = "FILTER", condition = function ()
-	print( "hint" )
+	print( "hint=", _blackboard.city.name, _blackboard.city:GetPower(), g_calendar:CreateCurrentDateDesc( true, true ) )
 	return true
 end }
 
@@ -66,13 +66,6 @@ local waitProposal = { type = "FILTER", condition = function ()
 end }
 
 local endProposal = { type = "ACTION", action = function ( ) end }
-
-local CharacterAI_PassProposal = 
-{
-	type = "ACTION", action = function()
-		--print( _chara.name .. " pass" )
-	end
-}
 
 local function QueryGroupData( dataname )
 	local _city = _blackboard.city
@@ -302,6 +295,12 @@ local function HaveJobPriviage( params )
 	return _chara:HasPriviage( params.affair )
 end
 
+local function IsLeader( params )
+	if _chara == _blackboard.city:GetLeader() then return true end
+	if _chara:GetGroup() and _chara:GetGroup():GetLeader() == _chara then return true end
+	return false
+end
+
 local function IsJobMatch( params )
 	return _chara:GetJob() == MathUtility_FindEnumName( CharacterJob, params.job ) 	
 end
@@ -366,45 +365,6 @@ local function FilterRegisterData( name, fn )
 	return #newCharaList > 0
 end
 
-local function CheckConflictProposal( params )
-	--1st, check conflict proposal
-	local isConflict = false
-	local type = params.type
-
-	--Check exclusive task
-	
-	--Tech Affairs
-	if type == "TECH_RESEARCH" then
-		isConflict = g_taskMng:HasConflictProposal( { type = CharacterProposal[type], data = _chara:GetGroup(), target = nil } )
-
-	--Diplomacy Affairs
-	elseif type == "DIPLOMACY_AFFAIRS" then
-	
-	--City Affairs
-	elseif type == "CITY_INVEST" or type == "CITY_LEVY_TAX" or type == "CITY_BUILD" or type == "CITY_INSTRUCT" or type == "CITY_PATROL" or type == "CITY_FARM" then
-		isConflict = g_taskMng:HasConflictProposal( { type = CharacterProposal[type], data = nil, target = _blackboard.city } )
-
-	--HR Affairs
-	elseif type == "HR_HIRE" then
-		isConflict = g_taskMng:HasConflictProposal( { type = CharacterProposal[type], data = _blackboard.city, target = nil } )
-	elseif type == "HR_LOOKFORTALENT" then
-		isConflict = g_taskMng:HasConflictProposal( { type = CharacterProposal[type], data = _blackboard.city, target = nil } )
-	elseif type == "HR_DISPATCH" or type == "HR_CALL" or type == "HR_EXILE" or type == "HR_PROMOTE" or type == "HR_BONUS" then			
-		
-	--WarPreparedness Affairs
-	elseif type == "RECRUIT_TROOP" or type == "CONSCRIPT_TROOP" or type == "ESTABLISH_CORPS" then
-		isConflict = g_taskMng:HasConflictProposal( { type = CharacterProposal[type], data = _blackboard.city, target = nil } )
-	elseif type == "REINFORCE_CORPS" or type == "TRAIN_CORPS" then
-	elseif type == "REGROUP_CORPS" then
-	elseif type == "LEAD_TROOP" then
-	
-	--Military Affairs
-	elseif type == "ATTACK_CITY" or type == "SIEGE_CITY" or type == "EXPEDITION" or type == "CONTROL_PLOT" or type == "DISPATCH_CORPS" then
-		
-	end	
-	return isConflict
-end
-
 local function FindProposalActor( params )
 	_actor = nil
 	
@@ -413,7 +373,7 @@ local function FindProposalActor( params )
 	end
 	
 	local fnFindActor = nil
-	local isNeedActor = true	
+	local isNeedActor = true
 	local type = params.type
 	
 	--Tech Affairs
@@ -455,7 +415,7 @@ local function FindProposalActor( params )
 		--actor is free chara
 		isNeedActor = false		
 	
-	elseif type == "ATTACK_CITY" or type == "SIEGE_CITY" or type == "EXPEDITION" or type == "CONTROL_PLOT" or type == "DISPATCH_CORPS" then
+	elseif type == "ATTACK_CITY" or type == "SIEGE_CITY" or type == "EXPEDITION" or type == "CONTROL_PLOT" or type == "DISPATCH_CORPS" or type == "DISPATCH_TROOPS" then
 		--actor is corps
 		isNeedActor = false
 	end
@@ -476,6 +436,64 @@ local function FindProposalActor( params )
 		_actor = charaList[index]
 	end
 	return _actor ~= nil
+end
+
+local function CheckConflictProposal( params )
+	--1st, check conflict proposal
+	local isConflict = false
+	local type = params.type
+
+	--Check exclusive task
+	
+	--Tech Affairs
+	if type == "TECH_RESEARCH" then
+		isConflict = g_taskMng:HasConflictProposal( { type = CharacterProposal[type], data = _chara:GetGroup(), target = nil } )
+
+	--Diplomacy Affairs
+	elseif type == "DIPLOMACY_AFFAIRS" then
+	
+	--City Affairs
+	elseif type == "CITY_INVEST" or type == "CITY_LEVY_TAX" or type == "CITY_BUILD" or type == "CITY_INSTRUCT" or type == "CITY_PATROL" or type == "CITY_FARM" then
+		isConflict = g_taskMng:HasConflictProposal( { type = CharacterProposal[type], data = nil, target = _blackboard.city } )
+
+	--HR Affairs
+	elseif type == "HR_HIRE" then
+		isConflict = g_taskMng:HasConflictProposal( { type = CharacterProposal[type], data = _blackboard.city, target = nil } )
+	elseif type == "HR_LOOKFORTALENT" then
+		isConflict = g_taskMng:HasConflictProposal( { type = CharacterProposal[type], data = _blackboard.city, target = nil } )
+	elseif type == "HR_DISPATCH" or type == "HR_CALL" or type == "HR_EXILE" or type == "HR_PROMOTE" or type == "HR_BONUS" then			
+		
+	--WarPreparedness Affairs
+	elseif type == "RECRUIT_TROOP" or type == "CONSCRIPT_TROOP" or type == "ESTABLISH_CORPS" then
+		isConflict = g_taskMng:HasConflictProposal( { type = CharacterProposal[type], data = _blackboard.city, target = nil } )
+	elseif type == "REINFORCE_CORPS" then
+	elseif type == "TRAIN_CORPS" then
+	elseif type == "REGROUP_CORPS" then
+	elseif type == "LEAD_TROOP" then
+	
+	--Military Affairs
+	elseif type == "ATTACK_CITY" or type == "EXPEDITION" or type == "CONTROL_PLOT" or type == "DISPATCH_CORPS" then
+	elseif type == "DISPATCH_TROOPS" then
+		local troopList = _register["TROOPLIST"]
+		for k, troop in ipairs( troopList ) do
+			if g_taskMng:GetTaskByActor( troop ) then
+				isConflict = true
+				InputUtility_Pause( "conflict dispatchtroop", NameIDToString( troop ) )
+				break
+			end
+		end
+	elseif type == "SIEGE_CITY" then
+		local corpsList = _register["CORPSLIST"]
+		for k, corps in ipairs( corpsList ) do
+			if g_taskMng:GetTaskByActor( corps ) then
+				isConflict = true
+				InputUtility_Pause( "conflict siege", NameIDToString( corps ) )
+				break
+			end
+		end		
+	end	
+
+	return isConflict
 end
 
 local function CheckProposal( params )
@@ -559,7 +577,7 @@ end
 
 local function ResearchTechProposal()
 	local tech = _register["TECH"]
-	_chara:SubmitProposal( { type = CharacterProposal.TECH_RESEARCH, data = _chara:GetGroup(), target = tech, proposer = _chara, actor = _chara } )
+	_chara:SubmitProposal( { type = CharacterProposal.TECH_RESEARCH, data = _chara:GetGroup(), target = tech, proposer = _chara, actor = _actor } )
 end
 
 local CharacterAI_TechProposal =
@@ -579,10 +597,7 @@ local CharacterAI_TechProposal =
 ---------------------------------------------
 
 local function SubmitDiplomacyProposal( params )
-	if _chara:GetTroop() then
-		print( "troop leader do diplomacy", _chara.name, _chara:GetTroop().name, _chara:GetLocation().name )
-	end
-	--ShowText( "submit proposal" )
+	if _chara:GetTroop() then print( "troop leader do diplomacy", _chara.name, _chara:GetTroop().name, _chara:GetLocation().name ) end
 	_chara:SubmitProposal( { type = CharacterProposal[params.proposal], target = _target, proposer = _chara, actor = _actor, prob = _blackboard.targetProb } )
 end
 
@@ -1014,7 +1029,6 @@ local function HireCharaProposal()
 	local chara = charaList[index]
 	
 	if chara:GetGroup() then
-		print( "hire hint", _chara.name, _chara:GetGroup().name )
 		InputUtility_Pause( chara.name .. " already in group=" .. chara:GetGroup().name )
 		return
 	end	
@@ -1169,13 +1183,13 @@ local function NeedRecruit( checkCity )
 	
 	--Make supply enough to evoid starvation
 	if supply < city.population + power then
-		ShowText( "Cann't recruit, out of supply" )
+		--ShowText( "Cann't recruit, out of supply" )
 		return false
 	end
 
 	--Limit by the food consume
 	if ( power + troopNumber ) * CityParams.SAFETY_FOOD_CONSUME_TIME / GlobalConst.UNIT_TIME > city.food then
-		debugInfo( "Cann't recruit, out of food" )
+		--debugInfo( "Cann't recruit, out of food" )
 		return false
 	end
 	
@@ -1356,14 +1370,6 @@ local function LeadTroopProposal()
 	local troop = troopList[index]
 	
 	_actor = chara
-
-if chara.id == -408 then	
-	for k, troop in ipairs( troopList ) do
-		local task = g_taskMng:GetTaskByActor( troop )
-		print( NameIDToString( troop ), NameIDToString( troop.corps ), "loc="..troop.location.name, "city=".._blackboard.city.name )
-	end
-	--InputUtility_Pause()
-end
 	
 	_chara:SubmitProposal( { type = CharacterProposal.LEAD_TROOP, target = troop, data = chara, proposer = _chara, actor = _actor } )
 end
@@ -1436,7 +1442,7 @@ local function CheckAttackCityPlan()
 		if power > maxCorpsPower then
 			if power < maxCorpsPower * WarfarePlanParams.MAX_TARGETCITY_POWER_MODULUS then
 				local prob = 3000 * ( power / maxCorpsPower )				
-				print( "pow="..power .. " prob=".. prob, adjaCity.name, adjaCity:GetGroup() )
+				--print( "pow="..power .. " prob=".. prob, adjaCity.name, adjaCity:GetGroup() )
 				if not findCity or _ai:RandomProb() < prob then
 					findCity = adjaCity
 				end
@@ -1517,6 +1523,18 @@ local function DispatchCorpsProposal()
 	_chara:SubmitProposal( { type = CharacterProposal.DISPATCH_CORPS, target = city, data = corps, proposer = _chara, actor = _actor } )
 end
 
+local function DispatchTroopsProposal()
+	local cityList = _register["CITYLIST"]
+	local index = _ai:GetRandomByRange( 1, #cityList )
+	local city = cityList[index]
+
+	local troopList = _register["TROOPLIST"]
+	
+	_actor = troopList[1]
+
+	_chara:SubmitProposal( { type = CharacterProposal.DISPATCH_TROOPS, target = city, data = troopList, proposer = _chara, actor = _actor } )
+end
+
 local CharacterAI_AttackCityProposal =
 {
 	type = "SEQUENCE", desc = "ATTACK", children =
@@ -1541,6 +1559,9 @@ local function CheckSiegeAttackPlan()
 	local randSelProb, randSelPower, randSelCorps = 2000, 0, nil
 
 	for k, corps in ipairs( corpsList ) do
+		if g_taskMng:GetTaskByActor( corps ) then
+			InputUtility_Pause( NameIDToString( corps ) .. " has task, why?" )
+		end
 		local curPower = corps:GetPower()
 		totalPower = totalPower + curPower
 		if curPower > maxPower then
@@ -1583,7 +1604,7 @@ local function CheckSiegeAttackPlan()
 				if not findCity or _ai:RandomProb() < prob then
 					findCity = adjaCity
 				else
-					print( "prob=", prob, adjaCity.name )
+					--print( "prob=", prob, adjaCity.name )
 				end
 			end
 		else
@@ -1617,7 +1638,7 @@ local function CheckSiegeAttackPlan()
 	_register["CORPSLIST"] = findCorpsList
 	_register["CORPSLEADER"] = findCorps
 
-	print( "siegecity pow=" .. totalPower .. "+" ..#findCorpsList .. " city=" .. findCity.name .. "/" .. GuessCityPower( findCity ) )
+	--print( "siegecity pow=" .. totalPower .. "+" ..#findCorpsList .. " city=" .. findCity.name .. "/" .. GuessCityPower( findCity ) )
 
 	return true	
 end
@@ -1674,6 +1695,20 @@ local CharacterAI_DispatchCorpsProposal =
 	}
 }
 
+local CharacterAI_DispatchTroopsProposal = 
+{
+	type = "SEQUENCE", desc = "Expedition", children =
+	{
+		{ type = "NEGATE", children = { { type = "FILTER", condition = IsCityInDanger }, } },
+		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "ADJACENT_INDANGER_SELFGROUP_CITYLIST", memname = "CITYLIST" } },
+		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "CITYLIST", number = 0 } },
+		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "NONCORPS_TROOPLIST", memname = "TROOPLIST" } },
+		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "TROOPLIST", number = 0 } },
+		{ type = "FILTER", condition = CheckProposal, params = { type="DISPATCH_TROOPS" } },
+		{ type = "ACTION", action = DispatchTroopsProposal },
+	}
+}
+
 local CharacterAI_MilitaryBranch =
 {
 	type = "SEQUENCE", children = {
@@ -1689,6 +1724,7 @@ local CharacterAI_MilitaryBranch =
 					CharacterAI_AttackCityProposal,
 					CharacterAI_ExpeditionProposal,
 					CharacterAI_DispatchCorpsProposal,
+					CharacterAI_DispatchTroopsProposal,
 				}
 			}
 		} },
@@ -1721,10 +1757,9 @@ local CharacterAI_ExpandLeakMilitaryProposal =
 		{ type = "FILTER", condition = CompareCityData, params = { compare = "LESS_THAN", datamem = "CORPSLIST", number = 1 } },				
 		{ type = "FILTER", condition = MemoryCityData, params = { dataname = "UNDERSTAFFED_CROPSLIST", memname = "CORPSLIST" } },
 		{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "CORPSLIST", number = 0 } },
-		debugProposal,
-		{ type = "FILTER", condition = NeedReinforceCorps },
-		hintProposal,
+		{ type = "FILTER", condition = NeedReinforceCorps },		
 		{ type = "FILTER", condition = CheckProposal, params = { type="REINFORCE_CORPS" } },
+		debugProposal,
 		{ type = "ACTION", action = ReinforceCorpsProposal },
 	}
 }
@@ -1739,7 +1774,7 @@ local CharacterAI_ExpandBranch =
 				{ type = "FILTER", condition = HaveJobPriviage, params = { affair = "MILITARY_AFFAIRS" } },
 				{ type = "FILTER", condition = CheckInstruction, params = { flow = "MILITARY" } },
 				CharacterAI_ExpandToAdjacentCityProposal,
-				CharacterAI_ExpandLeakMilitaryProposal,
+				--CharacterAI_ExpandLeakMilitaryProposal,
 			}
 		},
 	},
@@ -1748,29 +1783,30 @@ local CharacterAI_ExpandBranch =
 ---------------------------------------------
 
 local function SelectMeetingProposal()
-	--ShowText( #_blackboard, _chara.stamina )
+	--Accept the proposal submited by other character
 	if _chara.stamina > CharacterParams.STAMINA["ACCEPT_PROPOSAL"] and _blackboard.proposals and #_blackboard.proposals > 0 then
 		--select proposal
 		if  _ai:GetRandom( "Select meeting topic" ) <= RandomParams.MAX_PROBABILITY + ( _chara.stamina - CharacterParams.STAMINA["ACCEPT_PROPOSAL"] ) * RandomParams.PROBABILITY_UNIT then		
 			local proposalList = {}
 			for k, proposal in ipairs( _blackboard.proposals ) do				
 				if not g_taskMng:HasConflictProposal( proposal ) then
-					--print( "insert proposal=", Meeting:CreateProposalDesc( proposal ) )--.proposer.name )
+					--print( "insert proposal=", Proposal_CreateDesc( proposal ) )
 					table.insert( proposalList, proposal )
 				end
 			end
 			if #proposalList > 0 then
 				--print( "resel", #proposalList)
 				local index = _ai:GetRandomByRange( 1, #proposalList, "Select proposal" )
-				_chara:SubmitProposal( { type = CharacterProposal.AI_SELECT_PROPOSAL, proposal = proposalList[index], proposer = _chara, actor = _actor } )
+				_chara:SubmitProposal( { type = CharacterProposal.AI_CHOICE_PROPOSAL, proposal = proposalList[index], proposer = _chara, actor = _actor } )
 				return
 			end
+			--print( "resel=0")
 		end
 	end
 	
-	--AI Leader Submit proposal
+	--AI Leader Submit proposal by himself
 	if _chara.stamina > CharacterParams.STAMINA["SUBMIT_PROPOSAL"] then
-		--InputUtility_Pause( "ai submit proposal himself" )
+		--print( "ai submit proposal himself" )
 		_chara:SubmitProposal( { type = CharacterProposal.AI_SUBMIT_PROPOSAL, proposer = _chara, actor = _actor } )
 		return
 	end
@@ -1789,20 +1825,7 @@ local CharacterAI_AISelectProposal =
 
 ---------------------------------------------
 
-local CharacterAI_DefaultPriorityProposal = 
-{
-	--type = "SELECTOR", desc = "", children =	
-	type = "RANDOM_SELECTOR", desc = "", children =
-	{
-		CharacterAI_WarPreparednessBranch,
-		CharacterAI_TechProposal,
-		CharacterAI_DiplomacyAffaisBranch,
-		CharacterAI_CityAffaisBranch,
-		CharacterAI_HumanResourceBranch,
-		CharacterAI_MilitaryBranch,
-	},	
-}
-
+	
 ---------------------------------------------
 
 local function CheckPriority( params )
@@ -1810,10 +1833,12 @@ local function CheckPriority( params )
 	local category = params.category
 	local tag = nil
 	if category == "WAR_PREPAREDNESS_AFFAIRS" then
+
 	elseif category == "RECRUIT_TROOP" then	
 		tag = group:GetAsset( GroupTag.SITUATION.WEAK )
 		
 	elseif category == "TECH_AFFAIRS" then
+
 	elseif category == "RESEARCH_TECH" then
 		tag = group:GetAsset( GroupTag.SITUATION.PRIMITIVE )
 		
@@ -1824,13 +1849,14 @@ local function CheckPriority( params )
 		tag = group:GetAsset( GroupTag.SITUATION.UNDEVELOPED )
 		
 	elseif category == "HR_AFFAIRS" then
+
 	elseif category == "HR_HIRE" then
 		tag = group:GetAsset( GroupTag.SITUATION.UNDERSTAFFED )		
 
 	elseif category == "MILITARY_AFFAIRS" then
+
 	elseif category == "MILITARY_AGGRESSIVE" then
 		tag = group:GetAsset( GroupTag.SITUATION.AGGRESSIVE )
-		--if tag then InputUtility_Pause( group.name, "aggress") end
 		
 	elseif category == "AT_WAR" then
 		tag = group:GetAsset( GroupTag.SITUATION.AT_WAR )
@@ -1843,7 +1869,7 @@ end
 ------------------------------
 -- Priority proposal
 
-local HRHirePriorityProposal = 
+local HRPriorityProposal = 
 {
 	type = "SEQUENCE", children = { 
 		{ type = "FILTER", condition = CheckPriority, params = { category="HR_HIRE" } },
@@ -1857,16 +1883,6 @@ local HRHirePriorityProposal =
 		},		
 	}
 }
-
-local HRRecruitPriorityProposal = 
-{
-	type = "SEQUENCE", children = { 
-		{ type = "FILTER", condition = CheckPriority, params = { category="RECRUIT_TROOP" } },
-		{ type = "FILTER", condition = CheckSwitchMode, params = { mode="HR_AFFAIRS" } },
-		CharacterAI_RecruitTroopProposal,
-	}
-}
-
 
 local MilitaryPriorityProposal = 
 {
@@ -1889,7 +1905,6 @@ local MilitaryPriorityProposal =
 local WarPreparednessPriorityProposal =
 {
 	type = "SEQUENCE", children = {
-		{ type = "FILTER", condition = HasCityTag, params = { flag="WEAK" } },
 		CharacterAI_WarPreparednessBranch,
 	}
 }
@@ -1898,43 +1913,38 @@ local CharacterAI_DebugConflictProposal =
 {
 	type = "SELECTOR", children =
 	{
-		--{ type = "FILTER", condition = CanSubmitProposal },
-		{ type = "SELECTOR", desc = "", children =
-			{
-				--[[
-				--WAR_PREPAREDNESS
-				CharacterAI_ReinforceCorpsProposal,
-				CharacterAI_RegroupCorpsProposal,
-				CharacterAI_RecruitTroopProposal,
-				CharacterAI_EstablishCorpsProposal,
-				CharacterAI_LeadTroopProposal,
-				CharacterAI_TrainCorpsProposal,
-				--Military
-				CharacterAI_AttackCityProposal,
-				CharacterAI_ExpeditionProposal,
-				CharacterAI_DispatchCorpsProposal,
-				--Tech
-				CharacterAI_TechProposal,
-				--CityAffairs
-				CharacterAI_CityAffaisDevelopBranch,
-				--Diplomacy
-				CharacterAI_SurrenderProposal,
-				CharacterAI_BreakContractProposal,
-				CharacterAI_DeclareWarProposal,
-				CharacterAI_FriendlyProposal,
-				CharacterAI_AllyProposal,
-				CharacterAI_ThreatenProposal,
-				CharacterAI_MakePeaceProposal,
-				--HR
-				CharacterAI_HireCharaProposal,
-				CharacterAI_LookForTalentProposal,
-				CharacterAI_CallCharaProposal,
-				CharacterAI_DispatchCharaProposal,
-				CharacterAI_ExileCharaProposal,	
-				]]
-				--endProposal,
-			},
-		},
+		--[[
+		--WAR_PREPAREDNESS
+		CharacterAI_ReinforceCorpsProposal,
+		CharacterAI_RegroupCorpsProposal,
+		CharacterAI_RecruitTroopProposal,
+		CharacterAI_EstablishCorpsProposal,
+		CharacterAI_LeadTroopProposal,
+		CharacterAI_TrainCorpsProposal,
+		--Military
+		CharacterAI_AttackCityProposal,
+		CharacterAI_ExpeditionProposal,
+		CharacterAI_DispatchCorpsProposal,
+		--Tech
+		CharacterAI_TechProposal,
+		--CityAffairs
+		CharacterAI_CityAffaisDevelopBranch,
+		--Diplomacy
+		CharacterAI_SurrenderProposal,
+		CharacterAI_BreakContractProposal,
+		CharacterAI_DeclareWarProposal,
+		CharacterAI_FriendlyProposal,
+		CharacterAI_AllyProposal,
+		CharacterAI_ThreatenProposal,
+		CharacterAI_MakePeaceProposal,
+		--HR
+		CharacterAI_HireCharaProposal,
+		CharacterAI_LookForTalentProposal,
+		CharacterAI_CallCharaProposal,
+		CharacterAI_DispatchCharaProposal,
+		CharacterAI_ExileCharaProposal,
+		]]
+		--endProposal,
 	}
 }
 
@@ -1948,8 +1958,7 @@ local TroopLeaderDiscussProposal =
 		CharacterAI_WarPreparednessBranch,
 		CharacterAI_MilitaryBranch,
 		CharacterAI_HumanResourceBranch,
-		CharacterAI_CityAffaisBranch,		
-		CharacterAI_PassProposal,
+		CharacterAI_CityAffaisBranch,
 	},
 }
 
@@ -1961,31 +1970,6 @@ local CharacterAI_AggressiveMilitaryProposal =
 	},
 }
 
-local CharacterAI_AISubmitProposal =
-{
-	type = "SEQUENCE", desc = "AI Submit", children =
-	{
-		{ type = "FILTER", condition = CanAssignProposal },		
-		{ type = "SELECTOR", children = 
-			{
-				CharacterAI_DebugConflictProposal,
-				HRHirePriorityProposal,
-				HRRecruitPriorityProposal,
-				TroopLeaderDiscussProposal,
-				MilitaryPriorityProposal,
-				WarPreparednessPriorityProposal,				
-				{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="MILITARY_AGGRESSIVE" } }, CharacterAI_AggressiveMilitaryProposal } },
-				{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="DIPLOMACY_AFFAIRS" } }, CharacterAI_DiplomacyAffaisBranch } },
-				{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="MILITARY_AFFAIRS" } }, CharacterAI_MilitaryBranch } },				
-				{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="CITY_AFFAIRS" } }, CharacterAI_CityAffaisBranch } },				
-				{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="RESEARCH_TECH" } }, CharacterAI_TechProposal } },
-				CharacterAI_DefaultPriorityProposal,
-			},
-		},
-	}
-}
-
----------------------------------------------
 
 local OfficerDiscussProposal =
 {
@@ -2026,36 +2010,87 @@ local GeneralDiscussProposal =
 	},
 }
 
+local LeaderSubmitProposal = 
+{
+	type = "SELECTOR", children = 
+	{
+		--Leak character
+		HRPriorityProposal,
+		--Expand & Attack weak
+		MilitaryPriorityProposal,
+
+		--Leader
+		--TroopLeaderDiscussProposal,
+
+		{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="MILITARY_AGGRESSIVE" } }, CharacterAI_AggressiveMilitaryProposal } },
+		{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="DIPLOMACY_AFFAIRS" } }, CharacterAI_DiplomacyAffaisBranch } },
+		{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="MILITARY_AFFAIRS" } }, CharacterAI_MilitaryBranch } },
+		{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="CITY_AFFAIRS" } }, CharacterAI_CityAffaisBranch } },
+		{ type = "SEQUENCE", children = { { type = "FILTER", condition = CheckPriority, params = { category="RESEARCH_TECH" } }, CharacterAI_TechProposal } },
+	},
+}
+
+local CharacterAI_DefaultPriorityProposal = 
+{
+	type = "SELECTOR", children = 
+	{
+		CharacterAI_DebugConflictProposal,
+		{ type = "SEQUENCE", children =
+			{
+				{ type = "FILTER", condition = IsLeader },
+				LeaderSubmitProposal,
+			}
+		},
+		{ type = "SEQUENCE", children =
+			{
+				{ type = "FILTER", condition = IsJobMatch, params = { job = "DIPLOMATIC" } },
+				DiplomaticDiscussProposal,
+			}
+		},
+		{ type = "SEQUENCE", children =
+			{
+				{ type = "FILTER", condition = IsCharaMilitaryOfficer },
+				GeneralDiscussProposal,
+			}
+		},				
+		{ type = "SEQUENCE", children =
+			{
+				{ type = "FILTER", condition = IsCharaCivialOfficial },
+				OfficerDiscussProposal,
+			}
+		},
+		{ type = "RANDOM_SELECTOR", desc = "", children =
+			{
+				CharacterAI_WarPreparednessBranch,
+				CharacterAI_TechProposal,
+				CharacterAI_DiplomacyAffaisBranch,
+				CharacterAI_CityAffaisBranch,
+				CharacterAI_HumanResourceBranch,
+				CharacterAI_MilitaryBranch,
+			},
+		}
+	}
+}
+
+---------------------------------------------
+
+local CharacterAI_AISubmitProposal =
+{
+	type = "SEQUENCE", desc = "AI Submit", children =
+	{
+		{ type = "FILTER", condition = CanAssignProposal },
+		CharacterAI_DefaultPriorityProposal,
+	}
+}
+
+---------------------------------------------
+
 local CharacterAI_GroupDiscussProposal =
 {
 	type = "SEQUENCE", desc = "Group Discuss", children =
 	{
 		{ type = "FILTER", condition = CanSubmitProposal },
-		{ type = "SELECTOR", children = 
-			{
-				CharacterAI_DebugConflictProposal,
-				
-				{ type = "SEQUENCE", children =
-					{
-						{ type = "FILTER", condition = IsJobMatch, params = { job = "DIPLOMATIC" } },
-						DiplomaticDiscussProposal,
-					}
-				},	
-				{ type = "SEQUENCE", children =
-					{
-						{ type = "FILTER", condition = IsCharaMilitaryOfficer },
-						GeneralDiscussProposal,
-					}
-				},				
-				{ type = "SEQUENCE", children =
-					{
-						{ type = "FILTER", condition = IsCharaCivialOfficial },
-						OfficerDiscussProposal,
-					}
-				},
-				CharacterAI_DefaultPriorityProposal,
-			}
-		}
+		CharacterAI_DefaultPriorityProposal,
 	}
 }
 
@@ -2063,20 +2098,10 @@ local CharacterAI_GroupDiscussProposal =
 
 local CharacterAI_CityDiscussProposal =
 {
-	type = "SEQUENCE", desc = "City Discuss", children =
+	type = "SEQUENCE", desc = "Group Discuss", children =
 	{
 		{ type = "FILTER", condition = CanSubmitProposal },
-		CharacterAI_DebugConflictProposal,
-		--[[
-		{ type = "RANDOM_SELECTOR", desc = "", children =
-			{
-				CharacterAI_WarPreparednessBranch,
-				CharacterAI_CityAffaisBranch,
-				CharacterAI_HumanResourceBranch,
-				CharacterAI_MilitaryBranch,
-			},
-		}
-		]]
+		CharacterAI_DefaultPriorityProposal,
 	}
 }
 
@@ -2138,7 +2163,7 @@ function CharacterAI:SetType( type )
 	elseif type == CharacterAICategory.DIPLOMACY_PROPOSAL then
 		self.standardAI = self.diplomacyProposal
 
-	elseif type == CharacterAICategory.AI_SELECT_PROPOSAL then
+	elseif type == CharacterAICategory.AI_CHOICE_PROPOSAL then
 		self.standardAI = self.aiSelectProposal
 	elseif type == CharacterAICategory.AI_SUBMIT_PROPOSAL then
 		self.standardAI = self.aiSubmitProposal

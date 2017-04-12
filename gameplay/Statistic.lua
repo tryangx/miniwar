@@ -45,11 +45,25 @@ function Statistic:__init()
 
 	--Proposal
 	self.submitProposals = {}
-	self.cityProposals = {}
+	self.citySubmitProposals = {}
+	self.acceptProposals = {}
+	self.cityAcceptProposals = {}
 	
 	--Tasks
 	self.cancelTasks= {}
 	self.focusTasks = {}	
+
+	--City Track
+	self.cityTracks = {}
+end
+
+function Statistic:Start()
+	self.file = SaveFileUtility()
+	self.file:OpenFile( "statitstic_" .. g_gameId .. ".log", true )
+end
+
+function Statistic:DumpText( ... )
+	self.file:Write( ... )
 end
 
 function Statistic:ClearCharaList()
@@ -59,14 +73,21 @@ function Statistic:ClearCharaList()
 	self.otherCharacterList = {}
 end
 
-
 -------------------------------------
 -- Proposal & Task
 
 function Statistic:SubmitProposal( desc, city )
 	table.insert( self.submitProposals, desc )
-	if not self.cityProposals[city] then self.cityProposals[city] = {} end
-	table.insert( self.cityProposals[city], desc )
+	if not self.citySubmitProposals[city] then self.citySubmitProposals[city] = {} end
+	table.insert( self.citySubmitProposals[city], desc )
+	--print( "Submit-->>"..desc )
+end
+
+function Statistic:AcceptProposal( desc, city )
+	table.insert( self.acceptProposals, desc )
+	if not self.cityAcceptProposals[city] then self.cityAcceptProposals[city] = {} end
+	table.insert( self.cityAcceptProposals[city], desc )
+	--print( "Accept-->>"..desc )
 end
 
 function Statistic:CancelTask( desc )
@@ -179,6 +200,20 @@ function Statistic:CountTroop( troop )
 	self:CountSoldier( troop.number + troop.wounded )
 end
 
+------------------------------------
+
+function Statistic:TrackCity( city, number )
+	if not self.cityTracks[city] then self.cityTracks[city] = {} end
+	local list = self.cityTracks[city]	
+	local len = #list
+	if len > 0 then
+		if number == list[len].data then
+			return
+		end
+	end
+	table.insert( self.cityTracks[city], { data = number, desc = number .. " " .. g_calendar:CreateCurrentDateDesc( true, true ) } )
+end
+
 -------------------------------------
 
 function Statistic:DieInCombat( number )	
@@ -231,7 +266,7 @@ end
 
 function Statistic:CityFall( city, group )
 	local oldGroup = city:GetGroup()
-	table.insert( self.fallenCities, Helper_AbbreviateString( city.name, 12 ) .. "	" .. ( oldGroup and oldGroup.name or "Neutral" ) .. "->" .. group.name	 .. " " .. g_calendar:CreateCurrentDateDesc() )
+	table.insert( self.fallenCities, Helper_AbbreviateString( city.name, 12 ) .. "	" .. ( oldGroup and oldGroup.name or "Neutral" ) .. "->" .. group.name	 .. " " .. g_calendar:CreateCurrentDateDesc( true, true ) )
 end
 
 function Statistic:Update()
@@ -248,83 +283,91 @@ end
 function Statistic:DumpCharaDetail()	
 	function DumpList( list )
 		for k, item in ipairs( list ) do
-			print( "", item:CreateBrief() )
+			self:DumpText( "	" .. item:CreateBrief() )
 		end
 	end
-	ShowText( "ActChara      = ".. #self.activateCharaList )
+	self:DumpText( "ActChara      = ".. #self.activateCharaList )
 	DumpList( self.activateCharaList )
-	ShowText( "OutChara      = ".. #self.outCharacterList )
+	self:DumpText( "OutChara      = ".. #self.outCharacterList )
 	DumpList( self.outCharacterList )
-	ShowText( "OtherChara    = ".. #self.otherCharacterList )	
+	self:DumpText( "OtherChara    = ".. #self.otherCharacterList )	
 	DumpList( self.otherCharacterList )
-	ShowText( "PrisonerChara = ".. #self.prisonerCharacterList )	
+	self:DumpText( "PrisonerChara = ".. #self.prisonerCharacterList )	
 	DumpList( self.prisonerCharacterList )
 end
 
 function Statistic:Dump()
-	ShowText( "Tech          = " .. self.numOfReserachTech .. "(tot)/" .. self.maxNumOfResearchTech .. "(max)/" .. self.minNumOfResearchTech .. "(min)" )
+	self:DumpText( "Tech          = " .. self.numOfReserachTech .. "(tot)/" .. self.maxNumOfResearchTech .. "(max)/" .. self.minNumOfResearchTech .. "(min)" )
 	
-	ShowText( "Activate Group=" .. #self.activateGroups )
+	self:DumpText( "Activate Group=" .. #self.activateGroups )
 	for k, group in ipairs( self.activateGroups ) do
 		local content = group.name .. " city=" .. #group.cities.."("..group:GetPlotNumber()..")" .. " chara="..#group.charas .. "/" .. QueryGroupCharaLimit( group ) .. " corps="..#group.corps.. " troops="..#group.troops .. " soldier=" .. group:GetMilitaryPower() .. " popu=" .. group:GetPopulation()
 		content = content .. " MilServ=" .. group:GetMilitaryService()
-		ShowText( "", content )
+		self:DumpText( "	" .. content )
 		local deps = group:GetDependencyRelations()
 		if #deps > 0 then
-			ShowText( "    Dep=" )
-			for k, relation in ipairs( deps ) do if relation._targetGroup then ShowText( "        " .. relation._targetGroup.name .. "+" .. relation._targetGroup:GetPower() .. " " .. MathUtility_FindEnumName( GroupRelationType, relation.type ) ) end end		
+			self:DumpText( "    Dep=" )
+			for k, relation in ipairs( deps ) do if relation._targetGroup then self:DumpText( "        " .. relation._targetGroup.name .. "+" .. relation._targetGroup:GetPower() .. " " .. MathUtility_FindEnumName( GroupRelationType, relation.type ) ) end end		
 		end
-		ShowText( "  proposals(".. #group.proposals ..")" )
 		group:Dump()
-		--for k, desc in ipairs( group.proposals ) do ShowText( "", "", desc ) end
+		self:DumpText( "	Group Proposals(".. #group.proposals ..")" )		
+		--for k, desc in ipairs( group.proposals ) do self:DumpText( "	" .. "	" .. desc ) end
 	end	
 
-	ShowText( "City          = " .. #self.cities ) 
-	for k, city in ipairs( self.cities ) do
-		city:DumpBrief( nil, true )
-		city:DumpCorpsBrief()
-	end
+	self:DumpText( "City          = " .. #self.cities ) 
+	--for k, city in ipairs( self.cities ) do city:DumpBrief( nil, true ) city:DumpCorpsBrief() end
 
 	--self:DumpCharaDetail()
 	
-	ShowText( "Cancel Task   = " .. #self.cancelTasks )
+	self:DumpText( "Cancel Task   = " .. #self.cancelTasks )
 	--MathUtility_Dump( self.cancelTasks )
 	
 	MathUtility_Dump( self.focusTasks )
 
-	ShowText( "Fallen   Group:" ) for k, desc in ipairs( self.fallenGroups ) do ShowText( "", desc ) end
+	self:DumpText( "Fallen   Group:" ) for k, desc in ipairs( self.fallenGroups ) do self:DumpText( "	" .. desc ) end
 	
-	ShowText( "Fallen   City:" ) for k, desc in ipairs( self.fallenCities ) do ShowText( "", desc ) end
+	self:DumpText( "Fallen   City:" ) for k, desc in ipairs( self.fallenCities ) do self:DumpText( "	" .. desc ) end	
+	self:DumpText( "Combat Occured= " .. #self.combatDetails )
+	for k, desc in ipairs( self.combatDetails ) do self:DumpText( "	" .. desc ) end
 	
-	ShowText( "Combat Occured= " .. #self.combatDetails )
-	for k, desc in ipairs( self.combatDetails ) do ShowText( "", desc ) end
+	self:DumpText( "Die in Combat = " .. self.numOfDieInCombat )
+	self:DumpText( "Soldier       = " .. self.numOfSoldier .. "(cur)/" .. self.maxNumOfSoldier .. "(max)" )
+	self:DumpText( "Corps         = " .. #self.corpsList )
+	self:DumpText( "Troop         = " .. self.numOfTroop )
 	
-	ShowText( "Die in Combat = " .. self.numOfDieInCombat )
-	ShowText( "Soldier       = " .. self.numOfSoldier .. "(cur)/" .. self.maxNumOfSoldier .. "(max)" )
-	ShowText( "Corps         = " .. #self.corpsList )
-	ShowText( "Troop         = " .. self.numOfTroop )
+	self:DumpText( "Die Natural   = " .. self.numOfDieNatural )
+	self:DumpText( "Born Natural  = " .. self.numOfBornNatural )	
+	self:DumpText( "Tot Population= " .. self.totalPopulation .. "/" .. self.maxTotalPopulation .. "(max)/" .. self.minTotalPopulation .. "(min)/" .. self.pouplationUnderRule .. "(city)" )
 	
-	ShowText( "Die Natural   = " .. self.numOfDieNatural )
-	ShowText( "Born Natural  = " .. self.numOfBornNatural )	
-	ShowText( "Tot Population= " .. self.totalPopulation .. "/" .. self.maxTotalPopulation .. "(max)/" .. self.minTotalPopulation .. "(min)/" .. self.pouplationUnderRule .. "(city)" )
+	self:DumpText( "Pass time     = " .. math.floor( self.elapsedTime / 360 ) .. "Y" .. math.floor( ( self.elapsedTime % 360 ) / 30 ) .. "M" .. math.floor( self.elapsedTime % 30 ) .. "D" )
 	
-	ShowText( "Pass time     = " .. math.floor( self.elapsedTime / 360 ) .. "Y" .. math.floor( ( self.elapsedTime % 360 ) / 30 ) .. "M" .. math.floor( self.elapsedTime % 30 ) .. "D" )
+	self:DumpText( "Cur Time      = " .. g_calendar:CreateCurrentDateDesc( true, true ) )
 	
-	ShowText( "Cur Time      = " .. g_calendar:CreateCurrentDateDesc( true, true ) )
-	
-	ShowText( "Seed          = " .. g_syncRandomizer:GetSeed() .. "," .. g_asyncRandomizer:GetSeed() )
+	self:DumpText( "Seed          = " .. g_syncRandomizer:GetSeed() .. "," .. g_asyncRandomizer:GetSeed() )
 
 	for k, city in ipairs( self.cities ) do
 		if not self.combatLocations[city] then
-			print( city.name .. " occured=" .. ( self.combatLocations[city] and self.combatLocations[city] or "0" ) )
+			self:DumpText( city.name .. " occured_combat=" .. ( self.combatLocations[city] and self.combatLocations[city] or "0" ) )
 		end
 	end
-	
-	--MathUtility_Dump( self.submitProposals )
-	for city, list in pairs( self.cityProposals ) do
-		print( city.name .. "=" .. #list )
-		for k, desc in ipairs( list ) do
-			print( "", desc )
-		end
+
+	self:DumpText( "Submit Proposal:" )
+	for city, list in pairs( self.citySubmitProposals ) do
+		self:DumpText( city.name .. "=" .. #list )
+		--for k, desc in ipairs( list ) do self:DumpText( "	" .. desc ) end
 	end
+
+	self:DumpText( "Accept Proposal:" )
+	for city, list in pairs( self.cityAcceptProposals ) do
+		self:DumpText( city.name .. "=" .. #list )
+		--for k, desc in ipairs( list ) do self:DumpText( "	" .. desc ) end
+	end
+
+	self:DumpText( "City Track" )
+	for city, list in pairs( self.cityTracks ) do
+		self:DumpText( city.name .. "=" .. #list )
+		--for k, data in ipairs( list ) do self:DumpText( "	" .. data.desc ) end
+	end
+
+	if self.file then self.file:CloseFile() end
 end

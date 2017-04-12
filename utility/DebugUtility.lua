@@ -1,41 +1,39 @@
 require "LogUtility"
 
-local DebugLog = LogUtility( "debug.log", LogFileMode.WRITE_MANUAL, LogPrinterMode.OFF, LogWarningLevel.NORMAL )
+local enableDebug = false
+local DebugLog = nil
+
+local function Debug_GetLog()
+ 	if not DebugLog then DebugLog = LogUtility( "debug_" .. g_gameId .. ".log", LogWarningLevel.LOG, true ) end
+ 	return DebugLog
+end
 
 function Debug_Level( level )
-	if level then 
-		DebugLog:SetLogLevel( LogWarningLevel.DEBUG )
-	else
-		DebugLog:SetLogLevel( LogWarningLevel.NORMAL )
+	if level then DebugLog:SetLogLevel( level ) end
+end
+
+function Debug_Normal( ... )
+	if enableDebug then Debug_GetLog():WriteDebug( ... ) end
+end
+
+function Debug_Log( ... )
+	if enableDebug then Debug_GetLog():WriteLog( ... ) end
+end
+
+function Debug_Error( ... )
+	if enableDebug then Debug_GetLog():WriteError( ... ) end
+end
+
+function Debug_Assert( condition, ... )
+	if not condition or condition() then
+		Debug_GetLog():Write( ..., LogWarningLevel.LOG )
 	end
 end
 
-function Debug_Log( message )
-	DebugLog:WriteLog( message, LogWarningLevel.DEBUG )
+function Debug_Enable( enable )
+	enableDebug = enable
 end
 
-function Debug_Normal( message )
-	DebugLog:WriteLog( message, LogWarningLevel.NORMAL )
-end
-
-function Debug_Assert( condition, message )
-	if not condition then
-		DebugLog:WriteLog( message, LogWarningLevel.ASSERT )
-	end
-end
-
-function Debug_Error( message )
-	DebugLog:WriteLog( message, LogWarningLevel.ERROR )	
-end
-
-function Debug_SetFileMode( isWriteImmediately )
-	DebugLog:SetLogFileMode( isWriteImmediately )
-end
-
-function Debug_SetPrinterNode( isOn )	
-	DebugLog:SetPrinterMode( isOn )
-end
-
-function Debug_Flush()
-	DebugLog:Flush()
+function Debug_SetPrinterNode( isOn )
+	Debug_GetLog():SetPrinterMode( isOn )
 end

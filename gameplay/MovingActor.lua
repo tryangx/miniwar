@@ -124,7 +124,7 @@ function MovingActorManager:AddActor( actorType, actor, data )
 	local list = self:GetList( actorType )
 	m = list[actor.id]
 	if actor.id and m then
-		print( "exist moving actor=", m.data and m.data.reason or "" )
+		ShowDebug( "exist moving actor=", m.data and m.data.reason or "" )
 		InputUtility_Pause( "Add Move Actor=" .. NameIDToString( actor ), ( data and data.reason or "" ) )
 		k.p = 1
 		return
@@ -133,7 +133,7 @@ function MovingActorManager:AddActor( actorType, actor, data )
 	m.id = actor.id
 	m.data = data
 	list[m.id] = m
-	--print( "add moving actor=", NameIDToString( actor ), m.data and m.data.reason or "" )
+	--ShowText( "add moving actor=", NameIDToString( actor ), m.data and m.data.reason or "" )
 end
 
 function MovingActorManager:CreateActor( actorType, data )

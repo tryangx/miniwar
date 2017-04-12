@@ -99,7 +99,7 @@ end
 
 
 function MathUtility_DumpWithTab( content, indent )
-	io.write( string.rep (" ", indent) ) -- indent it
+	io.write( string.rep (" ", indent) )
 	io.write( content )
 	io.write( "\n" )
 	--print( str )
@@ -113,8 +113,8 @@ function MathUtility_Dump( table, indent, depth )
 		return
 	end
 	if indent > depth then
-		return
 		--print( "Depth too high" )
+		return
 	end
 	MathUtility_DumpWithTab( "{", indent )	
 	for k, v in pairs( table ) do

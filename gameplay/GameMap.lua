@@ -14,7 +14,7 @@ function GameMap:DrawMapTable( fn )
 	for x = 1, g_plotMap.width, self.xInc do
 		content = content .. ( "x=".. Helper_AbbreviateString( x, self.blankLength - 1 ) )
 	end
-	print( content )
+	ShowText( content )
 	for y = 1, g_plotMap.height do
 		local row = self.map[y]
 		if row then
@@ -23,7 +23,7 @@ function GameMap:DrawMapTable( fn )
 				local ret = fn( x, y, row[x] )
 				content = content .. ret
 			end
-			print( "Y=".. y, content )
+			ShowText( "Y=".. y, content )
 		end
 	end
 	--[[
@@ -32,7 +32,7 @@ function GameMap:DrawMapTable( fn )
 		for x = 1, g_plotMap.width, self.yInc do
 			content = content .. fn( x, y )
 		end
-		print( "Y=".. y, content )
+		ShowText( "Y=".. y, content )
 	end
 	]]
 end
@@ -52,7 +52,7 @@ function GameMap:UpdateMap()
 		local y = pos.y
 		local x = math.ceil( pos.x / self.xInc )
 		if not self.map[y] then self.map[y] = {} end
-		--if self.map[y][x] then print( "Duplicate", city.name, self.map[y][x].name, "in " .. pos.x .. ",", pos.y ) end
+		--if self.map[y][x] then ShowText( "Duplicate", city.name, self.map[y][x].name, "in " .. pos.x .. ",", pos.y ) end
 		self.map[y][x] = city
 		if not self.map[y].length then
 			self.map[y].length = x
@@ -73,7 +73,7 @@ end
 
 function GameMap:DrawCharaMap( invalidate )
 	if not invalidate then self:UpdateMap() end
-	print( "Chara Map" )
+	ShowText( "Chara Map" )
 	self:DrawMapTable( function( x, y, data )
 		local city = data	
 		if city then			
@@ -88,7 +88,7 @@ end
 
 function GameMap:DrawPowerMap( invalidate )
 	if not invalidate then self:UpdateMap() end
-	print( "Power Map" )
+	ShowText( "Power Map" )
 	self:DrawMapTable( function( x, y, data )
 		local city = data	
 		if city then			
@@ -109,7 +109,7 @@ end
 
 function GameMap:DrawGroupMap( invalidate )
 	if not invalidate then self:UpdateMap() end
-	print( "Group Map" )
+	ShowText( "Group Map" )
 	self:DrawMapTable( function( x, y, data )
 		local city = data	
 		if city then
@@ -127,7 +127,7 @@ end
 
 function GameMap:DrawCityMap()
 	if not invalidate then self:UpdateMap() end
-	print( "City Map" )		
+	ShowText( "City Map" )		
 	self:DrawMapTable( function( x, y, data )
 		local city = data
 		if city then return "<".. Helper_AbbreviateString( city.name, self.blankLength ) ..">" end
@@ -137,7 +137,7 @@ end
 
 function GameMap:DrawResourceMap()
 	if not invalidate then self:UpdateMap() end
-	print( "Resource Map" )
+	ShowText( "Resource Map" )
 	self:DrawMapTable( function ( x, y, data )
 		local plot = g_plotMap:GetPlot( x, y )
 		if plot.resource then

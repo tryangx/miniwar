@@ -450,12 +450,6 @@ function City:GetNumOfFreeChara()
 		return chara:IsFree()
 	end )
 end
-
-function City:GetNumOfFreeChara()
-	return Helper_CountIf( self.charas, function( chara )
-		return chara:IsFree()
-	end )
-end
 function City:GetFreeCharaList()
 	return Helper_ListIf( self.charas, function( chara )
 		return chara:IsFree() and chara ~= self:GetLeader()
@@ -908,7 +902,6 @@ function City:CreateMilitaryBreif()
 end
 
 function City:DumpCorpsBrief()
-	if self.id ~= 801 then return end
 	print( "corps brief" )
 	for k, corps in ipairs( self.corps ) do
 		local task = g_taskMng:GetTaskByActor( corps )
@@ -919,7 +912,6 @@ function City:DumpCorpsBrief()
 end
 
 function City:DumpBrief()
-	if self.id ~= 801 then return end
 	local indent = ""
 	ShowText( '>>>>>>>>>>>  City >>>>>>>>>>>>>>>>>' )
 	ShowText( indent .. '[City] #' .. self.id .. ' Name=' .. self.name .. ' Group=' .. ( self.group and self.group.name or "[none]" ) )
@@ -1195,10 +1187,7 @@ function City:SelectLeader( leader )
 	end
 	self.leader = leader
 	if #self.charas ~= 0 and not self.leader then
-		quickSimulate = false
-		self:Dump( nil, true )
 		InputUtility_Pause( "select leader" )
-		quickSimulate = true
 	end
 end
 
@@ -1259,8 +1248,6 @@ function City:CheckData()
 	CheckData( self.troops, self )
 	CheckData( self.charas, self )	
 	if string.len( hint ) > 0 then
-		quickSimulate = false
-		self:Dump( nil, true )
 		InputUtility_Pause( hint )
 	end
 end
@@ -1387,4 +1374,5 @@ function City:Update()
 	end
 	
 	--InputUtility_Pause( "update city=" .. self.name .. " " .. #self.tags )
+	g_statistic:TrackCity( self, self:GetPower() )
 end

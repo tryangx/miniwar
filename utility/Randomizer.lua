@@ -2,7 +2,7 @@ Randomizer = class()
 
 function Randomizer:__init( seed )
 	self.seed = seed or 0
-	print( "seed=", seed )
+	--print( "seed=", seed )
 end
 
 function Randomizer:GetSeed( seed )

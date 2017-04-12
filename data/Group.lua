@@ -833,7 +833,7 @@ end
 -- Proposal Relative
 ----------------------------------------------
 
-function Group:ExecuteProposal( desc )
+function Group:AcceptProposal( desc )
 	table.insert( self.proposals, desc )
 end
 
@@ -856,11 +856,6 @@ function Group:EstablishCorps( corps )
 end
 
 function Group:SelectLeader( leader )
-	if self.leader then
-		quickSimulate = false
-		self.leader:Dump()
-		InputUtility_Pause( "oldleader" )
-	end
 	print( NameIDToString( self ) .. " select leader=" .. NameIDToString( leader ) .. " old=" .. NameIDToString( self.leader ) )
 	self.leader = leader
 end

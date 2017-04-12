@@ -74,16 +74,20 @@ end
 GlobalConst = 
 {
 	------------------------	
-	-- Time
-	--
-	-- Elapsed Time  : Use to elpase Time, minimum unit per turn.
+	-- 		Time
+	
+	-- Elapsed Time  : Use to elpase Time, minimum unit per turn.		
+	ELPASED_TIME  = 10,
+
 	-- Unit Time     : Standard Time, use to evaluate all functions.
+	UNIT_TIME     = 10,
+
 	-- Time Per Year : Standard Time, use to implement some functions.
-	-- Move Time     : Standard Time, use to move entity like characters, corps.	
-	ELPASED_TIME  = 30,
-	UNIT_TIME     = 30,
 	TIME_PER_YEAR = 360,
+
+	-- Move Time     : Standard Time, use to move entity like characters, corps.	
 	MOVE_TIME     = 2,
+	------------------------	
 	
 	--assets
 	INVALID_MONEY = 100000000,
@@ -1636,6 +1640,7 @@ CharacterProposal =
 	DISPATCH_CORPS   = 64,
 	SIEGE_CITY       = 65,
 	MEET_ATTACK      = 66,
+	DISPATCH_TROOPS  = 67,
 	MILITARY_AFFAIRS_END = 69,
 
 	-- Diplomacy
@@ -1658,7 +1663,7 @@ CharacterProposal =
 	-- AI Relative	
 	AI_COLLECT_PROPOSAL = 201,
 	AI_SUBMIT_PROPOSAL  = 202,
-	AI_SELECT_PROPOSAL  = 203,
+	AI_CHOICE_PROPOSAL  = 203,
 	
 	-- Player Choice	
 	PLAYER_EXECUTE_PROPOSAL = 300,	

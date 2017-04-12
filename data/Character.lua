@@ -285,7 +285,7 @@ end
 -- Operation
 
 function Character:MoveToLocation( location )
-	--print( NameIDToString( self ) .. " move from " .. ( self.location and self.location.name or "" ) .. "->" .. ( location and location.name or "" ) )
+	--ShowDebug( NameIDToString( self ) .. " move from " .. ( self.location and self.location.name or "" ) .. "->" .. ( location and location.name or "" ) )
 	self.location = location
 	g_movingActorMng:RemoveActor( MovingActorType.CHARACTER, self )
 end
@@ -296,41 +296,41 @@ end
 
 function Character:JoinCity( city )
 	if city and city:GetGroup() ~= self:GetGroup() then
-		print( "Join", self.name, city:GetGroup(), self:GetGroup(), city.name )
+		ShowDebug( "Join", self.name, city:GetGroup(), self:GetGroup(), city.name )
 		InputUtility_Pause( city.name .. "["..( city:GetGroup() and city:GetGroup().name or "" ).."] is not ", ( self:GetGroup() and self:GetGroup().name or "" ) )
 		k.p = 1
 	end
 	self.home = city
-	--print( NameIDToString( self ), "join=" .. ( city and city.name or "" ) )	
+	--ShowDebug( NameIDToString( self ), "join=" .. ( city and city.name or "" ) )	
 end
 
 function Character:JoinGroup( group )
-	if group and self.group and self.group ~= group then print( self.name .. "	join ", group.name ) end
+	if group and self.group and self.group ~= group then ShowDebug( self.name .. "	join ", group.name ) end
 	self.group = group
 	--if self.id == 800 then InputUtility_Pause( "join", self.name, group and group.name or "" ) end
 end
 
 -- When the group which character works in is fallen,
 function Character:Out()
-	print( self.name, "chara out" )
+	ShowDebug( self.name, "chara out" )
 	self.status = CharacterStatus.OUT
 	self.job = CharacterJob.NONE
 end
 
 function Character:Leave()
-	print( self.name, "chara leave")
+	ShowDebug( self.name, "chara leave")
 	self.status = CharacterStatus.LEAVE
 	self.job = CharacterJob.NONE
 end
 
 function Character:Die()
-	print( self.name .. " die" )
+	ShowDebug( self.name .. " die" )
 	self.status = CharacterStatus.DEAD
 	self.job = CharacterJob.NONE
 end
 
 function Character:Captured()
-	print( self.name .. " captured" )
+	ShowDebug( self.name .. " captured" )
 	self.status = CharacterStatus.PRISONER
 end
 
@@ -393,21 +393,34 @@ end
 
 function Character:SubmitProposal( proposal )
 	self._submitProposal = proposal
+	local desc = Proposal_CreateDesc( proposal, true )	
+	if proposal.type <= CharacterProposal.PROPOSAL_COMMAND then
+		g_statistic:SubmitProposal( desc, self.home )
+	end
 	if proposal.type <= CharacterProposal.PROPOSAL_COMMAND or proposal.type == CharacterProposal.PLAYER_GIVEUP_PROPOSAL then
 		self._hasSubmitProposal = true
-		local desc = Meeting:CreateProposalDesc( proposal, true, true )
-		g_statistic:SubmitProposal( desc, self.home )
 	end
 end
 
 function Character:AcceptProposal()
+	if self._submitProposal.type <= CharacterProposal.PROPOSAL_COMMAND then
+		local desc = Proposal_CreateDesc( self._submitProposal, true )		
+		self.group:AcceptProposal( desc )
+		g_statistic:AcceptProposal( desc, self.home )
+	end
+
 	self.stamina = self.stamina - CharacterParams.STAMINA["ACCEPT_PROPOSAL"]
 	if self.stamina < 0 then self.stamina = 0 end
 	self._submitProposal = nil
 end
 
 function Character:ProposalAccepted()
-	--Debug_Normal( "["..self.name.."] proposal accepted" )	
+	if self._submitProposal.type <= CharacterProposal.PROPOSAL_COMMAND then
+		local desc = Proposal_CreateDesc( self._submitProposal, true )
+		self.group:AcceptProposal( desc )
+		g_statistic:AcceptProposal( desc, self.home )
+	end
+
 	self.stamina = self.stamina - CharacterParams.STAMINA["SUBMIT_PROPOSAL"]
 	if self.stamina < 0 then self.stamina = 0 end
 	self._submitProposal = nil

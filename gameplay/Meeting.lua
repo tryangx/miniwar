@@ -100,6 +100,7 @@ MeetingSubFlow =
 	SUB_DISPATCH_CORPS   = 64,
 	SUB_SIEGE_CITY       = 65,
 	SUB_MEET_ATTACK      = 66,
+	SUB_DISPATCH_TROOPS  = 67,
 }
 
 Meeting = class()
@@ -117,106 +118,6 @@ end
 
 ---------------------------------------
 -- Common Flow
-function Meeting:CreateProposalDesc( proposal, needChara, needDate )
-	local content = ""
-	--Tech
-	if proposal.type == CharacterProposal.TECH_RESEARCH then
-		content = "Research [" .. NameIDToString( proposal.target ) .. "]" .. " By [" .. proposal.proposer.name .. "]"
-
-	--Diplomacy Relative
-	elseif proposal.type == CharacterProposal.FRIENDLY_DIPLOMACY then
-		content = "Friendly with [" .. NameIDToString( proposal.target ) .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
-	elseif proposal.type == CharacterProposal.THREATEN_DIPLOMACY then
-		content = "Threaten with [" .. NameIDToString( proposal.target ) .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
-	elseif proposal.type == CharacterProposal.ALLY_DIPLOMACY then
-		content = "Ally with [" .. NameIDToString( proposal.target ) .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
-	elseif proposal.type == CharacterProposal.MAKE_PEACE_DIPLOMACY then
-		content = "Make peace with [" .. NameIDToString( proposal.target ) .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
-	elseif proposal.type == CharacterProposal.DECLARE_WAR_DIPLOMACY then
-		content = "Declare war to [" .. NameIDToString( proposal.target ) .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
-	elseif proposal.type == CharacterProposal.BREAK_CONTRACT_DIPLOMACY then
-		content = "Break contract with [" .. NameIDToString( proposal.target ) .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
-	elseif proposal.type == CharacterProposal.SURRENDER_DIPLOMACY then
-		content = "Surrender to [" .. NameIDToString( proposal.target ) .. "]("..proposal.target:GetPower()..")"  .. " Prob=" .. proposal.prob
-	
-	--Internal affairs
-	elseif proposal.type == CharacterProposal.CITY_INVEST then
-		content = "Invest " .. " in ["..NameIDToString( proposal.target ).."]" 
-	elseif proposal.type == CharacterProposal.CITY_FARM then
-		content = "Farm " .. " in ["..NameIDToString( proposal.target ).."]" 
-	elseif proposal.type == CharacterProposal.CITY_PATROL then
-		content = "Patrol " .. " in ["..NameIDToString( proposal.target ).."]" 
-	elseif proposal.type == CharacterProposal.CITY_LEVY_TAX then
-		content = "Collect Tax" .. " in ["..NameIDToString( proposal.target ).."]" 
-	elseif proposal.type == CharacterProposal.CITY_BUILD then	
-		content = "Build [" .. proposal.data.name .. "]" .. " in ["..NameIDToString( proposal.target ).."]" 
-	elseif proposal.type == CharacterProposal.CITY_INSTRUCT then
-		content = "Instruct [" .. NameIDToString( proposal.target ) .. "]" .. " to [".. MathUtility_FindEnumName( CityInstruction, proposal.data ) .."]" 
-		
-	--Human resource
-	elseif proposal.type == CharacterProposal.HR_DISPATCH then
-		content = "Dispatch [" .. NameIDToString( proposal.target ) .. "] to [".. proposal.data.name .. "]" 
-	elseif proposal.type == CharacterProposal.HR_CALL then
-		content = "Call [" .. NameIDToString( proposal.target ) .. "] to [".. proposal.data.name .. "]" 
-	elseif proposal.type == CharacterProposal.HR_HIRE then
-		content = "Hire [" .. NameIDToString( proposal.target ) .. "] in [".. proposal.data.name .. "]" 
-	elseif proposal.type == CharacterProposal.HR_EXILE then
-		content = "Exile [" .. NameIDToString( proposal.target ) .. "] in [".. proposal.data.name .. "]" 
-	elseif proposal.type == CharacterProposal.HR_PROMOTE then
-		content = "Promote [" .. NameIDToString( proposal.target ) .. "] in [".. proposal.data.name .. "]" 
-	elseif proposal.type == CharacterProposal.HR_LOOKFORTALENT then
-		content = "Look for Talent in [".. proposal.data.name .. "]" 
-		
-		
-	--War preparedness
-	elseif proposal.type == CharacterProposal.ESTABLISH_CORPS then
-		content = "Establish Corps " .. " in ["..proposal.data.name.."]" 	
-	elseif proposal.type == CharacterProposal.LEAD_TROOP then
-		content = "Lead [" .. NameIDToString( proposal.target ) .. "] with [".. proposal.data.name .. "]" 
-	elseif proposal.type == CharacterProposal.RECRUIT_TROOP then
-		content = "Recruit [".. NameIDToString( proposal.target ) .. "]" .. " in ["..proposal.data.name.."]" 
-	elseif proposal.type == CharacterProposal.REINFORCE_CORPS then
-		content = "Reinforce Corps [".. NameIDToString( proposal.target ) .. "]" 
-	elseif proposal.type == CharacterProposal.TRAIN_CORPS then
-		content = "Train Corps [".. NameIDToString( proposal.target ) .. "]" 
-	elseif proposal.type == CharacterProposal.REGROUP_CORPS then
-		local troopName = ""
-		for k, troop in ipairs( proposal.target ) do
-			troopName = troopName .. NameIDToString( troop ) .. " "
-		end
-		content = "Regroup Corps [".. NameIDToString( proposal.data ) .. "]" .. " with [".. troopName .."]" 
-
-		
-	--Military
-	elseif proposal.type == CharacterProposal.ATTACK_CITY then
-		content = "Send [" .. NameIDToString( proposal.data ) .. "] Attack [".. NameIDToString( proposal.target ) .. "]"
-	elseif proposal.type == CharacterProposal.EXPEDITION then
-		content = "Send [" .. NameIDToString( proposal.data ) .. "] Go on expedition to [".. NameIDToString( proposal.target ) .. "] " 		
-	elseif proposal.type == CharacterProposal.DISPATCH_CORPS then
-		content = "Dispatch Corps [".. NameIDToString( proposal.data ) .. "]" .. " to ["..proposal.target.name.."]" 
-	
-	
-	else
-		content = "unknown " .. MathUtility_FindEnumName( CharacterProposal, proposal.type )	
-	end
-	
-	if needChara then content = content .. " By [" .. proposal.proposer.name .. "]" end
-	
-	if needDate then content = content .. " date=" .. g_calendar:CreateCurrentDateDesc( true, true )	 end
-	
-	return content
-end
-
-function Meeting:CreateProposalContent( proposal )
-	if not proposal then return end
-	proposal.content = self:CreateProposalDesc( proposal, true, false )
-end
-
-function Meeting:IsProposalFeasible( proposal )
-	if proposal.type == CharacterProposal.CITY_BUILD then
-	end
-	return true
-end
 
 function Meeting:ReselectProposal( chara )
 	if self._game:IsPlayer( chara ) then
@@ -224,10 +125,7 @@ function Meeting:ReselectProposal( chara )
 		if self._leader:CanAcceptProposal() then
 			for k, chara in ipairs( self._participants ) do			
 				if chara:GetProposal() then
-					local proposal = chara:GetProposal()					
-					if self:IsProposalFeasible( proposal ) then
-						table.insert( self.collectProposals, proposal )
-					end
+					table.insert( self.collectProposals, chara:GetProposal() )
 				end
 			end
 		end		
@@ -251,7 +149,7 @@ function Meeting:SelectProposalFlow( chara )
 				if chara:GetProposal() then
 					local proposal = chara:GetProposal()					
 					if self:IsProposalFeasible( proposal ) then
-						self:CreateProposalContent( proposal )
+						Proposal_CreateDesc( proposal )
 						proposal.c = index
 						proposal.fn = function ( proposal )
 							self._proposal = proposal
@@ -315,10 +213,7 @@ function Meeting:SelectProposalFlow( chara )
 				self:UpdateStatus( MeetingStatus.END_TOPIC )
 			end
 		else
-			g_charaAI:SetActor( self._leader )
-			g_charaAI:SetType( CharacterAICategory.AI_SELECT_PROPOSAL )
-			g_charaAI:SetBlackboard( { proposals = proposals } )
-			g_charaAI:Run()
+			Proposal_Choice( self._leader, proposals )
 			self:UpdateStatus( MeetingStatus.MAKE_CHOICE )
 		end
 	end
@@ -326,6 +221,28 @@ end
 
 -- Collect inferior's proposal
 function Meeting:CollectProposalFlow( chara )
+	if self.flow == MeetingFlow.CITY_DISCUSS_FLOW then
+		self._chara = self._leader
+		for k, chara in ipairs( self._participants ) do		
+			if chara:CanSubmitProposal() then						
+				if self._game:IsPlayer( chara ) then
+					self._chara = chara
+					submitProposal = true
+				else
+					Proposal_DiscussCityAffairs( chara, { city = self._city } )
+					if chara:GetProposal() and not self._game:IsPlayer( self._leader ) then					
+						ShowText( "###" .. chara.name .. " " .. Proposal_CreateDesc( chara:GetProposal() ) )
+					end
+				end
+			end
+		end
+		if submitProposal then
+			self:UpdateStatus( MeetingStatus.SUBMIT_PROPOSAL )
+		else
+			self:UpdateStatus( MeetingStatus.SELECT_PROPOSAL )
+		end
+		return
+	end
 	--InputUtility_Pause( "collect proposal" )
 	--Old version
 	if self.flow == MeetingFlow.TECH_FLOW then	
@@ -345,7 +262,7 @@ function Meeting:CollectProposalFlow( chara )
 		g_charaAI:SetType( CharacterAICategory.MILITARY_PROPOSAL )
 		g_charaAI:SetBlackboard( { city = self._city } )
 		
-	elseif self.flow == MeetingFlow.GROUP_DISCUSS_FLOW then
+	elseif self.flow == MeetingFlow.GROUP_DISCUSS_FLOW then		
 		g_charaAI:SetType( CharacterAICategory.GROUP_DISCUSS_PROPOSAL )
 		g_charaAI:SetBlackboard( { city = self._city } )
 	
@@ -357,17 +274,16 @@ function Meeting:CollectProposalFlow( chara )
 	
 	self._chara = self._leader
 	local submitProposal = false
-	for k, chara in ipairs( self._participants ) do
-		if chara:CanSubmitProposal() then			
+	for k, chara in ipairs( self._participants ) do		
+		if chara:CanSubmitProposal() then						
 			if self._game:IsPlayer( chara ) then
 				self._chara = chara
 				submitProposal = true
 			else
 				g_charaAI:SetActor( chara )
 				g_charaAI:Run()
-				self:CreateProposalContent( chara:GetProposal() )
-				if chara:GetProposal() and not self._game:IsPlayer( self._leader ) then
-					ShowText( "###" .. chara.name, chara:GetProposal().content )
+				if chara:GetProposal() and not self._game:IsPlayer( self._leader ) then					
+					ShowText( "###" .. chara.name, Proposal_CreateDesc( chara:GetProposal() ) )
 				end
 			end
 		end
@@ -405,13 +321,10 @@ function Meeting:MakeChoiceFlow( chara )
 			self:UpdateStatus( MeetingStatus.SELECT_PROPOSAL )
 		end
 	elseif proposal.type == CharacterProposal.PLAYER_ENTRUST_PROPOSAL then
-		g_charaAI:SetActor( chara )
-		g_charaAI:SetType( CharacterAICategory.AI_SELECT_PROPOSAL )
-		g_charaAI:SetBlackboard( { proposals = self.collectProposals } )
-		g_charaAI:Run()
+		Proposal_Choice( chara, self.collectProposals )
 		self:UpdateStatus( MeetingStatus.MAKE_CHOICE )
 		
-	elseif proposal.type == CharacterProposal.AI_SELECT_PROPOSAL then
+	elseif proposal.type == CharacterProposal.AI_CHOICE_PROPOSAL then
 		self._proposal = proposal.proposal
 		self:UpdateStatus( MeetingStatus.CONFIRM_PROPOSAL )	
 	elseif proposal.type == CharacterProposal.NEXT_TOPIC then
@@ -463,12 +376,19 @@ function Meeting:ConfirmProposalFlow( proposal )
 		if self.subFlow == MeetingSubFlow.ACTIVATE then
 			self.subFlow = MeetingSubFlow["SUB_" .. MathUtility_FindEnumKey( CharacterProposal, proposal.type )]
 			--ShowText( "subflow=" .. MathUtility_FindEnumName( MeetingSubFlow, self.subFlow ), self.subFlow, proposal.type, MathUtility_FindEnumKey( CharacterProposal, proposal.type )  )			
-		else
-			--print( "!!!Issue " .. self:CreateProposalDesc( proposal ) .. " by " .. proposal.proposer.name )
+		else			
 			--multiple actor
-			if proposal.type == CharacterProposal.SIEGE_CITY then
+			if proposal.type == CharacterProposal.DISPATCH_TROOPS then
+				--InputUtility_Pause( "!!!Issue Multiple" .. Proposal_CreateDesc( proposal ) .. " by " .. proposal.proposer.name )
 				local IssueProposal = MathUtility_Copy( proposal )
-				for k, corps in ipairs( proposal.data ) do
+				for k, troop in ipairs( proposal.data ) do					
+					proposal.actor = troop
+					g_taskMng:IssueTaskByProposal( proposal )
+				end
+			elseif proposal.type == CharacterProposal.SIEGE_CITY then
+				ShowDebug( "!!!Issue Multiple" .. Proposal_CreateDesc( proposal ) .. " by " .. proposal.proposer.name )
+				local IssueProposal = MathUtility_Copy( proposal )
+				for k, corps in ipairs( proposal.data ) do					
 					proposal.actor = corps
 					g_taskMng:IssueTaskByProposal( proposal )
 				end
@@ -485,13 +405,12 @@ function Meeting:ConfirmProposalFlow( proposal )
 			if self._leader ~= proposal.proposer then
 				proposal.proposer:ProposalAccepted()
 				self._leader:AcceptProposal()
-				if debugMeeting then InputUtility_Pause( "["..self._leader.name.."] accept proposal by [".. proposal.proposer.name .."] " .. proposal.content ) end
+				--ShowDebug( "["..self._leader.name.."] accept proposal by [".. proposal.proposer.name .."] " .. Proposal_CreateDesc( proposal ) )
 			else
 				self._leader:ProposalAccepted()
-				if debugMeeting then InputUtility_Pause( "["..self._leader.name.."] made proposal " .. self:CreateProposalDesc( proposal ) ) end
+				--ShowDebug( "["..self._leader.name.."] made proposal " .. Proposal_CreateDesc( proposal ) )
 			end
 			self.acceptProposals = self.acceptProposals + 1
-			self._group:ExecuteProposal( self:CreateProposalDesc( proposal, true, true ) )
 			if self.collectProposals then self:ReselectProposal( self._leader ) end
 		else
 			--ShowText( "No proposal made", MathUtility_FindEnumName( CharacterProposal, proposal.type ) )
@@ -540,10 +459,7 @@ function Meeting:SubmitProposalFlow( chara )
 			end )
 			AddMenuItem( "Entrust", MeetingFlow.GROUP_DISCUSS_FLOW, function ()
 				self._entrust = true
-				g_charaAI:SetType( CharacterAICategory.AI_SUBMIT_PROPOSAL )
-				g_charaAI:SetBlackboard( { city = self._city, flow = self.flow } )
-				g_charaAI:SetActor( chara )
-				g_charaAI:Run()
+				Proposal_Submit( chara, { city = self._city, flow = self.flow } )
 				self:UpdateStatus( nextStatus )
 			end )
 			
@@ -618,7 +534,7 @@ function Meeting:SubmitProposalFlow( chara )
 			end
 			if self._city:CanDispatchCorps() then
 				AddSubMenuItem( "Dispatch Crops", CharacterProposal.DISPATCH_CORPS )
-			end
+			end			
 			
 		elseif self.flow == MeetingFlow.MILITARY_FLOW then
 			if #self._city:GetAdjacentBelligerentCityList() > 0 then
@@ -679,10 +595,7 @@ function Meeting:SubmitProposalFlow( chara )
 	else
 		if debugMeeting then InputUtility_Pause( "AI Leader Submit proposal" ) end
 		chara:ClearProposal()
-		g_charaAI:SetType( CharacterAICategory.AI_SUBMIT_PROPOSAL )
-		g_charaAI:SetBlackboard( { city = self._city, flow = self.flow } )
-		g_charaAI:SetActor( chara )
-		g_charaAI:Run()
+		Proposal_Submit( chara, { city = self._city, flow = self.flow } )
 		self._proposal = chara:GetProposal()
 		self:UpdateStatus( MeetingStatus.CONFIRM_PROPOSAL )
 	end
@@ -1350,10 +1263,7 @@ function Meeting:StartTopic()
 		g_menu:PopupMenu( menus, self.title )
 	else
 		InputUtility_Pause( "*** Start Topic [".. self.title .. "] " )
-		g_charaAI:SetType( CharacterAICategory.AI_SUBMIT_PROPOSAL )
-		g_charaAI:SetActor( self._leader )
-		g_charaAI:SetBlackboard( { city = self._city, flow = self.flow } )
-		g_charaAI:Run()
+		Proposal_Submit( self._leader, { city = self._city, flow = self.flow } )
 		self:UpdateStatus( MeetingStatus.MAKE_CHOICE )
 	end
 end
@@ -1439,7 +1349,7 @@ function Meeting:HoldGroupMeeting( game, group )
 	self:UpdateStatus( MeetingStatus.START )
 	if self.acceptProposals == 0 then
 		--	print( group.name .. " noproposal", #charaList, #group:GetCapital().charas )
-		--self._group:ExecuteProposal( group.name .. " No Proposal " .. g_calendar:CreateCurrentDateDesc() )
+		--self._group:AcceptProposal( group.name .. " No Proposal " .. g_calendar:CreateCurrentDateDesc() )
 	end
 	--ShowText( "++++++++++ Group Meeting End ++++++++++++++++" )
 	--ShowText( "" )	
@@ -1451,7 +1361,7 @@ end
 
 function Meeting:HoldCityMeeting( game, city )
 	if city:IsInSiege() then
-		--print( city.name .. " in siege, cann't hold meeting" )
+		g_statistic:AcceptProposal( "In Siege" .. g_calendar:CreateCurrentDateDesc( true ), city )
 		return
 	end
 
@@ -1464,6 +1374,11 @@ function Meeting:HoldCityMeeting( game, city )
 	self._proposal = nil
 	self._hasCollectProposal = false
 	self._entrust = false
+
+	if #city.charas == 0 then
+		g_statistic:AcceptProposal( "No Chara " .. g_calendar:CreateCurrentDateDesc( true ), city )
+		return
+	end
 
 	local charaList = {}	
 	for k, chara in ipairs( city.charas ) do
@@ -1478,11 +1393,16 @@ function Meeting:HoldCityMeeting( game, city )
 	
 	if not self._leader then
 		--print( city.name .. " no leader="..#city.charas )
+		g_statistic:AcceptProposal( "No Leader " .. g_calendar:CreateCurrentDateDesc( true ), city )
 		return
 	end
 	
 	--if not self._leader then self._leader = leader end
 	self._participants = charaList
+	if #self._participants == 0 then
+		g_statistic:AcceptProposal( "No Participant " .. g_calendar:CreateCurrentDateDesc( true ), city )
+		return
+	end
 	MathUtility_Shuffle( charaList )
 	
 	--city:Dump( nil, true )
@@ -1495,8 +1415,8 @@ function Meeting:HoldCityMeeting( game, city )
 		--	print( group.name .. " noproposal", #charaList, #group:GetCapital().charas )
 		local cityList = city:GetAdjacentBelligerentCityList()
 		local corpsList = city:GetPreparedToAttackCorpsList()
-		self._group:ExecuteProposal( "[" .. city.name .. "] NoProposal " .. " chara=" .. #charaList .. " adjaBelli="..#cityList .. " readyCorp=" ..#corpsList  .. " " .. g_calendar:CreateCurrentDateDesc( true, true ) )
-		g_statistic:SubmitProposal( "No proposal" .. g_calendar:CreateCurrentDateDesc( true ), city )
+		self._group:AcceptProposal( "[" .. city.name .. "] NoProposal " .. " chara=" .. #charaList .. " adjaBelli="..#cityList .. " readyCorp=" ..#corpsList  .. " " .. g_calendar:CreateCurrentDateDesc( true, true ) )
+		g_statistic:AcceptProposal( "No proposal " .. g_calendar:CreateCurrentDateDesc( true ), city )
 	end
 	--ShowText( "++++++++++ City Meeting End ++++++++++++++++" )
 	--ShowText( "" )

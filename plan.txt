@@ -10,4 +10,4 @@
 3. Character Appear from Character Table, not only generate by template
 
 
-4.
+4. 

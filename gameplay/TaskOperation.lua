@@ -24,8 +24,8 @@ function AcceptSurrenderChara( group, chara, city )
 	if not chara then return end
 	local limit = QueryCityCharaLimit( city )
 	if limit >= #city.charas then
-		--cann't accept surrender chara, dismiss from troop
-		--InputUtility_Pause( "cann't accept surrender "..chara.name..", "..city.name.." is full" )
+		--cannot accept surrender chara, dismiss from troop
+		--InputUtility_Pause( "cannot accept surrender "..chara.name..", "..city.name.." is full" )
 		g_taskMng:TerminateTaskByActor( chara, "chara surrendered" )
 		CharaLeadTroop( chara, nil )
 		if chara:GetLocation() == city then
@@ -36,13 +36,13 @@ function AcceptSurrenderChara( group, chara, city )
 		end
 		return
 	end	
-	print( "Group " .. NameIDToString( group ) .. " Accept Surrender Chara " .. NameIDToString( chara ) )
+	print( "Group " .. NameIDToString( group ) .. " Accept Surrender Chara=" .. NameIDToString( chara ) )
 	CharaLeaveGroup( chara )
 	CharaJoinGroup( chara, city )
 end
 
 function AcceptSurrenderTroop( group, troop, city )
-	print( "Group " .. NameIDToString( group ) .. " Accept Surrender troop " .. NameIDToString( troop ) .. "leader=" .. ( troop:GetLeader() and troop:GetLeader().name or "" ) )
+	print( "Group " .. NameIDToString( group ) .. " Accept Surrender troop=" .. NameIDToString( troop ) .. "leader=" .. ( troop:GetLeader() and troop:GetLeader().name or "" ) )
 	g_taskMng:TerminateTaskByActor( troop, "troop surrendered" )
 	TroopLeaveGroup( troop )	
 	--chara leave
@@ -70,6 +70,7 @@ function CaptureChara( group, chara, prisonCity )
 	if isAcceptSurrender and isSurrender then		
 		AcceptSurrenderChara( group, chara, prisonCity )
 	else
+		print( "capture and killed chara=" .. chara.name )
 		CharaDie( chara )
 	end
 end
@@ -109,7 +110,7 @@ function CaptureCity( group, city )
 	g_statistic:CityFall( city, group )
 	
 	local originalGroup = city:GetGroup()	
-	print( "Group " .. NameIDToString( group ) .. "+chara=" .. #group.charas .. " Capture city " .. NameIDToString( city ) .. ( originalGroup and ( " oldgroup=" .. originalGroup.name.."+hascity="..#originalGroup.cities ) or "" ) )
+	--print( "Group " .. NameIDToString( group ) .. "+chara=" .. #group.charas .. " Capture city " .. NameIDToString( city ) .. ( originalGroup and ( " oldgroup=" .. originalGroup.name.."+hascity="..#originalGroup.cities ) or "" ) )
 	
 	--[[
 	quickSimulate = false
@@ -171,7 +172,7 @@ function CaptureCity( group, city )
 			
 			--print( "time to capture isolation chara" )
 			for k, chara in ipairs( charasList ) do
-				print( "capture chara", chara.name, chara:IsAtHome() )
+				--print( "capture chara", chara.name, chara:IsAtHome() )
 				if chara:IsAtHome() then				
 					CaptureChara( group, chara, prisonCity )
 				else
@@ -599,9 +600,15 @@ function CorpsAttack( corps, city )
 	g_warfare:AddWarfarePlan( corps, city )
 end
 
-function CorpsSiegeCity( corps, city, isSiege )
+function CorpsSiegeCity( corps, city, isSiege )	
 	CorpsMoveToLocation( corps, city )
 	g_warfare:AddWarfarePlan( corps, city, isSiege )
+	--[[
+	for k, corps in ipairs( corpsList ) do
+		CorpsMoveToLocation( corps, city )
+		g_warfare:AddWarfarePlan( corps, city, isSiege )
+	end
+	]]
 end
 
 function CorpsExpedition( corps, city )
@@ -613,8 +620,9 @@ end
 
 function CorpsDispatchToCity( corps, city, includeAll )
 	if city:GetGroup() ~= corps:GetGroup() then
-		--InputUtility_Pause( NameIDToString( corps ), city.name, city:GetGroup().name, corps:GetGroup().name )
-		g_taskMng:IssueTaskBackEncampment( corps )
+		print( NameIDToString( corps ) .. " cannot moveto=".. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not=".. corps:GetGroup().name )		
+		g_taskMng:TerminateTaskByActor( corps, "city not belongs to us" )
+		g_taskMng:IssueTaskCorpsBackEncampment( corps )
 		return
 	end
 	--print( NameIDToString( corps ), "dispatch to", city.name )
@@ -633,6 +641,7 @@ function CorpsDispatchToCity( corps, city, includeAll )
 	end
 end
 
+
 function CorpsMoveToLocation( corps, location )
 	corps:MoveToLocation( location )
 	for k, troop in ipairs( corps.troops ) do
@@ -640,6 +649,16 @@ function CorpsMoveToLocation( corps, location )
 		local leader = troop:GetLeader()
 		if leader then leader:MoveToLocation( location ) end
 	end
+end
+
+function CorpsMoveToCity( corps, city )
+	if city:GetGroup() ~= corps:GetGroup() then
+		print( NameIDToString( corps ) .. " cannot moveto=".. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not=".. corps:GetGroup().name )
+		g_taskMng:TerminateTaskByActor( corps, "city not belongs to us" )
+		g_taskMng:IssueTaskTroopMoveTo( corps )
+		return
+	end
+	CorpsMoveToLocation( corps, city )
 end
 
 ---------------------------------------------
@@ -678,6 +697,13 @@ function TroopJoinGroup( troop, city, includeAll )
 end
 
 function TroopDispatchToCity( troop, city, includeAll )
+	if city:GetGroup() ~= troop:GetGroup() then
+		print( NameIDToString( troop ) .. " cannot moveto=".. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not=".. troop:GetGroup().name )
+		g_taskMng:TerminateTaskByActor( troop, "city not belongs to us" )
+		g_taskMng:IssueTaskTroopMoveTo( troop )
+		return
+	end
+
 	local home = troop:GetHome()
 	if home and home ~= city then home:RemoveTroop( troop ) end
 	city:AddTroop( troop )
@@ -692,7 +718,19 @@ end
 function TroopMoveToLocation( troop, location )
 	troop:MoveToLocation( location )
 	local leader = troop:GetLeader()
-	if leader then leader:MoveToLocation( location ) end
+	if leader then
+		leader:MoveToLocation( location )
+	end
+end
+
+function TroopMoveToCity( troop, city )
+	if city:GetGroup() ~= troop:GetGroup() then
+		print( NameIDToString( troop ) .. " cannot moveto=".. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not=".. troop:GetGroup().name )
+		g_taskMng:TerminateTaskByActor( troop, "city not belongs to us" )
+		g_taskMng:IssueTaskTroopMoveTo( troop )
+		return
+	end
+	TroopMoveToLocation( troop, city )
 end
 
 ---------------------------------------------
@@ -774,8 +812,15 @@ function CharaExile( chara, city )
 	--Should the character hate who exile him, to do
 end
 
-function CharaDispatchToCity( chara, city )
-	if not chara then return end	
+function CharaDispatchToCity( chara, city )	
+	if not chara then return end
+
+	if city:GetGroup() ~= chara:GetGroup() then
+		print( NameIDToString( chara ) .. " cannot move to " .. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not="..chara:GetGroup().name )
+		g_taskMng:TerminateTaskByActor( chara, "city not belongs to us" )
+		g_taskMng:IssueTaskCharaBackHome( chara )
+		return
+	end
 	local home = chara:GetHome()
 	if home and home ~= city then home:RemoveChara( chara ) end
 	city:AddChara( chara )
@@ -785,7 +830,7 @@ function CharaDispatchToCity( chara, city )
 end
 
 function CharaLeadTroop( chara, troop )
-	if chara.location ~= troop.location then
+	if troop and chara.location ~= troop.location then
 		InputUtility_Pause( chara.name .. " loc="..chara.location.name, " not in troop_loc="..troop.location.name, NameIDToString( troop ) )
 		return
 	end
@@ -822,6 +867,16 @@ end
 
 function CharaMoveToLocation( chara, location )
 	chara:MoveToLocation( location )
+end
+
+function CharaMoveToCity( chara, city )
+	if city:GetGroup() ~= chara:GetGroup() then
+		print( NameIDToString( chara ) .. " cannot move to " .. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not="..chara:GetGroup().name )
+		g_taskMng:TerminateTaskByActor( chara, "city not belongs to us" )
+		g_taskMng:IssueTaskCharaBackHome( chara )
+		return
+	end
+	CharaMoveToLocation( chara, city )
 end
 
 function CharaLeaveGroup( chara )
@@ -883,8 +938,8 @@ function CorpsEsacpeToCity( corps, city )
 			home:RemoveTroop( troop )
 			local leader = troop:GetLeader()
 			if leader then
-				print( "escape debug:", leader.name, "home="..leader.home.name, "loc="..leader.location.name, "troophome="..troop.home.name, "corpshome="..home.name, "group="..leader.group.name )
-				print( "	", troop.name, troop.home.name )
+				--print( "escape debug:", leader.name, "home="..leader.home.name, "loc="..leader.location.name, "troophome="..troop.home.name, "corpshome="..home.name, "group="..leader.group.name )
+				--print( "	", troop.name, troop.home.name )
 				home:RemoveChara( leader )
 			end
 		end
@@ -905,7 +960,7 @@ function CorpsEsacpeToCity( corps, city )
 	if corps:GetLocation() == city then
 		--in the city
 		g_taskMng:TerminateTaskByActor( corps, "need to retreat" )
-		g_taskMng:IssueTaskBackEncampment( corps )
+		g_taskMng:IssueTaskCorpsBackEncampment( corps )
 	else
 		--!!! it's more complex than what I did now.
 		--There're some many situation should consider about
@@ -915,13 +970,13 @@ function CorpsEsacpeToCity( corps, city )
 		if task then
 			if task.type ~= TaskType.ATTACK_CITY and task.type ~= TaskType.EXPENDITION then
 				g_taskMng:TerminateTask( task, "home been captured" )
-				g_taskMng:IssueTaskBackEncampment( corps )
+				g_taskMng:IssueTaskCorpsBackEncampment( corps )
 			end
 		else	
-			g_taskMng:IssueTaskBackEncampment( corps )
+			g_taskMng:IssueTaskCorpsBackEncampment( corps )
 		end				
 	end
-	print( "Corps="..corps.name.."+"..#corps.troops .. " retreat to " .. city.name )
+	ShowText( "Corps="..corps.name.."+"..#corps.troops .. " retreat to " .. city.name )
 end
 
 function TroopEscapeToCity( troop, city )
@@ -940,7 +995,7 @@ function TroopEscapeToCity( troop, city )
 	
 	g_taskMng:TerminateTaskByActor( troop, "need to retreat" )
 	g_taskMng:IssueTaskTroopMoveTo( troop )
-	print( "Troop=" .. troop.name .. " retreat to " .. city.name )
+	ShowText( "Troop=" .. troop.name .. " retreat to " .. city.name )
 end
 
 function CharaEscapeToCity( chara, city )
@@ -952,7 +1007,7 @@ function CharaEscapeToCity( chara, city )
 	
 	g_taskMng:TerminateTaskByActor( chara, "	treat" )
 	g_taskMng:IssueTaskCharaBackHome( chara )
-	print( "Chara=" .. chara.name .. " retreat to " .. city.name )
+	ShowText( "Chara=" .. chara.name .. " retreat to " .. city.name )
 end
 
 function CorpsNeutralize( corps, isCaptured )
@@ -1018,6 +1073,7 @@ function TroopLoseGroup( chara )
 	if #group.cities > 0 then
 		Helper_DumpList( originalGroup.cities )
 		CharaJoinCity( chara, group:GetCapital() )
+		g_taskMng:TerminateTaskByActor( chara, "no way" )
 		g_taskMng:IssueTaskCharaBackHome( chara )
 		InputUtility_Pause()
 	else

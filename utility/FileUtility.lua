@@ -22,8 +22,8 @@ end
 
 function LoadFileUtility:CloseFile()
 	if self.fileHandler then
-		print( "Close file="..self.fileName )
-		self.fileHandler:close();		
+		self.fileHandler:close()
+		--print( "Close file="..self.fileName )
 	end
 	self.fileHandler = nil
 end
@@ -34,9 +34,7 @@ function LoadFileUtility:OpenFile( fileName )
 	end
 	self.fileName    = fileName
 	self.fileHandler = io.open( fileName, "r" )
-	if self.fileHandler then
-		print( "Open file="..self.fileName )
-	end
+	--if self.fileHandler then print( "Open file="..self.fileName ) end
 end
 
 function LoadFileUtility:ReopenFile( fileName )
@@ -242,6 +240,7 @@ SaveFileUtility = class()
 function SaveFileUtility:__init()
 	self.fileName    = nil
 	self.fileHandler = nil
+	self.isAppend    = true
 end
 
 function SaveFileUtility:GetFileName()
@@ -259,7 +258,7 @@ end
 function SaveFileUtility:CloseFile()
 	if self.fileHandler then
 		self.fileHandler:close();
-		print( "Close file="..self.fileName )
+		--print( "Close file="..self.fileName )
 	end	
 	self.fileHandler = nil
 end
@@ -268,19 +267,19 @@ function SaveFileUtility:SetMode( append )
 	self.isAppend = append
 end
 
-function SaveFileUtility:OpenFile( fileName )
-	if self:IsOpen() then
-		self:CloseFile()
-	end
+function SaveFileUtility:OpenFile( fileName, cleanFile )
+	if not fileName then return end
+
+	if self:IsOpen() then self:CloseFile() end
+
 	self.fileName    = fileName
+	self.isAppend = not cleanFile
 	if self.isAppend == true then
 		self.fileHandler = io.open( fileName, "a+" )
 	else
-		self.fileHandler = io.open( fileName, "w+" )		
+		self.fileHandler = io.open( fileName, "w+" )
 	end
-	if self.fileHandler then
-		print( "Open file="..self.fileName )
-	end
+	--if self.fileHandler then print( "Open file="..self.fileName ) end
 end
 
 function SaveFileUtility:ReopenFile()
@@ -315,5 +314,19 @@ function SaveFileUtility:WriteTable( obj, filter )
 end
 
 function SaveFileUtility:WriteContent( v )
-	self.fileHandler:write( v )
+	if self.fileHandler then self.fileHandler:write( v ) end
+end
+
+function SaveFileUtility:Write( ... )
+	if self.fileHandler then
+		local content = ""
+		local args = { ... }
+		for i = 1, #args do
+			local type = typeof( args[i] )
+			if type == "string" or type == "number" then
+				content = content .. args[i]
+			end
+		end	
+		self.fileHandler:write( content .. "\n" )
+	end
 end
