@@ -92,6 +92,19 @@ end
 
 --Behavior_Test()
 
+--[[
+g_calendar:SetDate( 1, 12, 15, 0, true )
+print( g_calendar:CreateCurrentDateDesc() )
+
+local v1 = g_calendar:ConvertDateValue( 1, 1, 1, false )
+print( g_calendar:CreateDateDescByValue( v1 ) )
+print( g_calendar:CalcDiffDayByDate( v1 ) )
+
+local v2 = g_calendar:ConvertDateValue( 2, 1, 15, true )
+print( g_calendar:CreateDateDescByValue( v2 ) )
+print( g_calendar:CalcDiffDayByDate( v2 ) )
+]]
+
 --[[]]
 g_game = Game()
 g_game:Init()

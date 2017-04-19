@@ -88,7 +88,6 @@ function Character:Load( data )
 	
 	------------------------------------
 	-- Dynamic Data	
-	self._corps   = nil	
 	self._submitProposal = nil
 end
 
@@ -216,7 +215,12 @@ function Character:IsCityLeader()
 end
 
 function Character:IsNoneTask()
-	return not g_taskMng:GetTaskByActor( self ) and ( not self.troop or self.troop:IsNoneTask() )
+	if g_taskMng:GetTaskByActor( self ) then return false end
+	if self.troop then
+		if g_taskMng:GetTaskByActor( self.troop ) then return false end
+		if self.troop:GetCorps() and g_taskMng:GetTaskByActor( self.troop:GetCorps() ) then return false end
+	end
+	return true
 end
 
 function Character:IsAtHome()
@@ -283,6 +287,10 @@ end
 
 ----------------------------------
 -- Operation
+
+function Character:MoveOn( reason )
+	return g_movingActorMng:AddActor( MovingActorType.CHARACTER, self, { reason = reason } )
+end
 
 function Character:MoveToLocation( location )
 	--ShowDebug( NameIDToString( self ) .. " move from " .. ( self.location and self.location.name or "" ) .. "->" .. ( location and location.name or "" ) )
@@ -388,6 +396,7 @@ function Character:GetPromoteList()
 end
 
 function Character:IsFree()
+	--return ( not self:GetTroop() or not self:GetTroop():GetCorps() ) and self:IsAtHome() and self:IsNoneTask()
 	return not self:GetTroop() and self:IsAtHome() and self:IsNoneTask()
 end
 
@@ -405,7 +414,6 @@ end
 function Character:AcceptProposal()
 	if self._submitProposal.type <= CharacterProposal.PROPOSAL_COMMAND then
 		local desc = Proposal_CreateDesc( self._submitProposal, true )		
-		self.group:AcceptProposal( desc )
 		g_statistic:AcceptProposal( desc, self.home )
 	end
 
@@ -417,7 +425,6 @@ end
 function Character:ProposalAccepted()
 	if self._submitProposal.type <= CharacterProposal.PROPOSAL_COMMAND then
 		local desc = Proposal_CreateDesc( self._submitProposal, true )
-		self.group:AcceptProposal( desc )
 		g_statistic:AcceptProposal( desc, self.home )
 	end
 

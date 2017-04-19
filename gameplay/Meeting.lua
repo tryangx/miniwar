@@ -231,7 +231,7 @@ function Meeting:CollectProposalFlow( chara )
 				else
 					Proposal_DiscussCityAffairs( chara, { city = self._city } )
 					if chara:GetProposal() and not self._game:IsPlayer( self._leader ) then					
-						ShowText( "###" .. chara.name .. " " .. Proposal_CreateDesc( chara:GetProposal() ) )
+						--ShowText( "###" .. chara.name .. " " .. Proposal_CreateDesc( chara:GetProposal() ) )
 					end
 				end
 			end
@@ -283,7 +283,7 @@ function Meeting:CollectProposalFlow( chara )
 				g_charaAI:SetActor( chara )
 				g_charaAI:Run()
 				if chara:GetProposal() and not self._game:IsPlayer( self._leader ) then					
-					ShowText( "###" .. chara.name, Proposal_CreateDesc( chara:GetProposal() ) )
+					--ShowText( "###" .. chara.name, Proposal_CreateDesc( chara:GetProposal() ) )
 				end
 			end
 		end
@@ -386,7 +386,7 @@ function Meeting:ConfirmProposalFlow( proposal )
 					g_taskMng:IssueTaskByProposal( proposal )
 				end
 			elseif proposal.type == CharacterProposal.SIEGE_CITY then
-				ShowDebug( "!!!Issue Multiple" .. Proposal_CreateDesc( proposal ) .. " by " .. proposal.proposer.name )
+				--ShowDebug( "!!!Issue Multiple" .. Proposal_CreateDesc( proposal ) .. " by " .. proposal.proposer.name )
 				local IssueProposal = MathUtility_Copy( proposal )
 				for k, corps in ipairs( proposal.data ) do					
 					proposal.actor = corps
@@ -409,6 +409,9 @@ function Meeting:ConfirmProposalFlow( proposal )
 			else
 				self._leader:ProposalAccepted()
 				--ShowDebug( "["..self._leader.name.."] made proposal " .. Proposal_CreateDesc( proposal ) )
+			end
+			if proposal.type == CharacterProposal.SIEGE_CITY then
+				proposal.proposer:GetHome():AppendTag( CityTag.ACCEPT_PROPOSAL, 1 )
 			end
 			self.acceptProposals = self.acceptProposals + 1
 			if self.collectProposals then self:ReselectProposal( self._leader ) end
@@ -1349,7 +1352,6 @@ function Meeting:HoldGroupMeeting( game, group )
 	self:UpdateStatus( MeetingStatus.START )
 	if self.acceptProposals == 0 then
 		--	print( group.name .. " noproposal", #charaList, #group:GetCapital().charas )
-		--self._group:AcceptProposal( group.name .. " No Proposal " .. g_calendar:CreateCurrentDateDesc() )
 	end
 	--ShowText( "++++++++++ Group Meeting End ++++++++++++++++" )
 	--ShowText( "" )	
@@ -1400,8 +1402,8 @@ function Meeting:HoldCityMeeting( game, city )
 	--if not self._leader then self._leader = leader end
 	self._participants = charaList
 	if #self._participants == 0 then
-		g_statistic:AcceptProposal( "No Participant " .. g_calendar:CreateCurrentDateDesc( true ), city )
-		return
+		--g_statistic:AcceptProposal( "No Participant " .. g_calendar:CreateCurrentDateDesc( true ), city )
+		--return
 	end
 	MathUtility_Shuffle( charaList )
 	
@@ -1414,9 +1416,9 @@ function Meeting:HoldCityMeeting( game, city )
 	if self.acceptProposals == 0 then
 		--	print( group.name .. " noproposal", #charaList, #group:GetCapital().charas )
 		local cityList = city:GetAdjacentBelligerentCityList()
-		local corpsList = city:GetPreparedToAttackCorpsList()
-		self._group:AcceptProposal( "[" .. city.name .. "] NoProposal " .. " chara=" .. #charaList .. " adjaBelli="..#cityList .. " readyCorp=" ..#corpsList  .. " " .. g_calendar:CreateCurrentDateDesc( true, true ) )
-		g_statistic:AcceptProposal( "No proposal " .. g_calendar:CreateCurrentDateDesc( true ), city )
+		local neutralCityList = city:GetAdjacentNeutralCityList()
+		local corpsList = city:GetPreparedToAttackCorpsList()		
+		g_statistic:AcceptProposal( "No proposal=" ..#self._participants .. " " .. g_calendar:CreateCurrentDateDesc( true ), city )
 	end
 	--ShowText( "++++++++++ City Meeting End ++++++++++++++++" )
 	--ShowText( "" )

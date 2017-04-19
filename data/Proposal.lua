@@ -70,11 +70,11 @@ function Proposal_CreateDesc( proposal, needDate )
 		
 	--Military
 	elseif proposal.type == CharacterProposal.ATTACK_CITY then
-		content = "Send [" .. NameIDToString( proposal.data ) .. "] Attack [".. NameIDToString( proposal.target ) .. "]"
+		content = "Send [" .. NameIDToString( proposal.data ) .. "]"..proposal.data:GetPower().." Attack [".. NameIDToString( proposal.target ) .. "]"
 	elseif proposal.type == CharacterProposal.EXPEDITION then
 		content = "Send [" .. NameIDToString( proposal.data ) .. "] Go on expedition to [".. NameIDToString( proposal.target ) .. "] " 		
 	elseif proposal.type == CharacterProposal.DISPATCH_CORPS then
-		content = "Dispatch Corps [".. NameIDToString( proposal.data ) .. "] to ["..proposal.target.name.."]" 
+		content = "Dispatch Corps [".. NameIDToString( proposal.data ) .. "]"..proposal.target:GetPower().." to ["..proposal.target.name.."]" 
 	elseif proposal.type == CharacterProposal.CONTROL_PLOT then
 		content = "Send [" .. NameIDToString( proposal.data ) .. "] Control "
 	elseif proposal.type == CharacterProposal.SIEGE_CITY then
@@ -87,10 +87,10 @@ function Proposal_CreateDesc( proposal, needDate )
 		content = "Send [" .. NameIDToString( proposal.data ) .. "] Meet Attack "
 	elseif proposal.type == CharacterProposal.DISPATCH_TROOPS  then
 		local troopName = ""
-		for k, troop in ipairs( proposal.target ) do
-			troopName = troopName .. NameIDToString( troop ) .. " moveto"
+		for k, troop in ipairs( proposal.data ) do
+			troopName = troopName .. NameIDToString( troop ) .. " "
 		end
-		content = "Dispatch Troop [" .. troopName .. "] to ["..proposal.target.name.."]" 
+		content = "Dispatch Troop [" .. troopName .. "] move to ["..proposal.target.name.."]" 
 	
 	else
 		content = "unknown " .. MathUtility_FindEnumName( CharacterProposal, proposal.type )	

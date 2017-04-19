@@ -1,5 +1,10 @@
 package.path = package.path .. ";asset/Scenario/Standard/?.lua"
 
+g_gameId = os.time()
+--g_gameId = 1492585842
+
+g_language = "eng"--"chs"
+
 ---------------------------------------
 -- Utility
 require "Randomizer"
@@ -156,13 +161,10 @@ g_combatDataMng = DataManager( "COMBAT_DATA", Combat )
 -- Randomizer
 
 -- Lock step
-g_gameId = os.time()
-local seed = g_gameId
---seed = 1491810790
-g_syncRandomizer = Randomizer( seed )
+g_syncRandomizer = Randomizer( g_gameId )
 
 -- Local game
-g_asyncRandomizer = Randomizer( seed )
+g_asyncRandomizer = Randomizer( g_gameId )
 
 ---------------------------
 -- AI

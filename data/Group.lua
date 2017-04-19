@@ -1,7 +1,6 @@
 Group = class()
 
 function Group:__init()
-	self.proposals = {}
 end
 
 function Group:Generate( data )
@@ -645,17 +644,7 @@ end
 ---------------------------
 
 function Group:CheckIsFallen()
-	if #self.cities > 0 and #self.charas > 0 then
-		--[[
-		for k, chara in ipairs( self.charas ) do
-			print( chara.name, chara:GetLocation().name )
-			local task = g_taskMng:GetTaskByActor( chara )
-			if task then print( chara.name .. " execute task " .. task:CreateDesc() ) end			
-		end
-		--InputUtility_Pause( self.name, "not fallen", #self.cities, #self.charas )
-		]]
-		return false
-	end
+	if #self.cities > 0 and #self.charas > 0 then return false end
 	return self.government ~= GroupGovernment.GUERRILLA
 end
 
@@ -832,11 +821,6 @@ end
 ----------------------------------------------
 -- Proposal Relative
 ----------------------------------------------
-
-function Group:AcceptProposal( desc )
-	table.insert( self.proposals, desc )
-end
-
 function Group:StartDiplomacy( target, method )
 	self.diplomaticTargetId = target.id
 	self.diplomaticMethod   = method
@@ -1088,6 +1072,40 @@ function Group:Update()
 	
 	-- Update dynamic data, like military power evaluation
 	self:UpdateDynamicData()
+
+	-- Set City Tag with CONNECTED
+	for k, city in ipairs( self.cities ) do
+		city:SetTag( CityTag.CONECTED, 1 )
+	end
+	local capital = self.capital
+	local openList = { { to = capital, from = capital } }
+	local closeList = {}
+	local index = 1
+	while index <= #openList do
+		local city = openList[index].to
+		city:SetTag( CityTag.CONNECTED, 1 )
+		closeList[city] = 1
+		ShowText( "connect=" .. city.name .. " in " .. NameIDToString( city:GetGroup() ) .. " from=" .. openList[index].from.name )
+		for k, adjaCity in ipairs( city.adjacentCities ) do
+			if adjaCity:GetGroup() == self and not closeList[adjaCity] then
+				closeList[adjaCity] = 1
+				table.insert( openList, { to = adjaCity, from = city } )
+			end
+		end
+		index = index + 1
+	end
+	ShowText(  self.name .. " " .. capital.name .. " connect " .. #openList .. "/" .. #self.cities )
+	if #openList > #self.cities then
+		for k, city in ipairs( self.cities ) do
+			ShowText( city.name, NameIDToString( city:GetGroup() ) )
+		end
+		--[[
+		for k, data in ipairs( openList ) do
+			print( data.to.name, NameIDToString( data.to:GetGroup() ) )
+		end
+		]]
+		k.p = 1
+	end
 end
 
 --------------------------------------
@@ -1114,4 +1132,48 @@ end
 
 function Group:GetGroupIntel( target, type )
 	--to do
+end
+
+--------------------------------------
+
+function Group:SetShortTermGoal()
+	if GetGroupShortTermGoal( self ) then return end
+
+	--if not self:GetAsset( GroupTag.SITUATION.AT_WAR ) then return end
+	if #self.corps <= 1 then return end
+
+	--find adjacent weakness
+	local tarCityList = {}
+	for k, city in ipairs( self.cities ) do
+		if city:GetTag( CityTag.FRONTIER ) then
+			local selfPower = city:GetPower()
+			local selfTotalPower = selfPower + city:QueryAdjacentFriendlyMilitaryPower()
+			--print( "self=", city.name, selfPower, selfTotalPower )
+			local list = city:GetAdjacentBelligerentCityList()
+			for k, adjaCity in ipairs( list ) do
+				if not adjaCity:GetGroup() then
+					--Neutral is priority target
+					local enemyPower = GuessCityPower( adjaCity )
+					if selfPower > enemyPower then
+						table.insert( tarCityList, adjaCity )
+					end
+				else
+					--Compare military power( include their guards )
+					local enemyPower = GuessCityPower( adjaCity )
+					local enemyTotalPower = enemyPower + adjaCity:QueryAdjacentFriendlyMilitaryPower()
+					local rate = 1.5
+					if selfPower > enemyPower * rate or ( selfPower > enemyPower * rate and selfTotalPower * rate > enemyTotalPower ) then
+						--print( "enemy=", adjaCity.name, enemyPower, enemyTotalPower )					
+						table.insert( tarCityList, adjaCity )
+					end
+				end
+			end
+		end
+	end
+	if #tarCityList == 0 then
+		return
+	end
+	
+	local tarCity = tarCityList[Random_SyncGetRange( 1, #tarCityList )]
+	SetGroupShortTermGoal( self, { type = GroupGoal.OCCUPY_CITY, target = tarCity.id, timeout = 180 } )
 end

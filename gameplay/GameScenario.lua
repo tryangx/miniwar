@@ -22,7 +22,7 @@ function GameScenario:LoadScenario( g_scenario )
 		end
 	end
 	
-	self.funcs = MathUtility_Copy( g_scenario.functions )
+	self.funcs = MathUtility_ShallowCopy( g_scenario.functions )
 end
 
 function GameScenario:GetBegDate()

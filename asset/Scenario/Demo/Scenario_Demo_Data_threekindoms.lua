@@ -465,7 +465,7 @@ local CityData =
 	[302] = 
 	{
 		name = "Bei Hai",
-		coordinate = { x = 48, y = 33 },
+		coordinate = { x = 60, y = 27 },
 		level = 8,
 		adjacentCities = { 300 },
 	},
@@ -507,7 +507,7 @@ local CityData =
 		name = "Cai Shang",
 		coordinate = { x = 54, y = 48 },
 		level = 9,
-		adjacentCities = { 500, 602, 701 },
+		adjacentCities = { 500, 601, 602, 700 },
 	},
 	[502] = 
 	{
@@ -544,7 +544,7 @@ local CityData =
 		name = "Jiang Ling",
 		coordinate = { x = 42, y = 48 },
 		level = 9,
-		adjacentCities = { 501, 600, 601, 701 },
+		adjacentCities = { 501, 600, 601, 700, 701 },
 	},
 	
 	--South Four state
@@ -560,7 +560,7 @@ local CityData =
 		name = "Ling Ling",
 		coordinate = { x = 36, y = 54 },
 		level = 6,
-		adjacentCities = { 700, 702, 1001 },
+		adjacentCities = { 602, 700, 702, 1001 },
 	},
 	[702] = 
 	{
@@ -575,7 +575,7 @@ local CityData =
 		name = "Hong Nong",
 		coordinate = { x = 18, y = 21 },
 		level = 7,
-		adjacentCities = { 402, 801 },
+		adjacentCities = { 402, 801, 900 },
 	},
 	[801] = 
 	{
@@ -610,7 +610,7 @@ local CityData =
 	[1000] = 
 	{
 		name = "Cheng Du",
-		coordinate = { x = 18, y = 36 },
+		coordinate = { x = 18, y = 42 },
 		level = 13,
 		charas = { 100, 101, 102, 103 },
 		adjacentCities = { 901, 1001, 1002 },
@@ -650,7 +650,7 @@ local GroupData =
 	[1] =
 	{
 		name = "SHU",
-		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
+		goals = { { type="DOMINATION_TERRIORITY", target = 75 } },
 		leader = 100,
 		capital = 1000,
 		cities = { 1000 },		
@@ -665,7 +665,7 @@ local GroupData =
 	[2] =
 	{
 		name = "WEI",
-		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
+		goals = { { type="DOMINATION_TERRIORITY", target = 75 } },
 		leader = 200,
 		capital = 200,
 		cities = { 200 },
@@ -678,7 +678,7 @@ local GroupData =
 	[3] =
 	{
 		name = "WU",
-		goals = { { type="DOMINATION_TERRIORITY", target = 75, duration = 90 } },
+		goals = { { type="DOMINATION_TERRIORITY", target = 75 } },
 		leader = 300,		
 		money = 10000,
 		capital = 500,

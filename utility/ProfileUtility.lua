@@ -14,7 +14,6 @@ function ProfileStart( name )
 	end
 	
 	item.startTime = os.clock()
-	--print( os.time(), os.clock() )
 end
 
 function ProfileEnd( name )

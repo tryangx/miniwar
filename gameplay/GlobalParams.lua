@@ -86,7 +86,8 @@ GlobalConst =
 	TIME_PER_YEAR = 360,
 
 	-- Move Time     : Standard Time, use to move entity like characters, corps.	
-	MOVE_TIME     = 2,
+	CHARA_MOVE_TIME = 1,
+	CORPS_MOVE_TIME = 2,
 	------------------------	
 	
 	--assets
@@ -120,8 +121,8 @@ PlotParams =
 	PLOT_POPULATION_FLUCTUATION_RATE = 6,
 	
 	--Agriculture -> Supply
-	PLOT_SUPPLY_OUTPUT_CONSTANT      = 120,
-	
+	PLOT_SUPPLY_OUTPUT_CONSTANT      = 100,	
+
 	--Economy -> Income
 	PLOT_INCOME_CAPITATION_CONSTNAT = 1,
 	PLOT_INCOME_ECONOMY_CONSTANT    = 100,
@@ -382,64 +383,100 @@ CitySize =
 CityTag = 
 {
 	NONE        = 0,
+
+	-----------------------------
+	-- Temporary
+
+	SUBMIT_PROPOSAL = 1,
+	ACCEPT_PROPOSAL = 2,
+
+	------------------------------
+	--     Position & Rank
+
+	--Place need gather troops
+	--Condition : 
+	IMPORTANCE  = 10,
+
+	--Attributes leads, like economic center, agriculture center
+	--Condition : 
+	CENTER      = 11,
+
+	------------------------------
+	--     Expand / Exerminate Status
 	
 	--Good: Nothing
 	--Bad : No repair, No tax, No harvest
-	SIEGE       = 1,
+	SIEGE       = 20,
 	
 	--Nomad / Barbarian invade
 	--Good: Soldier Quality
     --Bad : War Fearness 
-	FRONTIER    = 10,
+	FRONTIER    = 21,
 	
 	--Adjacent to enemy
 	--Good:
 	--Bad : War weariness
-	BATTLEFRONT = 11,
+	BATTLEFRONT = 22,
 	
 	--Adjacent Power of other group is higher
-	INDANGER    = 12,
+	INDANGER    = 23,
 	
 	--Military Power is less than required power
-	WEAK        = 13,
+	WEAK        = 24,
 
-	--Place need gather troops
-	--Condition : 
-	IMPORTANCE  = 14,
+	--Expand
+	EXPANDABLE  = 25,
 
-	--Attributes leads, like economic center, agriculture center
-	--Condition : 
-	CENTER      = 15,
+	--All adajcent city is friend
+	SAFE        = 26,
+
+	--Has prepared
+	PREPARED    = 27,
+
+	--Not enough chara
+	UNDERSTAFFED = 28,
+
+	--Connect to capital
+	CONNECTED    = 29,
+
+	--Power is strong than adjacent city
+	ADVANTAGE    = 30,
+
+	------------------------------
+	--     Exploit Status
 	
 	--Economic is well
 	--Good: More tax
     --Bad : Breed corruption
-	PROSPERITY  = 20,
+	PROSPERITY   = 50,
 	
 	--Economic is bad
 	--Good: 
 	--Bad : Less Tax
-	DEPRESSED   = 21,
+	DEPRESSED    = 51,
 
 	--Good:
 	--Bad : Lose Trust
-	BANKRUPT    = 22,
+	BANKRUPT     = 52,
 	
 	--Supply not enough
     --Bad : People died, troop power down
-	STARVATION  = 30,
+	STARVATION   = 53,
 	
 	--Bad : People become refugee
-	DESTRUCTION = 31,
+	DESTRUCTION  = 54,
 	
 	--Bad : Cann't [LevyTax]
-	DISSATISFIED = 32,
+	DISSATISFIED = 55,
+
+	------------------------------
 	
 	MAX_VALUE = 
 	{
 		SIEGE       = 3,
 		FRONTIER    = 1,
 		BATTLEFRONT = 1,
+		AGGRESSIVE  = 3,
 		PROSPERITY  = 3,
 		DEPRESSED   = 3,
 		BANKRUPT    = 3,
@@ -458,15 +495,16 @@ CityParams =
 	SAFETY_FOOD_CONSUME_TIME        = 180,
 	
 	--Chara Limition
-	MAX_CHARA_LIMIT                    = 20,
-	CAPITAL_EXTRA_CHARA_LIMIT          = 5,	
-	FRONTIER_EXTRA_CHARA_LIMIT         = 3,
-	IMPORTANCE_EXTRA_CHARA_LIMIT       = 3,
+	MAX_CHARA_LIMIT                    = 999,
+	CAPITAL_EXTRA_CHARA_LIMIT          = 5,
+	IMPORTANCE_EXTRA_CHARA_LIMIT       = 2,
 	
 	--Chara Requiration
-	CAPITAL_MIN_CHARA_REQUIREMENT      = 3,
-	FRONTIER_MIN_CHARA_REQUIREMENT     = 2,
+	CAPITAL_MIN_CHARA_REQUIREMENT      = 4,
+	BATTLEFRONT_MIN_CHARA_REQUIREMENT  = 4,
+	FRONTIER_MIN_CHARA_REQUIREMENT     = 3,	
 	IMPORTANCE_MIN_CHARA_REQUIREMENT   = 2,
+	EXPANDABLE_MIN_CHARA_REQUIREMENT   = 1,
 	NONCAPITAL_MIN_CHARA_REQUIREMENT   = 1,
 	
 	--Corps
@@ -502,10 +540,11 @@ CityParams =
 		--Very important, affect how many solider the city required.
 		REQUIRE_MILITARYPOWER_LIMITATION_MODULUS   = 10,
 		SAFETY_MILITARYPOWER_PER_PLOT      = 100,
-		SECURITY_MILITARYPOWER_PER_PLOT    = 200,
-		IMPORTANCE_MILITARYPOWER_PER_PLOT  = 200,
+		SECURITY_MILITARYPOWER_PER_PLOT    = 300,
+		IMPORTANCE_MILITARYPOWER_PER_PLOT  = 500,
 		FRONTIER_MILITARYPOWER_PER_PLOT    = 300,
-		BATTLEFRONT_MILITARYPOWER_PER_PLOT = 300,
+		BATTLEFRONT_MILITARYPOWER_PER_PLOT = 500,
+		GOAL_MILITARYPOWER_PER_PLOT        = 500,
 		SAFETY_ADJACENT_SINGLE_MILITARY_POWER_RATE = 0.5,
 		SAFETY_ADJACENT_TOTAL_MILITARY_POWER_RATE  = 0.35,
 	},
@@ -520,17 +559,17 @@ CityParams =
 	
 	FARM = 
 	{
-		STANDARD_MODULUS = 0.04,
-		MINIMUM_MODULUS  = 0.1,
-		MAXIMUM_MODULUS  = 0.2,
+		STANDARD_MODULUS = 0.01,
+		MINIMUM_MODULUS  = 0.01,
+		MAXIMUM_MODULUS  = 0.04,
 	},	
 	
 	INVEST = 
 	{
 		MONEY_PER_PLOT   = 1000,
-		STANDARD_MODULUS = 0.04,
-		MINIMUM_MODULUS  = 0.1,
-		MAXIMUM_MODULUS  = 0.2,
+		STANDARD_MODULUS = 0.01,
+		MINIMUM_MODULUS  = 0.01,
+		MAXIMUM_MODULUS  = 0.04,
 	},
 	
 	PATROL = 
@@ -580,7 +619,7 @@ GroupParams =
 	RECRUIT = 
 	{
 		--Determine the number of soldier when recruit an new troop
-		RECRUIT_NUMBER_MODULUS = 0.8,
+		RECRUIT_NUMBER_MODULUS = 1,
 
 		RECRUIT_NEED_SECURITY  = 20,
 	},
@@ -760,7 +799,8 @@ GroupGoal =
 	INDEPENDENCE      = 101,
 	--Control special city
 	OCCUPY_CITY       = 110,
-	
+	--
+	DEFEND_CITY       = 111,
 	
 	--[[
 		--Divide goal to final goal and short team goal two kinds.

@@ -1,5 +1,5 @@
 local debugChange = true
-local watchAction --= "SEPARATE"--= "THREATEN" --= "MAKE_PEACE" --= "DECLARE_WAR"--= "MAKE_PEACE"--= "SURRENDERER"
+local watchAction = nil--"DECLARE_WAR"--= "SEPARATE"--= "THREATEN" --= "MAKE_PEACE" --= "DECLARE_WAR"--= "MAKE_PEACE"--= "SURRENDERER"
 local watchGroup = nil
 
 local function CalcNativePowerProb( group, target )

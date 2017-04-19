@@ -2,57 +2,44 @@ GameMap = class()
 
 function GameMap:__init()
 	self.map  = nil
-	self.xInc = 6
-	self.cityNameLen = 3
+	self.xInc = 8
+	self.cityNameLen = 6
 	self.groupNameLen = 3
 	self.blankLength = 8
 	self.blank = string.rep( " ", self.blankLength )
 end
 
-function GameMap:DrawMapTable( fn )
+function GameMap:DrawMapTable( fn, data, printer )
+	if not data then data = self.map end
+	if not printer then printer = ShowText end
 	local content = string.rep( " ", 5 )
 	for x = 1, g_plotMap.width, self.xInc do
 		content = content .. ( "x=".. Helper_AbbreviateString( x, self.blankLength - 1 ) )
 	end
-	ShowText( content )
+	printer( content )
 	for y = 1, g_plotMap.height do
-		local row = self.map[y]
+		local row = data[y]
 		if row then
 			local content = ""
 			for x = 1, row.length do
 				local ret = fn( x, y, row[x] )
 				content = content .. ret
 			end
-			ShowText( "Y=".. y, content )
+			printer( "Y=".. y, content )
 		end
 	end
-	--[[
-	for y = 1, g_plotMap.height, self.xInc do
-		local content = ""
-		for x = 1, g_plotMap.width, self.yInc do
-			content = content .. fn( x, y )
-		end
-		ShowText( "Y=".. y, content )
-	end
-	]]
 end
 
 function GameMap:UpdateMap()
 	self.map = {}
-	--[[
-	for y = 1, g_plotMap.height do
-		self.map[y] = {}
-		for x = 1, g_plotMap.width do
-			self.map[y][x] = nil
-		end
-	end
-	]]
 	g_cityDataMng:Foreach( function ( city )
 		local pos = city.coordinate
 		local y = pos.y
 		local x = math.ceil( pos.x / self.xInc )
 		if not self.map[y] then self.map[y] = {} end
-		--if self.map[y][x] then ShowText( "Duplicate", city.name, self.map[y][x].name, "in " .. pos.x .. ",", pos.y ) end
+		if self.map[y][x] then
+			InputUtility_Pause( "Duplicate", city.name, self.map[y][x].name, "in " .. pos.x .. ",", pos.y )
+		end
 		self.map[y][x] = city
 		if not self.map[y].length then
 			self.map[y].length = x
@@ -69,6 +56,32 @@ function GameMap:DrawAll()
 	--self:DrawGroupMap( true )
 	--self:DrawCharaMap( true )
 	self:DrawPowerMap( true )
+end
+
+function GameMap:DrawData( data, desc, printer )
+	ShowText( desc )
+	local tempMapData = {}
+	for city, number in pairs( data ) do
+		local pos = city.coordinate
+		local y = pos.y
+		local x = math.ceil( pos.x / self.xInc )
+		if not tempMapData[y] then tempMapData[y] = {} end
+		tempMapData[y][x] = city
+		if not tempMapData[y].length then
+			tempMapData[y].length = x
+		else
+			tempMapData[y].length = math.max( tempMapData[y].length, x )
+		end
+	end
+	self:DrawMapTable( function( x, y, c )
+		local city = c	
+		if city then			
+			local content = ""
+			content = content .. data[city]
+			return content
+		end
+		return self.blank
+	end, tempMapData, printer )
 end
 
 function GameMap:DrawCharaMap( invalidate )
@@ -94,7 +107,7 @@ function GameMap:DrawPowerMap( invalidate )
 		if city then			
 			local content = ""
 			if city:GetGroup() then
-				local str = Helper_CreateNumberDesc( city:GetPower() )
+				local str = Helper_CreateNumberDesc( city:GetPower() )--GuessCityPower( city ) )
 				content = content .. Helper_AbbreviateString( city:GetGroup().name, self.cityNameLen + 1 ) .. "=" .. Helper_AbbreviateString( str, 4 )
 			else
 				local str = Helper_CreateNumberDesc( city.guards )

@@ -3,9 +3,16 @@ Warfare = class()
 function Warfare:__init()
 	self.plans   = {}
 	self.combats = {}
+	self.existCombats = {}
 end
 
-function Warfare:GetCombatByLocation( location )
+function Warfare:GetExistCombat( location )	
+	local combat = self.combats[location]
+	if not combat then combat = self.existCombats[location] end
+	return combat
+end
+
+function Warfare:GetCombatByLocation( location )	
 	return self.combats[location]
 end
 
@@ -30,9 +37,10 @@ function Warfare:AddWarfarePlan( corps, city, siege )
 	end
 	
 	--No need to attack
-	if corps:GetGroup() == city:GetGroup() then
-		--InputUtility_Pause( "No need to attack", corps.name, city.name )
+	if corps:GetGroup() == city:GetGroup() then		
 		g_taskMng:TerminateTaskByActor( corps, "city already belong to us" )
+		g_taskMng:IssueTaskCorpsBackEncampment( corps )
+		--InputUtility_Pause( NameIDToString( corps ), corps:GetHome().name, city.name )
 		return
 	end
 	
@@ -48,6 +56,8 @@ function Warfare:AddWarfarePlan( corps, city, siege )
 end
 
 function Warfare:Update( elapasedTime )
+	self.existCombats = {}
+
 	--use current date?
 	g_season:SetDate( g_calendar.month, g_calendar.day )
 	
@@ -61,14 +71,8 @@ function Warfare:Update( elapasedTime )
 			for k, plan in ipairs( locationPlan.plans ) do
 				local existCombat = self:GetCombatByLocation( city )
 				local attacker = existCombat and existCombat:GetSideGroup( CombatSide.ATTACKER ) or nil
-				if existCombat then
-					--[[
-					quickSimulate = false
-					existCombat:Dump()
-					quickSimulate = true
-					]]					
+				if existCombat then				
 					--print( existCombat:CreateDesc() )
-					--print( "existCombat=", existCombat.id )
 					local reinforcer = plan.attacker:GetGroup()
 					if reinforcer == attacker then
 						--print( "reinforcer="..reinforcer.name, "attacker="..attacker.name )
@@ -95,15 +99,10 @@ function Warfare:Update( elapasedTime )
 	self.plans = {}
 end
 
-function Warfare:GetCombatInLocation( city )
-	return city and self.combats[city] or nil
-end
-
 function Warfare:AddSiegeCombat( corps, city, isSiege )
-	--print( NameIDToString( corps ) .. " attack " .. city.name .. "@" .. ( city:GetGroup() and city:GetGroup().name or "Neutral" ) )
 	city:AppendTag( CityTag.SIEGE, 1 )
 	local combat = nil
-	local findCombat = self:GetCombatInLocation( city )
+	local findCombat = self:GetCombatByLocation( city )
 	if not findCombat then
 		combat = g_combatDataMng:NewData()
 		combat:SetType( CombatType.SIEGE_COMBAT )
@@ -183,12 +182,16 @@ function Warfare:AddSiegeCombat( corps, city, isSiege )
 	end
 	
 	self.combats[city] = combat
-	combat:Dump()
+	self.existCombats[city] = combat
+
+	--combat:Dump()
 	--InputUtility_Pause()
+	--print( NameIDToString( corps ) .. " attack " .. city.name .. "@" .. ( city:GetGroup() and city:GetGroup().name or "Neutral" ) )	
+	--print( self:GetCombatByLocation( city ) )
 end
 
 function Warfare:AddFieldCombat( attacker, defender, location )
-	local combat = self:GetCombatInLocation( location )
+	local combat = self:GetCombatByLocation( location )
 	
 	--Need to process with skirmish
 	if not combat then
@@ -285,6 +288,7 @@ function Warfare:ProcessCombatResult( combat )
 	city.guards = MathUtility_Clamp( city.guards - deadGuard, 0, city.guards )
 	city:LosePopulation( deadGuard )	
 
+	--Calcuate winner profit, affect diplomacy
 	local winner = combat:GetWinner()
 	local atkGroup = combat:GetSideGroup( CombatSide.ATTACKER )
 	local defGroup = combat:GetSideGroup( CombatSide.DEFENDER )		
@@ -297,24 +301,32 @@ function Warfare:ProcessCombatResult( combat )
 			--InputUtility_Pause( atkGroup.name, defGroup.name )
 		end
 	end
+
+	--Detail datas
 	if combat.type == CombatType.SIEGE_COMBAT then
 		city:RemoveTag( CityTag.SIEGE )
 		if winner == CombatSide.ATTACKER then
 			-- Determine the ownership of the city if it's a siege combat
-			local atkCorpsList = MathUtility_Filter( combat.corps, function ( corps ) return corps:GetGroup() == atkGroup end	)
+			local atkCorpsList = MathUtility_Filter( combat.corps, function ( corps ) return corps:GetGroup() == atkGroup end )
+			
+			--Capture city, capture corps, capture troops, capture chara
 			CaptureCity( atkGroup, city )
+
 			--Garrisson into the city
 			for k, corps in ipairs( atkCorpsList ) do
-				--print( NameIDToString( corps ) .. " belong " .. corps:GetGroup().name )
-				--print( NameIDToString( corps ), "garrison", city.name )
+				ShowText( NameIDToString( corps ) .. " belong " .. corps:GetGroup().name )
 				CorpsDispatchToCity( corps, city, true )
 			end
+
 			--Vote Leader
 			city:SelectLeader( city:VoteLeader() )
-			g_taskMng:FinishTask( atkGroup, TaskType.ATTACK_CITY, combat:GetLocation() )
+
+			--Finished Task
+			--g_taskMng:FinishTask( atkGroup, TaskType.ATTACK_CITY, combat:GetLocation() )
+			g_taskMng:FinishTask( atkGroup, TaskType.SIEGE_CITY, combat:GetLocation() )
 			g_taskMng:CancelTaskFromOtherGroup( atkGroup, TaskType.ATTACK_CITY, combat:GetLocation() )					
 		else
-			--go back home
+			--Failed, corps need to go back home
 			combat:ForeachCorps( function ( corps )	
 				if corps:GetGroup() == combat:GetSideGroup( CombatSide.ATTACKER ) then
 					local task = g_taskMng:GetTaskByActor( corps )

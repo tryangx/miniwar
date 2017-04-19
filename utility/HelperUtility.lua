@@ -7,7 +7,7 @@ debugMeeting = false
 
 local HelperLog = nil
 local function Helper_GetLog()
-	if not HelperLog then HelperLog = LogUtility( "helper_" .. g_gameId .. ".log", LogWarningLevel.ERROR, true ) end
+	if not HelperLog then HelperLog = LogUtility( "log/helper_" .. g_gameId .. ".log", LogWarningLevel.IMPORTANT, true ) end
 	return HelperLog
 end
 
@@ -22,6 +22,10 @@ end
 function ShowText( ... )
 	Helper_GetLog():WriteLog( ... )
 	--if not IsSimulating() then print( ... ) end
+end
+
+function ShowImpText( ... )
+	Helper_GetLog():WriteImportant( ... )
 end
 
 function EndShowText()
@@ -54,6 +58,8 @@ function Random_SyncGetProb( desc )
 	return value
 end
 
+--------------------------------------------
+
 function NameIDToString( data )
 	local content = ""
 	if data then
@@ -62,6 +68,28 @@ function NameIDToString( data )
 		end
 		if data.id then
 			content = content .. "(" .. data.id .. ")"
+		end
+	end
+	return content
+end
+
+function MakeActorBriefString( data )
+	local content = ""
+	if data then
+		if data.name then
+			content = content .. "[" .. data.name .. "]"
+		end
+		if data.id then
+			content = content .. "(" .. data.id .. ")"
+		end
+		if data.GetTroop then
+			content = content .. " troop=" .. NameIDToString( data:GetTroop() )
+		end
+		if data.GetLeader then
+			content = content .. " chara=" .. NameIDToString( data:GetLeader() )
+		end
+		if data.GetCorps then
+			content = content .. " corps=" .. NameIDToString( data:GetCorps() )
 		end
 	end
 	return content
@@ -107,9 +135,14 @@ function Helper_CreateNumberDesc( number, digit, decimal )
 		{ range = 1000, unit = "Ç§", },
 		--{ range = 100, unit = "°Ù", },
 	}
-	local items = chi_units--eng_units
+	local items = eng_units
+	if g_language == "chs" then
+		items = chi_units
+	elseif g_language == "eng" then
+		items = eng_units
+	end
 	for k, v in ipairs( items ) do
-		if math.abs( number ) > v.range then
+		if math.abs( number ) >= v.range then
 			local integer = number * digit / v.range
 			local ret = math.floor( integer / digit )
 			if decimal then ret = ret .. "." .. ( math.floor( integer ) % digit ) end
@@ -221,7 +254,7 @@ end
 function Helper_GetVarb( varbs, varbType )	
 	if not varbs then return nil end
 	for k, varb in pairs( varbs ) do		
-		if varb.type == varbType then
+		if varb.type == varbType and varb.value then
 			return varb
 		end
 	end
@@ -230,7 +263,12 @@ end
 function Helper_SetVarb( varbs, varbType, value )
 	for k, varb in pairs( varbs ) do
 		if varb.type == varbType then
-			varb.value = varb.value + value
+			if value then
+				varb.value = varb.value + value
+			else
+				--equal to nil, means remove
+				varb.value = value
+			end
 			return
 		end
 	end
@@ -378,18 +416,18 @@ end
 function Helper_AddDataSafety( list, data )
 	if debugAddRemoveData and MathUtility_IndexOf( list, data ) then
 		InputUtility_Pause( "data " .. NameIDToString( data ) .. " already in" )
-		k.p = 1
-		return
+		return false
 	end
 	table.insert( list, data )
+	return true
 end
 
 function Helper_RemoveDataSafety( list, data )
 	if debugAddRemoveData and not MathUtility_IndexOf( list, data ) then
 		InputUtility_Pause( "data " .. NameIDToString( data ) .. " not in" )
-		k.p = 1
-		return
+		return false
 	end
 	--print( "removed " .. NameIDToString( data ) )
 	MathUtility_Remove( list, data )
+	return true
 end

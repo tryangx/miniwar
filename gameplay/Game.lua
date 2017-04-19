@@ -211,7 +211,7 @@ function Game:Init()
 	Debug_SetPrinterNode( false )
 
 	self.turn = 0
-	self.maxTurn = 3*12*5
+	self.maxTurn = 3*12*20
 	
 	g_gameEvent:InitData()
 	
@@ -243,7 +243,7 @@ function Game:Init()
 	-- initialize g_calendar
 	g_calendar:Init( Standard_Calendar_TableData() )
 	local begdate = g_scenario:GetBegDate()
-	g_calendar:SetDate( begdate.month, begdate.day, begdate.year, begdate.hour, begdate.bc )
+	g_calendar:SetDate( begdate.year, begdate.month, begdate.day, begdate.hour, begdate.bc )
 	
 	-- initialize g_season
 	g_season:Init( g_calendar, g_seasonTableMng )
@@ -341,6 +341,21 @@ function Game:PreprocessGameData()
 			end
 		end
 	end )
+
+	g_cityDataMng:Foreach( function ( city )
+		for k, adjaCity in ipairs( city.adjacentCities ) do
+			local found = false
+			for k2, otherCity in ipairs( adjaCity.adjacentCities ) do
+				if city == otherCity then
+					found = true
+					break
+				end
+			end
+			if not found then
+				print( "not found ", city.name, " in ", adjaCity.name )
+			end
+		end
+	end)
 	
 	self._combatList = {}
 	g_combatDataMng:Foreach( function ( data )
@@ -404,10 +419,11 @@ function Game:End()
 			city:Dump()
 		end
 	end
-	--g_taskMng:DumpResult()
+	g_taskMng:DumpResult()
 	g_diplomacy:DumpResult()
+	g_movingActorMng:Dump()
 	g_statistic:Dump()
-	g_gameMap:DrawAll()
+	g_gameMap:DrawAll()	
 	if self.winner then
 		InputUtility_Wait( "winner="..self.winner.name, "end" )
 	end
@@ -438,12 +454,11 @@ function Game:NextTurn()
 	end
 	
 	self.turn = self.turn + 1
-	ShowText( "####################################" )
-		
+
 	local elapsedTime = GlobalConst.ELPASED_TIME
 	g_statistic:ElapseTime( elapsedTime )	
 	g_calendar:ElapseDay( elapsedTime )		
-	ShowText( "############# Turn=" .. self.turn .. " " .. g_calendar:CreateCurrentDateDesc( true ) .. " seed=" .. g_syncRandomizer:GetSeed(), g_asyncRandomizer:GetSeed() )
+	ShowImpText( "############# Turn=" .. self.turn .. " " .. g_calendar:CreateCurrentDateDesc( true ) .. " seed=" .. g_syncRandomizer:GetSeed(), g_asyncRandomizer:GetSeed() )
 	
 	-- Event Flow	
 	g_gameEvent:Trigger()
@@ -458,8 +473,9 @@ function Game:Update( elpasedTime )
 	ShowText( "************** Update Flow ******************" )
 	local passDay = elpasedTime
 	
-	g_statistic:Update()
-	
+	g_statistic:Update()	
+	g_statistic:TrackMap()
+
 	g_warfare:Update( elpasedTime )	
 	g_diplomacy:Update( elpasedTime )	
 	g_taskMng:Update( elpasedTime )	
@@ -488,7 +504,7 @@ function Game:Update( elpasedTime )
 	end
 	g_charaTemplate:Update( elapsedTime )
 	--ProfileResult()
-	
+
 	--InputUtility_Pause( "" )
 end
 
@@ -531,6 +547,7 @@ function Game:HoldMeeting()
 			if HaveAchievedGroupFinalGoal( group ) then 
 				self.winner = group
 			end
+			group:SetShortTermGoal()
 			--group:DumpDiplomacyMethod()
 			--g_meeting:HoldGroupMeeting( self, group )
 			--InputUtility_Pause( "Group meeting... " )

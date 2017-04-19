@@ -7,6 +7,8 @@ LogWarningLevel =
 	DEBUG  = 0,
 
 	LOG    = 1,
+
+	IMPORTANT = 50,
 		
 	ERROR  = 100,
 }
@@ -40,6 +42,8 @@ function LogUtility:WriteContent( content, level )
 		content = "[DEBUG] " .. content
 	elseif level <= LogWarningLevel.LOG then
 		content = "[LOG] " .. content
+	elseif level <= LogWarningLevel.IMPORTANT then
+		content = "[IMPT] " .. content
 	elseif level <= LogWarningLevel.ERROR then
 		content = "[ERROR] " .. content
 	end
@@ -69,6 +73,9 @@ function LogUtility:WriteDebug( ... )
 end
 function LogUtility:WriteLog( ... )
 	self:WriteContent( self:ConvertContent( ... ), LogWarningLevel.LOG )
+end
+function LogUtility:WriteImportant( ... )
+	self:WriteContent( self:ConvertContent( ... ), LogWarningLevel.IMPORTANT )
 end
 function LogUtility:WriteError( ... )
 	self:WriteContent( self:ConvertContent( ... ), LogWarningLevel.ERROR )

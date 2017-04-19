@@ -59,13 +59,13 @@ function Calendar:Init( daysInMonth )
 	self.daysInMonth = daysInMonth
 end
 
-function Calendar:SetDate( month, day, year, hour, beforeChrist )
-	self.beforeChrist = beforeChrist or 0
+-- calendar:SetDate( 2000, 1, 1, false )
+function Calendar:SetDate( year, month, day, hour, beforeChrist )
+	self.beforeChrist = beforeChrist == true and true or false
 	self.month = month or self.month	
 	self.day   = day or self.day	
 	self.year  = math.abs( year or self.year )	
-	self.hour  = hour or self.hour
-	
+	self.hour  = hour or self.hour	
 	--InputUtility_Pause( self:CreateCurrentDateDesc( true, true ) )
 end
 
@@ -89,10 +89,9 @@ function Calendar:GetDay()
 end
 
 function Calendar:ConvertDateValue( year, month, day, beforeChrist )
-	beforeChrist = beforeChrist and 1 or 0
 	--if day > DAY_IN_MONTH then month = month + math.floor( day / DAY_IN_MONTH ) * ( beforeChrist and -1 or 1 ) end
 	--if month > MONTH_IN_YEAR then year = year + math.floor( month / MONTH_IN_YEAR ) * ( beforeChrist and -1 or 1 ) end	
-	local ret = year * 100000 + month * 1000 + day * 10 + beforeChrist
+	local ret = year * 100000 + month * 1000 + day * 10 + ( beforeChrist == true and 1 or 0 )
 	return ret
 end
 
@@ -105,31 +104,34 @@ function Calendar:ConvertFromDateValue( dateValue )
 	local month = math.floor( ( dateValue % 100000 ) / 1000 )
 	local day   = math.floor( ( dateValue % 1000 ) / 10 )
 	local beforeChrist = dateValue % 10
-	--ShowText( "Convert From DateValue=", year, month, day )
-	return year, month, day, beforeChrist
+	--print( "Convert From DateValue=", year, month, day, beforeChrist == 1 )
+	return year, month, day, beforeChrist == 1
 end
 
 function Calendar:CreateDateDesc( year, month, day, beforeChrist, byDay, byMonth )
-	local content = ( beforeChrist ~= 0 and "BC " or "AD " )
-	if byDay then content = content .. year .. "Y" .. month .. "M" .. day .. "D"
-	elseif byMonth then content = content .. year .. "Y" .. month .. "M"
-	else content = content .. year .. "Y" 
+	local content = ( beforeChrist == false and "BC " or "AD " )
+	if byDay then
+		content = content .. year .. "Y" .. month .. "M" .. day .. "D"
+	elseif byMonth then
+		content = content .. year .. "Y" .. month .. "M"
+	else
+		content = content .. year .. "Y" 
 	end
 	return content
 end
 
 function Calendar:CreateDateDescByValue( dateValue, byDay, byMonth )
 	if not dateValue then return "" end
+	if not byMonth then byMonth = true end
+	if not byDay then byDay = true end
 	local year, month, day, beforeChrist = self:ConvertFromDateValue( dateValue )
 	return self:CreateDateDesc( year, month, day, beforeChrist, byDay, byMonth )
 end
 
 function Calendar:CreateCurrentDateDesc( byDay, byMonth )
+	if not byMonth then byMonth = true end
+	if not byDay then byDay = true end
 	return self:CreateDateDesc( self.year, self.month, self.day, self.beforeChrist, byDay, byMonth )
-end
-
-function Calendar:DumpDate( byDay, byMonth )
-	ShowText( self:CreateCurrentDateDesc( byDay, byMonth ) )
 end
 
 -----------------------------
@@ -152,10 +154,10 @@ function Calendar:ElapseAMonth()
 	self.month = self.month + 1
 	if self.month > MONTH_IN_YEAR then
 		self.month = self.month - MONTH_IN_YEAR
-		if self.beforeChrist ~= 0 then
+		if self.beforeChrist then
 			self.year  = self.year - 1
 			if self.year == 0 then
-				self.beforeChrist = 1 
+				self.beforeChrist = true
 				self.year = 1
 			end
 		else
@@ -179,11 +181,6 @@ end
 --------------------------------------
 -- Calculate difference between two date
 
-function Calendar:CalcDiffYearByDate( dateValue )
-	if not dateValue then return 0 end
-	local year, month, day, beforeChrist = self:ConvertFromDateValue( dateValue )
-	return self:CalcDiffYear( year, month, day, beforeChrist )
-end
 function Calendar:CalcDiffYear( year, month, day, beforeChrist )
 	if beforeChrist ~= self.beforeChrist then
 		return year + self.year
@@ -191,50 +188,51 @@ function Calendar:CalcDiffYear( year, month, day, beforeChrist )
 	return math.abs( year - self.year )
 end
 
-function Calendar:CalcDiffMonth( dateValue )	
+function Calendar:CalcDiffYearByDate( dateValue )
+	if not dateValue then return 0 end
+	local year, month, day, beforeChrist = self:ConvertFromDateValue( dateValue )
+	return self:CalcDiffYear( year, month, day, beforeChrist )
+end
+
+function Calendar:CalcDiffMonthByDate( dateValue )	
 	if not dateValue then return 0 end
 	local year, month, day, beforeChrist = self:ConvertFromDateValue( dateValue )
 	
 	if beforeChrist ~= self.beforeChrist then
-		if beforeChrist ~= 0 then
-			return ( year + self.year ) * MONTH_IN_YEAR + ( MONTH_IN_YEAR - month ) + self.month
-		elseif self.beforeChrist ~= 0 then
-			return ( year + self.year ) * MONTH_IN_YEAR + month + ( MONTH_IN_YEAR - self.month )
-		end
+		if beforeChrist then
+			local totalMonth1 = ( year - 1 ) * MONTH_IN_YEAR + ( MONTH_IN_YEAR - month )
+			local totalMonth2 = ( self.year - 1 ) * MONTH_IN_YEAR + self.month
+			return totalMonth1 + totalMonth2
+		elseif self.beforeChrist then
+			local totalMonth1 = ( year - 1 ) * MONTH_IN_YEAR + month
+			local totalMonth2 = ( self.year - 1 ) * MONTH_IN_YEAR + ( MONTH_IN_YEAR - self.month )
+			return totalMonth1 + totalMonth2
+		end		
 	end
-	
-	if year > self.year then
-		--given date is newer than current date
-		return ( year - self.year ) * MONTH_IN_YEAR + month + ( MONTH_IN_YEAR - self.month )
-	else
-		--given date is older than current date
-		return ( self.year - year ) * MONTH_IN_YEAR + self.month + ( MONTH_IN_YEAR - month )
-	end
+	local totalMonth1 = ( year - 1 ) * MONTH_IN_YEAR + month
+	local totalMonth2 = ( self.year - 1 ) * MONTH_IN_YEAR + self.month
+	return math.abs( totalMonth2 - totalMonth1 )
 end
 
-function Calendar:CalcDiffDay( dateValue )
+function Calendar:CalcDiffDayByDate( dateValue )
+	if not dateValue then return 0 end
 	local year, month, day, beforeChrist = self:ConvertFromDateValue( dateValue )
 	
 	local diffDays = 0
+
 	if beforeChrist ~= self.beforeChrist then
-		if beforeChrist ~= 0 then
-			diffDays = ( ( year + self.year ) * MONTH_IN_YEAR + ( MONTH_IN_YEAR - month ) + self.month ) * DAY_IN_MONTH
-			diffDays = diffDays - day + self.day + DAY_IN_MONTH
-		elseif self.beforeChrist ~= 0 then
-			diffDays = ( year + self.year ) * MONTH_IN_YEAR + month + ( MONTH_IN_YEAR - self.month )
-			diffDays = diffDays + day - self.day + DAY_IN_MONTH
-		end
-		return diffDays
+		if beforeChrist then
+			local totalDays1 = ( year - 1 ) * MONTH_IN_YEAR * DAY_IN_MONTH + ( MONTH_IN_YEAR - month ) * DAY_IN_MONTH + ( DAY_IN_MONTH - day )
+			local totalDays2 = ( self.year - 1 ) * MONTH_IN_YEAR * DAY_IN_MONTH + ( self.month - 1 ) * DAY_IN_MONTH + self.day			
+			return totalDays1 + totalDays2
+		else
+			local totalDays1 = ( year - 1 ) * MONTH_IN_YEAR * DAY_IN_MONTH + ( month - 1 ) * DAY_IN_MONTH + day
+			local totalDays2 = ( self.year - 1 ) * MONTH_IN_YEAR * DAY_IN_MONTH + ( MONTH_IN_YEAR - self.month ) * DAY_IN_MONTH + ( DAY_IN_MONTH - self.day )
+			return totalDays1 + totalDays2
+		end		
 	end
 	
-	if year > self.year then
-		--given date is newer than current date
-		diffDays = ( ( year - self.year ) * MONTH_IN_YEAR + month + ( MONTH_IN_YEAR - self.month ) ) * DAY_IN_MONTH
-		diffDays = diffDays + day - self.day + DAY_IN_MONTH
-	else
-		--given date is older than current date
-		diffDays = ( ( self.year - year ) * MONTH_IN_YEAR + self.month + ( MONTH_IN_YEAR - month ) ) * DAY_IN_MONTH
-		diffDays = diffDays - day + self.day + DAY_IN_MONTH
-	end
-	return diffDays
+	local totalDays1 = ( year - 1 ) * MONTH_IN_YEAR * DAY_IN_MONTH + ( month - 1 ) * DAY_IN_MONTH + day
+	local totalDays2 = ( self.year - 1 ) * MONTH_IN_YEAR * DAY_IN_MONTH + ( self.month - 1 ) * DAY_IN_MONTH + self.day
+	return math.abs( totalDays2 - totalDays1 )
 end

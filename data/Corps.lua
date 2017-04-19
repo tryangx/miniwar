@@ -81,6 +81,21 @@ function Corps:ConvertID2Data()
 	self.formation = g_formationTableMng:GetData( self.formation )
 end
 
+function Corps:CreateBrief()
+	local content = "Corps=".. NameIDToString( self ).." Stay=".. NameIDToString( self.location ) .."/"..self.home.name
+	content = content .. " LD=" .. ( self.leader and self.leader.name or "" ) .. " num=" .. #self.troops .. " pow=" .. self:GetPower()
+	local task = g_taskMng:GetTaskByActor( self )
+	if task then
+		content = content .. " TASK=" .. task:CreateDesc()
+	end
+	if self:IsPreparedToAttack() then
+		content = content .. " PREPARED"
+	else
+		content = content .. " IDLE"
+	end
+	return content
+end
+
 function Corps:Dump( indent )
 	if not indent then indent = "" end
 	local content = indent .. "Corps=".. NameIDToString( self ).." Stay=".. self.location.name .. " LD=" .. ( self.leader and self.leader.name or "" ) .. " num=" .. #self.troops .. ">>>"	
@@ -224,7 +239,15 @@ function Corps:GetTrainingEval()
 end
 
 function Corps:IsNoneTask()
-	return not g_taskMng:GetTaskByActor( self )
+	if g_taskMng:GetTaskByActor( self ) then return false end
+	for k, troop in ipairs( self.troops ) do
+		if g_taskMng:GetTaskByActor( troop ) then return false end
+		local task = g_taskMng:GetTaskByActor( troop:GetLeader() )
+		if troop:GetLeader() and g_taskMng:GetTaskByActor( troop:GetLeader() ) then return false end
+		--ShowText( "check troop nonetask" .. NameIDToString( troop ), NameIDToString( troop:GetLeader() ), task )
+	end
+	--ShowText( "check corps nonetask" .. NameIDToString( self ), #self.troops )
+	return true
 end
 
 function Corps:IsAtHome()
@@ -298,9 +321,14 @@ end
 ------------------------------------------
 -- Operation
 
+function  Corps:MoveOn( reason )
+	g_movingActorMng:AddActor( MovingActorType.CORPS, self, { reason = reason } )
+end
+
 function Corps:MoveToLocation( location )
 	--print( NameIDToString( self ) .. " move to location", location.name )
 	self.location = location
+	if not location then print( NameIDToString( self ) ) k.p = 1 end
 	g_movingActorMng:RemoveActor( MovingActorType.CORPS, self )
 end
 

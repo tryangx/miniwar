@@ -124,16 +124,17 @@ function MovingActorManager:AddActor( actorType, actor, data )
 	local list = self:GetList( actorType )
 	m = list[actor.id]
 	if actor.id and m then
-		ShowDebug( "exist moving actor=", m.data and m.data.reason or "" )
+		ShowDebug( "exist moving actor=", m.data and m.data.reason or "", NameIDToString( actor ) )
 		InputUtility_Pause( "Add Move Actor=" .. NameIDToString( actor ), ( data and data.reason or "" ) )
 		k.p = 1
-		return
+		return false
 	end
 	m = MovingActor()
 	m.id = actor.id
 	m.data = data
 	list[m.id] = m
-	--ShowText( "add moving actor=", NameIDToString( actor ), m.data and m.data.reason or "" )
+	ShowText( "add moving actor=", NameIDToString( actor ), m.data and m.data.reason or "" )
+	return true
 end
 
 function MovingActorManager:CreateActor( actorType, data )

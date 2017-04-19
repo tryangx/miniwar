@@ -195,6 +195,10 @@ function Behavior_Test()
 			data1,
 			data2,
 		},
+		--[[
+		output:
+		check1
+		]]
 	}
 	data4 = 
 	{
@@ -202,11 +206,19 @@ function Behavior_Test()
 			data1,
 			data2,
 		},
+		--[[
+		output:
+		check1
+		check2
+		act2
+		]]
 	}
 
-	tree = BehaviorNode()
-	tree:BuildTree( data4 )
-
+	local tree1 = BehaviorNode()
+	tree1:BuildTree( data3 )
+	local tree2 = BehaviorNode()
+	tree2:BuildTree( data4 )
 	bev = Behavior()
-	bev:Run( tree )
+	bev:Run( tree1 )
+	bev:Run( tree2 )
 end

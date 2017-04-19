@@ -1,5 +1,10 @@
 ------------------------------
 -- Group relative
+
+function GuessGroupPower( tarGroup, currentGroup )
+	return tarGroup:GetPower()
+end
+
 function QueryGroupNeedCorpsForWar( group )
 	local relations = group:GetBelligerentRelations()
 	local number = math.max( 1, math.ceil( #group.cities / 2.5 ) )
@@ -16,7 +21,7 @@ function QueryGroupCharaLimit( group )
 	if not number then
 		number = CharacterParams.SUBORDINATE_LIMIT.DEFAULT
 	end
-	number = number + math.floor( group:GetPlotNumber() * 0.35 )
+	number = number + math.floor( group:GetPlotNumber() * 0.35 ) + #group.cities
 	return number
 end
 
@@ -42,30 +47,38 @@ function QueryCityCorpsSupport( city )
 	return ret
 end
 
+--Determine how many chara( minimum ) supported in the city
 function QueryCityCharaLimit( city )
 	local plotNumber = #city.plots
-	local ret = plotNumber * 0.5
+	local ret = plotNumber * 0.35
 	local extraReq = 0
 	if city:IsCapital() then
 		extraReq = extraReq + CityParams.CAPITAL_EXTRA_CHARA_LIMIT
 	else
-		if city:IsFrontier() then extraReq = extraReq + CityParams.FRONTIER_EXTRA_CHARA_LIMIT end
+		--if city:IsBattleFront() then extraReq = extraReq + CityParams.BATTLEFRONT_EXTRA_CHARA_LIMIT
+		--elseif city:IsFrontier() then extraReq = extraReq + CityParams.FRONTIER_EXTRA_CHARA_LIMIT end
 		if city:IsImportance() then extraReq = extraReq + CityParams.IMPORTANCE_EXTRA_CHARA_LIMIT end
 	end
-	return math.min( math.ceil( ret ), CityParams.MAX_CHARA_LIMIT )
+	return math.min( math.ceil( ret + extraReq ), CityParams.MAX_CHARA_LIMIT )
 end
 
+--Determine how many chara( minimum ) required for the city
 function QueryCityNeedChara( city )
 	local plotNumber = #city.plots
-	local ret = math.max( 1, math.floor( plotNumber ^ 0.5 ) )
-	local minReq =  CityParams.NONCAPITAL_MIN_CHARA_REQUIREMENT
-	if city:IsCapital() then
-		minReq = minReq + CityParams.CAPITAL_MIN_CHARA_REQUIREMENT
-	else
-		if city:IsFrontier() then minReq = minReq + CityParams.FRONTIER_MIN_CHARA_REQUIREMENT end
-		if city:IsImportance() then minReq = minReq + CityParams.IMPORTANCE_MIN_CHARA_REQUIREMENT end
+	local ret = plotNumber * 0.15
+	local minReq = city:IsCapital() and CityParams.CAPITAL_MIN_CHARA_REQUIREMENT or CityParams.NONCAPITAL_MIN_CHARA_REQUIREMENT
+		
+	if city:IsBattleFront() then
+		minReq = minReq + CityParams.BATTLEFRONT_MIN_CHARA_REQUIREMENT
+	elseif city:IsFrontier() then
+		minReq = minReq + CityParams.FRONTIER_MIN_CHARA_REQUIREMENT
 	end
-	return math.max( ret, minReq )
+		
+	if city:IsImportance() then minReq = minReq + CityParams.IMPORTANCE_MIN_CHARA_REQUIREMENT end
+
+	if city:IsExpandable() then minReq = minReq + CityParams.EXPANDABLE_MIN_CHARA_REQUIREMENT end
+
+	return math.ceil( math.max( ret, minReq ) )
 end
 
 function QueryCityReqMilitaryPower( city )
@@ -73,11 +86,35 @@ local plotNumber = #city.plots
 	if city:IsInDanger() then
 		plotNumber = plotNumber * 1.5
 	end
-	local req = plotNumber * CityParams.MILITARY.SAFETY_MILITARYPOWER_PER_PLOT
-	if city:IsBattleFront() then req = req + plotNumber * CityParams.MILITARY.BATTLEFRONT_MILITARYPOWER_PER_PLOT end
-	if city:IsFrontier() then req = req + plotNumber * CityParams.MILITARY.FRONTIER_MILITARYPOWER_PER_PLOT end
-	if city:IsCapital() then req = req + plotNumber * CityParams.MILITARY.SECURITY_MILITARYPOWER_PER_PLOT end
-	return math.ceil( req )
+
+	--safety military power requirment	
+	local req = CityParams.MILITARY.SAFETY_MILITARYPOWER_PER_PLOT
+
+	--frontier or battlefront
+	if city:IsBattleFront() then
+		req = req + CityParams.MILITARY.BATTLEFRONT_MILITARYPOWER_PER_PLOT
+	elseif city:IsFrontier() then
+		req = req + CityParams.MILITARY.FRONTIER_MILITARYPOWER_PER_PLOT
+	end
+
+	--adjacent to shorterm goal
+	if city:GetGroup() then
+		--capital or center
+		if city:IsCapital() then
+			req = req + CityParams.MILITARY.IMPORTANCE_MILITARYPOWER_PER_PLOT
+		elseif city:IsCenter() then
+			req = req + CityParams.MILITARY.SECURITY_MILITARYPOWER_PER_PLOT
+		end
+
+		if city:IsAdjacentOccupyCityGoal() then
+			req = req + CityParams.MILITARY.IMPORTANCE_MILITARYPOWER_PER_PLOT		
+		end
+		if city:IsDefendGoal() then
+			req = req + CityParams.IMPORTANCE_MILITARYPOWER_PER_PLOT
+		end
+	end
+
+	return math.ceil( req ) * plotNumber
 end
 
 function QueryCitySupportSoldier()
@@ -133,8 +170,11 @@ end
 --------------------------
 -- City
 
-function GuessCityPower( city )
-	local power = city:GetReqMilitaryPower() + city.guards
+function GuessCityPower( tarCity, currentCity )
+	if tarCity == currentCity then
+		return tarCity:GetPower()
+	end
+	local power = tarCity:GetReqMilitaryPower() + tarCity.guards
 	return power
 end
 
@@ -185,7 +225,7 @@ function CalcSpendTimeOnRoad( currentCity, targetCity )
 	local pos2 = targetCity:GetCoordinate()
 	local distance = math.abs( pos1.x - pos2.x ) + math.abs( pos1.y - pos2.y )
 	--InputUtility_Pause( "distance", currentCity.name, targetCity.name, distance, distance * GlobalConst.MOVE_TIME )
-	return distance * GlobalConst.MOVE_TIME
+	return distance * GlobalConst.CHARA_MOVE_TIME
 end
 
 function CalcCorpsSpendTimeOnRoad( currentCity, targetCity )
@@ -196,7 +236,7 @@ function CalcCorpsSpendTimeOnRoad( currentCity, targetCity )
 	local pos1 = currentCity:GetCoordinate()
 	local pos2 = targetCity:GetCoordinate()
 	local distance = math.abs( pos1.x - pos2.x ) + math.abs( pos1.y - pos2.y )
-	return distance * 3 * GlobalConst.MOVE_TIME
+	return distance * GlobalConst.CORPS_MOVE_TIME
 end
 
 --------------------------
@@ -259,15 +299,15 @@ end
 function CheckGroupStuAggressive( group )
 	local prob = 0
 	if group:HasGoal( GroupGoal.DOMINATION_TERRIORITY, GroupGoal.DOMINATION_CITY ) then prob = prob + 3500 end
-	if group:HasGoal( GroupGoal.POWER_LEADING, GroupGoal.POWER_LEADING ) then prob = prob + 1000 end
-	if group:HasGoal( GroupGoal.OCCUPY_CITY ) then prob = prob + 7000 end
+	if group:HasGoal( GroupGoal.POWER_LEADING, GroupGoal.POWER_LEADING ) then prob = prob + 1500 end
+	if group:HasGoal( GroupGoal.OCCUPY_CITY ) then prob = prob + 6500 end
 	
 	local curPower = group:GetPower()
 	local totalPower, maxPower, minPower, number = group:GetBelligerentGroupPower()
 	local avgPower = number > 0 and totalPower / number or 0
-	if curPower >= maxPower then prob = prob + 2500 end
-	if curPower >= minPower then prob = prob + 1000 end
-	if curPower >= avgPower then prob = prob + 1000 end
+	if curPower >= maxPower then prob = prob + 3500 end
+	if curPower >= minPower then prob = prob + 1500 end
+	if curPower >= avgPower then prob = prob + 1500 end
 	
 	local rand = Random_SyncGetProb()
 	--InputUtility_Pause( group.name .. " aggressive=" ..rand .."/" .. prob )

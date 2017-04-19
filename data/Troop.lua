@@ -187,7 +187,10 @@ end
 -- Combat Getter
 
 function Troop:IsNoneTask()
-	return not g_taskMng:GetTaskByActor( self ) and not g_taskMng:GetTaskByActor( self.corps )
+	if g_taskMng:GetTaskByActor( self ) then return false end
+	if self.corps and g_taskMng:GetTaskByActor( self.corps ) then return false end
+	if self.leader and g_taskMng:GetTaskByActor( self.leader ) then return false end
+	return true
 end
 
 function Troop:IsAtHome()
@@ -239,7 +242,8 @@ function Troop:IsEnemy( target )
 end
 
 function Troop:CanAct()
-	return self._combatCD <= 0 and self:IsCombatUnit() and not self:IsActed()
+	return self:IsCombatUnit() and not self:IsActed()
+	--return self._combatCD <= 0 and self:IsCombatUnit() and not self:IsActed()
 end
 
 function Troop:CanForward()
@@ -271,6 +275,7 @@ function Troop:NewCombat()
 	self._combatAttackTimes  = 0
 	self._combatDefendTimes  = 0
 	self._combatKillList     = {}
+	self._combatKill         = 0
 	
 	-- init action
 	self._combatPurpose = CombatTroopPurpose.NONE
@@ -548,7 +553,8 @@ function Troop:Parry()
 end
 
 function Troop:Kill( enemy, damage, neutralized )	
-	table.insert( self._combatKillList, enemy )
+	table.insert( self._combatKillList, enemy )	
+	self._combatKill = self._combatKill + damage
 	
 	local rate = ( enemy:GetLevel() - self:GetLevel() ) / ( enemy:GetLevel() + self:GetLevel() )
 	local exp = math.ceil( damage * ( 1 + ( enemy:GetLevel() - self:GetLevel() ) / ( enemy:GetLevel() + self:GetLevel() ) ) )
@@ -559,12 +565,10 @@ end
 
 function Troop:Flee()
 	self._combatFled = true
-	--InputUtility_Pause( NameIDToString( self ) .. " flee", self._combatFled )
 end
 
 function Troop:Surrender()
 	self._combatSurrendered = true
-	--InputUtility_Pause( NameIDToString( self ) .. " surrender" )
 end
 
 function Troop:GainSkill()
@@ -664,6 +668,10 @@ function Troop:Update()
 end
 
 -------------------------
+function Troop:MoveOn( reason )
+	g_movingActorMng:AddActor( MovingActorType.TROOP, self, { reason = reason } )
+end
+
 function Troop:MoveToLocation( location )
 	self.location = location
 	g_movingActorMng:RemoveActor( MovingActorType.TROOP, self )
