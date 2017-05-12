@@ -69,8 +69,8 @@ function Proposal_CreateDesc( proposal, needDate )
 
 		
 	--Military
-	elseif proposal.type == CharacterProposal.ATTACK_CITY then
-		content = "Send [" .. NameIDToString( proposal.data ) .. "]"..proposal.data:GetPower().." Attack [".. NameIDToString( proposal.target ) .. "]"
+	elseif proposal.type == CharacterProposal.HARASS_CITY then
+		content = "Send [" .. NameIDToString( proposal.data ) .. "]"..proposal.data:GetPower().." Harass [".. NameIDToString( proposal.target ) .. "]"
 	elseif proposal.type == CharacterProposal.EXPEDITION then
 		content = "Send [" .. NameIDToString( proposal.data ) .. "] Go on expedition to [".. NameIDToString( proposal.target ) .. "] " 		
 	elseif proposal.type == CharacterProposal.DISPATCH_CORPS then
@@ -82,7 +82,13 @@ function Proposal_CreateDesc( proposal, needDate )
 		for k, corps in ipairs( proposal.data ) do
 			corpsName = corpsName .. NameIDToString( corps ) .. " "
 		end
-		content = "Send [" .. corpsName .. "] Siege [".. NameIDToString( proposal.target ) .. "]"
+		content = "Send [" .. corpsName .. "] Siege City [".. NameIDToString( proposal.target ) .. "]"
+	elseif proposal.type == CharacterProposal.DEFEND_CITY then
+		local corpsName = ""
+		for k, corps in ipairs( proposal.data ) do
+			corpsName = corpsName .. NameIDToString( corps ) .. " "
+		end
+		content = "Send [" .. corpsName .. "] Defend City [".. NameIDToString( proposal.target ) .. "]"
 	elseif proposal.type == CharacterProposal.MEET_ATTACK then
 		content = "Send [" .. NameIDToString( proposal.data ) .. "] Meet Attack "
 	elseif proposal.type == CharacterProposal.DISPATCH_TROOPS  then

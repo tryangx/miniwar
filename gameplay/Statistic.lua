@@ -88,7 +88,7 @@ function Statistic:TrackMap()
 			c2 = city.guards
 		end
 		local c3 = ""
-		if g_warfare:GetExistCombat( city ) then
+		if g_warfare:GetCombatByLocation( city ) then
 			c3 = c3 .. "!"
 		end
 		if city:GetTag( CityTag.BATTLEFRONT ) then
@@ -104,16 +104,16 @@ function Statistic:TrackMap()
 			c3 = c3 .. "W"
 		end
 		if city:GetTag( CityTag.EXPANDABLE ) then
-			--c3 = c3 .. "A"
+			c3 = c3 .. "A"
 		end
 		if city:GetTag( CityTag.SAFE ) then
-			--c3 = c3 .. "S"
+			c3 = c3 .. "S"
 		end
 		if city:GetTag( CityTag.PREPARED ) then
 			c3 = c3 .. "P"
 		end
 		if city:GetTag( CityTag.CONNECTED ) then
-			c3 = c3 .. "C"
+			--c3 = c3 .. "C"
 		else
 			if city:GetGroup() and city:GetGroup():GetCapital() ~= city then InputUtility_Pause( city.name ) end
 		end
@@ -139,7 +139,7 @@ end
 -- Track
 
 function Statistic:TrackGroup( desc, group )
-	desc = desc .. g_calendar:CreateCurrentDateDesc()
+	desc = desc .. " " .. g_calendar:CreateCurrentDateDesc()
 	ShowText( desc )
 	if not self.groupTracks[group] then self.groupTracks[group] = {} end
 	table.insert( self.groupTracks[group], desc )
@@ -233,7 +233,7 @@ function Statistic:CountGroup( group )
 	table.insert( self.activateGroups, group )
 
 	if g_calendar:GetMonth() == 1 and g_calendar:GetDay() == 1 then
-		self:TrackGroup( group.name .. " pow=" .. group:GetPower(), group )
+		self:TrackGroup( group.name .. " soldier=" .. group:GetPower() .. " agr=" .. group:GetAgriculturePower() .. " eco=" .. group:GetEconomyPower(), group )
 	end
 	
 	local numOfTech = #group.techs
@@ -355,7 +355,7 @@ function Statistic:DumpCharaDetail()
 	DumpList( self.outCharacterList )
 	self:DumpText( "OtherChara    = ".. #self.otherCharacterList )	
 	DumpList( self.otherCharacterList )
-	self:DumpText( "PrisonerChara = ".. #self.prisonerCharacterList )	
+	self:DumpText( "PrisonerChara = ".. #self.prisonerCharacterList )
 	DumpList( self.prisonerCharacterList )
 end
 
@@ -380,10 +380,9 @@ function Statistic:Dump()
 
 	--self:DumpCharaDetail()
 	
-	self:DumpText( "Cancel Task   = " .. #self.cancelTasks )
-	--MathUtility_Dump( self.cancelTasks )
+	--self:DumpText( "Cancel Task   = " .. #self.cancelTasks )
 	
-	MathUtility_Dump( self.focusTasks )
+	--MathUtility_Dump( self.focusTasks )
 
 	self:DumpText( "Fallen   Group:" ) for k, desc in ipairs( self.fallenGroups ) do self:DumpText( "	" .. desc ) end
 	

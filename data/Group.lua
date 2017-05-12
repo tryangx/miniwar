@@ -417,6 +417,13 @@ function Group:GetMilitaryPower()
 	return self._militaryPower
 end
 
+function Group:GetAgriculturePower()
+	return Helper_SumIf( self.cities, "agriculture", bonusType, "agriculture" )
+end
+function Group:GetEconomyPower()
+	return Helper_SumIf( self.cities, "economy", bonusType, "economy" )
+end
+
 function Group:GetPower()
 	return self:GetMilitaryPower()
 end
@@ -1078,33 +1085,29 @@ function Group:Update()
 		city:SetTag( CityTag.CONECTED, 1 )
 	end
 	local capital = self.capital
-	local openList = { { to = capital, from = capital } }
-	local closeList = {}
-	local index = 1
-	while index <= #openList do
-		local city = openList[index].to
-		city:SetTag( CityTag.CONNECTED, 1 )
-		closeList[city] = 1
-		ShowText( "connect=" .. city.name .. " in " .. NameIDToString( city:GetGroup() ) .. " from=" .. openList[index].from.name )
-		for k, adjaCity in ipairs( city.adjacentCities ) do
-			if adjaCity:GetGroup() == self and not closeList[adjaCity] then
-				closeList[adjaCity] = 1
-				table.insert( openList, { to = adjaCity, from = city } )
+	if capital then
+		local openList = { { to = capital, from = capital } }
+		local closeList = {}
+		local index = 1
+		while index <= #openList do
+			local city = openList[index].to
+			city:SetTag( CityTag.CONNECTED, 1 )
+			closeList[city] = 1
+			ShowText( "connect=" .. city.name .. " in " .. NameIDToString( city:GetGroup() ) .. " from=" .. openList[index].from.name )
+			for k, adjaCity in ipairs( city.adjacentCities ) do
+				if adjaCity:GetGroup() == self and not closeList[adjaCity] then
+					closeList[adjaCity] = 1
+					table.insert( openList, { to = adjaCity, from = city } )
+				end
+			end
+			index = index + 1
+		end
+		ShowText(  self.name .. " " .. capital.name .. " connect " .. #openList .. "/" .. #self.cities )
+		if #openList > #self.cities then
+			for k, city in ipairs( self.cities ) do
+				ShowText( city.name, NameIDToString( city:GetGroup() ) )
 			end
 		end
-		index = index + 1
-	end
-	ShowText(  self.name .. " " .. capital.name .. " connect " .. #openList .. "/" .. #self.cities )
-	if #openList > #self.cities then
-		for k, city in ipairs( self.cities ) do
-			ShowText( city.name, NameIDToString( city:GetGroup() ) )
-		end
-		--[[
-		for k, data in ipairs( openList ) do
-			print( data.to.name, NameIDToString( data.to:GetGroup() ) )
-		end
-		]]
-		k.p = 1
 	end
 end
 
@@ -1142,38 +1145,39 @@ function Group:SetShortTermGoal()
 	--if not self:GetAsset( GroupTag.SITUATION.AT_WAR ) then return end
 	if #self.corps <= 1 then return end
 
-	--find adjacent weakness
-	local tarCityList = {}
-	for k, city in ipairs( self.cities ) do
-		if city:GetTag( CityTag.FRONTIER ) then
-			local selfPower = city:GetPower()
-			local selfTotalPower = selfPower + city:QueryAdjacentFriendlyMilitaryPower()
-			--print( "self=", city.name, selfPower, selfTotalPower )
-			local list = city:GetAdjacentBelligerentCityList()
-			for k, adjaCity in ipairs( list ) do
-				if not adjaCity:GetGroup() then
-					--Neutral is priority target
-					local enemyPower = GuessCityPower( adjaCity )
-					if selfPower > enemyPower then
-						table.insert( tarCityList, adjaCity )
-					end
-				else
-					--Compare military power( include their guards )
-					local enemyPower = GuessCityPower( adjaCity )
-					local enemyTotalPower = enemyPower + adjaCity:QueryAdjacentFriendlyMilitaryPower()
-					local rate = 1.5
-					if selfPower > enemyPower * rate or ( selfPower > enemyPower * rate and selfTotalPower * rate > enemyTotalPower ) then
-						--print( "enemy=", adjaCity.name, enemyPower, enemyTotalPower )					
-						table.insert( tarCityList, adjaCity )
+	if 1 then
+		--find adjacent weakness
+		local tarCityList = {}
+		for k, city in ipairs( self.cities ) do
+			if city:GetTag( CityTag.FRONTIER ) then
+				local selfPower = city:GetPower()
+				local selfTotalPower = selfPower + city:QueryAdjacentFriendlyMilitaryPower()
+				--print( "self=", city.name, selfPower, selfTotalPower )
+				local list = city:GetAdjacentBelligerentCityList()
+				for k, adjaCity in ipairs( list ) do
+					if not adjaCity:GetGroup() then
+						--Neutral is priority target
+						local enemyPower = GuessCityPower( adjaCity )
+						if selfPower > enemyPower then
+							table.insert( tarCityList, adjaCity )
+						end
+					else
+						--Compare military power( include their guards )
+						local enemyPower = GuessCityPower( adjaCity )
+						local enemyTotalPower = enemyPower + adjaCity:QueryAdjacentFriendlyMilitaryPower()
+						local rate = 1.5
+						if selfPower > enemyPower * rate or ( selfPower > enemyPower * rate and selfTotalPower * rate > enemyTotalPower ) then
+							--print( "enemy=", adjaCity.name, enemyPower, enemyTotalPower )					
+							table.insert( tarCityList, adjaCity )
+						end
 					end
 				end
 			end
 		end
+		if #tarCityList > 0 then		
+			local tarCity = tarCityList[Random_SyncGetRange( 1, #tarCityList )]
+			SetGroupShortTermGoal( self, { type = GroupGoal.OCCUPY_CITY, target = tarCity.id, timeout = 180 } )
+			return
+		end
 	end
-	if #tarCityList == 0 then
-		return
-	end
-	
-	local tarCity = tarCityList[Random_SyncGetRange( 1, #tarCityList )]
-	SetGroupShortTermGoal( self, { type = GroupGoal.OCCUPY_CITY, target = tarCity.id, timeout = 180 } )
 end

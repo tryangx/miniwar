@@ -116,6 +116,7 @@ function MovingActorManager:RemoveActor( actorType, actor )
 	local list = self:GetList( actorType )
 	if list and actor then
 		list[actor.id] = nil
+		ShowText( "remove moving actor=", NameIDToString( actor ) )
 	end
 end
 

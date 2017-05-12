@@ -108,9 +108,15 @@ print( g_calendar:CalcDiffDayByDate( v2 ) )
 --[[]]
 g_game = Game()
 g_game:Init()
+
 --g_game:MainMenu()
+
+--g_game:TestCombat()
+
 g_game:NewGame()
-g_game:StartGame()
+
+--g_game:ViewData()
+
 --]]
 
 

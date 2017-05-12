@@ -16,6 +16,9 @@ function GetGroupShortTermGoalWithCity( group, tarCity )
 	return true
 end
 
+--------------------------------------------
+--		Set short-term goal for group
+--------------------------------------------
 function SetGroupShortTermGoal( group, data )
 	if GetGroupShortTermGoal( group ) then return end
 
@@ -33,6 +36,9 @@ function SetGroupShortTermGoal( group, data )
 	g_statistic:TrackGroup( NameIDToString( group ) .. "set goal="..CreateGoalDesc( goal ), group )
 end
 
+--------------------------------------------
+--		Cancel short-term goal for group
+--------------------------------------------
 function CancelGroupShortTermGoal( group )
 	local shortTermGoal = nil
 	for k, goal in ipairs( group.goals ) do
@@ -49,6 +55,8 @@ function CancelGroupShortTermGoal( group )
 	end
 end
 
+-------------------------------------------
+
 local function AchievedGroupShortTermGoal( group, goal )
 	--Bonus
 	group:AppendAsset( GroupTag.REPUTATION, 10 )	
@@ -62,12 +70,15 @@ end
 
 local function MeetGroupFinalGoal( group, goal, curDate, achieved )	
 	if achieved then
+		--InputUtility_Pause( goal.time, curDate, goal.duration, goal.timeout )
 		if not goal.time or goal.time == 0 then
 			goal.time = curDate
 		elseif goal.duration then
  			return g_calendar:CalcDiffDayByDate( goal.time ) >= goal.duration
 		elseif goal.timeout then
 			return g_calendar:CalcDiffDayByDate( goal.time ) < goal.timeout
+		else
+			return true
 		end
 	elseif goal.duration then
 		goal.time = nil
@@ -87,6 +98,8 @@ local function MeetGroupShortTermGoal( group, goal, curDate, achieved )
  			if g_calendar:CalcDiffDayByDate( goal.time ) < goal.timeout then
  				AchievedGroupShortTermGoal( group, goal )
  			end
+ 		else
+			return true
 		end
 	else
 		if g_calendar:CalcDiffDayByDate( goal.time ) >= ( goal.timeout or 360 ) then
@@ -99,8 +112,9 @@ local function MeetGroupShortTermGoal( group, goal, curDate, achieved )
 	end
 end
 
----------------------------
-
+--------------------------------------------
+--		Check goal for group
+--------------------------------------------
 function HaveAchievedGroupFinalGoal( group )	
 	--if 1 then return false end
 	--if #group.goals == 0 then return #group.cities == g_cityDataMng:GetCount() end	
@@ -109,24 +123,23 @@ function HaveAchievedGroupFinalGoal( group )
 	for k, goal in ipairs( group.goals ) do		
 		--Final goal
 		if goal.type == GroupGoal.DOMINATION_TERRIORITY then
-			local number, rate = group:GetTerritoryRate()			
+			local number, rate = group:GetTerritoryRate()						
 			AchievedFinalGoal = MeetGroupFinalGoal( group, goal, curDate, rate >= goal.target )
 			if AchievedFinalGoal then
-				InputUtility_Pause( group.name .. " DOMINATION_TERRIORITY=" .. number .. "+" .. rate .. "%", " Goal=" .. ( goal.target or 0 ) .. "+" .. ( goal.rate or 0 ) .. "%" )
+				ShowText( group.name .. " DOMINATION_TERRIORITY=" .. number .. "+" .. rate .. "%", " Goal=" .. ( goal.target or 0 ) .. "+" .. ( goal.rate or 0 ) .. "%" )
 			end
 			
 		elseif goal.type == GroupGoal.DOMINATION_CITY then
-			local number, rate = group:GetTerritoryRate()			
 			AchievedFinalGoal = MeetGroupFinalGoal( group, goal, curDate, number >= goal.target )
 			if AchievedFinalGoal then
-				InputUtility_Pause( group.name .. " DOMINATION_CITY=" .. number .. "+" .. rate .. "%", " Goal=" .. ( goal.target or 0 ) .. "+" .. ( goal.rate or 0 ) .. "%" )
+				ShowText( group.name .. " DOMINATION_CITY=" .. number .. "+" .. rate .. "%", " Goal=" .. ( goal.target or 0 ) .. "+" .. ( goal.rate or 0 ) .. "%" )
 			end
 			
 		elseif goal.type == GroupGoal.POWER_LEADING then
 			local power, rate = group:GetDominationRate()			
 			AchievedFinalGoal = MeetGroupFinalGoal( group, goal, curDate, rate >= goal.target )
 			if AchievedFinalGoal then
-				InputUtility_Pause( group.name .. " POWER_LEADING=" .. power .. "+" .. rate .. "%" .. " Goal=" .. ( goal.target or 0 ) .. "+" .. ( goal.rate or 0 ) .. "%" )
+				ShowText( group.name .. " POWER_LEADING=" .. power .. "+" .. rate .. "%" .. " Goal=" .. ( goal.target or 0 ) .. "+" .. ( goal.rate or 0 ) .. "%" )
 			end
 		
 		--Short term goal
@@ -146,6 +159,7 @@ function HaveAchievedGroupFinalGoal( group )
 	end
 	return AchievedFinalGoal
 end
+
 
 function CreateGoalDesc( goal )
 	local content = ""

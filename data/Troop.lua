@@ -171,6 +171,17 @@ function Troop:GetSiegePower()
 	return math.floor( self.number * math.max( siegeWeapon.power, rangeWeapon.power ) * 0.01 )
 end
 
+function Troop:GetStatusDesc()
+	if self.number <= 0 then
+		return "[NEUTRALIZED]"
+	elseif self._combatFled == true then
+		return "[FLED]"
+	elseif self._combatSurrendered == true then
+		return "[SURRENDER]"
+	end
+	return "[NORMAL]"
+end
+
 -----------------------------------
 -- Operation
 
@@ -277,6 +288,8 @@ function Troop:NewCombat()
 	self._combatKillList     = {}
 	self._combatKill         = 0
 	
+	self._combatOrganization = math.ceil( self.morale * self.number * 0.01 )
+
 	-- init action
 	self._combatPurpose = CombatTroopPurpose.NONE
 	
@@ -301,6 +314,11 @@ function Troop:NextCombatTurn()
 	self._combatParry    = false
 	self._combatTarget   = nil
 	self._combatAction   = CombatAction and CombatAction.NONE or 0
+end
+
+function Troop:NextCombatDay()
+	self._combatFled = false
+	self._combatOrganization = math.ceil( self.morale * self.number * 0.01 )
 end
 
 function Troop:Acted()
@@ -331,7 +349,7 @@ function Troop:IsMoved()
 end
 
 function Troop:IsAttacked()
-	return self._combatAttacked
+	return self._combatAttacked > 0
 end
 
 function Troop:IsDefended()
@@ -498,6 +516,31 @@ function Troop:GetDefendArmor( weapon )
 	return selArmor
 end
 
+function Troop:GetMaxMorale()
+	if self:HasBuff( CombatBuff.MORALE_BREAKDOWN ) then
+		return math.ceil( self.maxMorale * 0.5 )
+	elseif self:HasBuff( CombatBuff.MORALE_DOWNCAST ) then
+		return math.ceil( self.maxMorale * 0.7 )
+	elseif self:HasBuff( CombatBuff.MORALE_EXCITED ) then
+		return math.ceil( self.maxMorale * 1.2 )
+	elseif self:HasBuff( CombatBuff.MORALE_MOVTIVATED ) then
+		return math.ceil( self.maxMorale * 1.4 )
+	end
+	return self.maxMorale
+end
+
+function Troop:GetCombatOrganization()
+	return self._combatOrganization
+end
+
+function Troop:GetAttackTime()
+	return self._combatAttacked
+end
+
+function Troop:GetDefendTime()
+	return self._combatDefended
+end
+
 -------------------------------
 -- Combat Operation
 
@@ -519,14 +562,12 @@ function Troop:UseArmor( armor )
 	self._combatDefended    = self._combatDefended and self._combatDefended + 1 or 1
 end
 
-function Troop:RecoverMorale( value, desc, max )
-	self.morale = MathUtility_Clamp( self.morale + value, 0, self.maxMorale )
-	--if desc then print( NameIDToString( self ) .. " recover morale " .. value .."->" .. self.morale .. " for=" .. desc ) end
+function Troop:RecoverMorale( value )
+	self.morale = MathUtility_Clamp( self.morale + value, 0, self:GetMaxMorale() )
 end
 
-function Troop:LoseMorale( value, desc, min )
-	self.morale = MathUtility_Clamp( self.morale - value, 0, self.maxMorale )
-	--if desc then ShowText( self.name .. " lose morale " .. value .. " for=" .. desc ) end
+function Troop:LoseMorale( value )
+	self.morale = MathUtility_Clamp( self.morale - value, 0, self:GetMaxMorale() )
 end
 
 function Troop:DealDamage( damage )
@@ -535,8 +576,14 @@ function Troop:DealDamage( damage )
 	--Debug_Log( "["..self.name.. "] deal damage " .. damage )
 end
 
-function Troop:SufferDamage( damage )
-	self._combatSufferDamage = self._combatSufferDamage + damage
+function Troop:ReduceOrganization( damage )
+	local rate = self._combatOrganization / ( self._combatOrganization + self.number )
+	self._combatOrganization = math.max( 0, self._combatOrganization - damage )	
+	local ret = math.ceil( damage * ( 1 - rate ) )
+	return ret
+end
+
+function Troop:SufferDamage( damage )	
 	if self.number < damage then
 		damage = self.number
 		self.number = 0
@@ -545,6 +592,7 @@ function Troop:SufferDamage( damage )
 		self.number = self.number - damage
 		Debug_Log( self:GetNameDesc() .. " suffer damage " .. damage .. ", remain " .. self.number  )
 	end
+	self._combatSufferDamage = self._combatSufferDamage + damage
 	return damage
 end
 
@@ -552,7 +600,7 @@ function Troop:Parry()
 	self._combatParry = true
 end
 
-function Troop:Kill( enemy, damage, neutralized )	
+function Troop:KillSoldier( enemy, damage, neutralized )	
 	table.insert( self._combatKillList, enemy )	
 	self._combatKill = self._combatKill + damage
 	
@@ -563,7 +611,26 @@ function Troop:Kill( enemy, damage, neutralized )
 	--InputUtility_Pause( "lv=" .. self:GetLevel() .. " gain exp=" .. exp .. "/" .. self.exp, rate, damage, neutralized )
 end
 
+function Troop:Banish()
+	self:RemoveBuff( CombatBuff.MORALE_BREAKDOWN )
+	self:RemoveBuff( CombatBuff.MORALE_DOWNCAST )
+	if self:HasBuff( CombatBuff.MORALE_EXCITED ) then
+		self:AddBuff( CombatBuff.MORALE_MOVTIVATED, -1 )
+	else
+		self:AddBuff( CombatBuff.MORALE_EXCITED, -1 )
+	end	
+	self:RecoverMorale( math.ceil( self.morale + self:GetMaxMorale() * 0.2 ) )
+end
+
 function Troop:Flee()
+	self:RemoveBuff( CombatBuff.MORALE_EXCITED )
+	self:RemoveBuff( CombatBuff.MORALE_MOVTIVATED )
+	if self:HasBuff( CombatBuff.MORALE_DOWNCAST ) then
+		self:AddBuff( CombatBuff.MORALE_BREAKDOWN, -1 )
+	else
+		self:AddBuff( CombatBuff.MORALE_DOWNCAST, -1 )
+	end
+
 	self._combatFled = true
 end
 
@@ -696,6 +763,7 @@ function Troop:JoinGroup( group )
 end
 
 function Troop:RefreshName()
-	--InputUtility_Pause( "troop rename="..NameIDToString(self).."->".. self:GetHome():GetGroup().name .. "-" .. self.table.name )
+	local oldName = self.name	
 	self.name = self:GetGroup().name .. "-" .. self.table.name
+	--print( "troop rename="..oldName.."->".. self.name )
 end

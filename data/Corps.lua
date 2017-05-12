@@ -119,6 +119,8 @@ function Corps:AddTroop( troop )
 	if not self.leader and troop:GetLeader() then
 		self.leader = troop:GetLeader()
 	end
+
+	--ShowText( "add troop " .. NameIDToString( troop ) .. " to corps=" .. NameIDToString( self ) )
 end
 
 function Corps:RemoveTroop( troop )
@@ -141,7 +143,7 @@ end
 
 function Corps:RefreshName()
 	local oldName = self.name
-	self.name = self.troops[1].name
+	self.name = self.troops[1] and self.troops[1].name or ""
 	for k, troop in ipairs( self.troops ) do
 		if troop:GetLeader() == self.leader then			
 			self.name = troop.name
@@ -149,6 +151,8 @@ function Corps:RefreshName()
 		end
 	end
 	self.name = self.name .. "-" .. "corps"
+	--if oldName then print( "corps rename="..oldName.."->".. self.name ) end
+	if not self.troops[1] then k.p = 1 end
 end
 
 function Corps:GetAsset( tagType )
@@ -326,7 +330,7 @@ function  Corps:MoveOn( reason )
 end
 
 function Corps:MoveToLocation( location )
-	--print( NameIDToString( self ) .. " move to location", location.name )
+	ShowText( NameIDToString( self ) .. " move to location", location.name )
 	self.location = location
 	if not location then print( NameIDToString( self ) ) k.p = 1 end
 	g_movingActorMng:RemoveActor( MovingActorType.CORPS, self )

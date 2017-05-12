@@ -39,13 +39,14 @@ TaskType =
 	TRAIN_CORPS        = 135,
 	CONSCRIPT_TROOP    = 136,
 	
-	ATTACK_CITY        = 140,
+	HARASS_CITY        = 140,
 	EXPEDITION         = 141,
 	CONTROL_PLOT       = 142,
 	DISPATCH_CORPS     = 143,
 	SIEGE_CITY         = 144,
 	MEET_ATTACK        = 145,
 	DISPATCH_TROOPS    = 146,
+	DEFEND_CITY        = 147,
 	
 	--------------------
 	--Diplomacy
@@ -82,30 +83,20 @@ TaskCategory =
 
 TaskStatus = 
 {
-	NONE      = 0,
+	NONE        = 0,
 	--1st stage, means task is started
-	BEGINNING = 1,
-	--2nd Stage, means actor is moving to destination
-	MOVING    = 2,
-	--3rd Stage, means actor is executing, need time to finish
-	EXECUTING = 3,
+	INITIAL   	= 1,
+	--2nd stage, means to 
+	PREPARED    = 2,
+	--3rd stage, means actor is moving to destination
+	MOVING      = 3,
+	--4th stage, means actor is executing, need time to finish
+	EXECUTING   = 4,
 
 	--Task End Status
-	SUCCESSED = 4,
-	FAILED    = 5,
-	SUSPENDED = 6,
-}
-
-TaskContribution =
-{
-	NONE    = 0,
-	FEW     = 0.001,
-	LITTLE  = 0.002,
-	LESS    = 0.005,
-	NORMAL  = 0.01,
-	MORE    = 0.02,
-	MASSIVE = 0.03,
-	HUGE    = 0.05,
+	SUCCESSED 	= 10,
+	FAILED   	= 11,
+	SUSPENDED 	= 12,
 }
 
 Task = class()
@@ -150,6 +141,7 @@ function Task:CreateDesc()
 	content = content .. " end=" .. g_calendar:CreateDateDescByValue( self.endDate, true, true )
 	content = content .. " use=" .. self.progress
 	content = content .. " rst=" .. MathUtility_FindEnumName( TaskStatus, self.status )
+	content = content .. " rem=" .. self.remain
 	return content
 end
 
@@ -160,11 +152,17 @@ function Task:IsFinished()
 	return self.remain == 0
 end
 
+function Task:IsInvasionTask()
+	return self.type == TaskType.SIEGE_CITY or self.type == TaskType.HARASS_CITY or self.type == TaskType.EXPEDITION
+end
+
+function Task:IsDefendTask()
+	return self.type == TaskType.DEFEND_CITY
+end
+
 function Task:Reward( contributor, contribution )
-	contribution = contribution or TaskContribution.NONE
-	if contribution ~= TaskContribution.NONE and contributor then
-		contributor:Contribute( math.ceil( CharacterParams.ATTRIBUTE.MAX_CONTRIBUTION * contribution ) )
-		contributor = nil
+	if contributor then
+		contributor:Contribute( math.ceil( CharacterParams.ATTRIBUTE.MAX_CONTRIBUTION * ( contribution or ContributionModulus.NONE ) ) )
 	end
 end
 
@@ -180,7 +178,7 @@ function Task:MoveOn()
 		self.remain = 0
 		self.actor:MoveToLocation( location )
 		if self.status == TaskStatus.MOVING then
-			self.status = TaskStatus.BEGINNING
+			self.status = TaskStatus.PREPARED
 		end
 	else
 		--self.actor:MoveToLocation( location )		
@@ -188,13 +186,17 @@ function Task:MoveOn()
 		self.actor.location = location
 		table.remove( self.path, 1 )
 		self.remain = CalcCorpsSpendTimeOnRoad( self.actor:GetLocation(), self.path[1] )
+		self.status = TaskStatus.MOVING
 	end
 end
 
 function Task:GotoDestination( destination )
 	local location = self.actor:GetLocation()
 	if location == destination then
-		return
+		local actor = g_movingActorMng:HasActor( MovingActorType.CORPS, self.actor )
+		ShowText( "goto destination="..location.name, NameIDToString( self.actor ), " actor=",actor )
+		self.actor:MoveToLocation( destination )
+		return false
 	end
 	if not location:IsAdjacentLocation( destination ) then
 		self.path = Helper_FindPathBetweenCity( location, destination )
@@ -214,21 +216,29 @@ function Task:GotoDestination( destination )
 	else
 		self.path = { destination }
 	end	
-	self.remain = CalcCorpsSpendTimeOnRoad( self.actor:GetLocation(), destination )
-	self.actor:MoveOn()
+	ShowText( "BACK HOME", NameIDToString( self.actor ), "goto=" .. destination.name )
+	self.remain = CalcCorpsSpendTimeOnRoad( self.actor:GetLocation(), destination )	
+	return true
 end
 
 function Task:BackHome()	
 	if not self.actor:GetGroup() or self.actor:GetGroup():IsFallen() then
 		--InputUtility_Pause( self.actor.name .. " home is fallen" )
 		return
-	end
+	end	
 	--Back home
-	self:GotoDestination( self.actor:GetHome() )
+	if self:GotoDestination( self.actor:GetHome() ) then
+		self.actor:MoveOn()
+	end
 end
 
 function Task:Suspend()
 	self.status = TaskStatus.SUSPENDED
+end
+
+function Task:Continue()
+	self.status = TaskStatus.INITIAL--PREPARED
+	self:Update( 0 )
 end
 
 function Task:Succeed( contribution )
@@ -253,6 +263,7 @@ end
 
 function Task:Fail()	
 	self.status = TaskStatus.FAILED
+	self.remain = 0
 	
 	if self.type == TaskType.RECRUIT_TROOP then
 		self.destination:CancelRecruit( QueryRecruitTroopNumber( self.datas ) )
@@ -275,7 +286,7 @@ function Task:UpdateDiplomacy( method )
 		end
 	end
 	if success then
-		self:Succeed( TaskContribution.NORMAL )
+		self:Succeed( ContributionModulus.NORMAL )
 	else
 		self:Fail()
 	end
@@ -290,10 +301,6 @@ function Task:Update( elapsedTime )
 		return
 	end
 	
-	if self.status == TaskStatus.SUSPENDED or self.status == TaskStatus.EXECUTING then
-		return
-	end
-
 	local elapsed = elapsedTime
 	if self.type == TaskType.TECH_RESEARCH then
 		elapsed = math.ceil( self.actor:GetGroup():GetResearchAbility() * elapsedTime / GlobalConst.UNIT_TIME )
@@ -303,41 +310,56 @@ function Task:Update( elapsedTime )
 		elapsed = math.ceil( self.destination.production * elapsedTime / GlobalConst.UNIT_TIME )
 	end
 
-	if self.type == watchTaskType then
-		ShowText( "Update task=" .. self.id .. " type="..MathUtility_FindEnumName( TaskType, self.type ), " remain=", self.remain, elapsed )
-	end
-
-	if not self.destination then
-		InputUtility_Pause( self:CreateDesc() )
+	if self.status == TaskStatus.EXECUTING then
 		return
 	end
-		
-	if self.category == TaskCategory.CITY_AFFAIRS then
-		if self.destination:IsInSiege() then return end
-	elseif self.category == TaskCategory.MILITARY_AFFAIRS then
-		if self.destination:IsInSiege() then
-			if self.type == TaskType.DISPATCH_CORPS or self.type == TaskType.DISPATCH_TROOPS then
-				--Retreat or field-combat?
-				self:Fail()
-			elseif not self.destination:IsNeutral() and not g_warfare:IsLocationUnderAttackBy( self.destination, self.actor:GetGroup() ) then
-				--Wait until other group finish siege
-				self:Suspend()				
+
+	if self.status == TaskStatus.SUSPENDED then
+		if self.category == TaskCategory.CITY_AFFAIRS then
+			if not self.destination:IsInSiege() then
+				self.status = TaskStatus.PREPARED
 			end
+		elseif self.category == TaskCategory.MILITARY_AFFAIRS then
+			if not self.destination:IsInSiege() then
+				self.status = TaskStatus.PREPARED
+			end
+		else
 			return
 		end
 	end
+
+	if self.type == watchTaskType then ShowText( "Update task=" .. self.id .. " type="..MathUtility_FindEnumName( TaskType, self.type ), " remain=", self.remain, elapsed ) end
+
+	--preprocess
+	if self.status == TaskStatus.PREPARED then
+		if self.category == TaskCategory.CITY_AFFAIRS then
+			if self.destination:IsInSiege() then
+				self:Suspend()
+				return
+			end
+		elseif self.category == TaskCategory.MILITARY_AFFAIRS then
+			if not self.destination then
+				print( self:CreateDesc() )
+			end
+			if self.destination:IsInSiege() then
+				if self.type == TaskType.DISPATCH_CORPS or self.type == TaskType.DISPATCH_TROOPS then
+					--Retreat or field-combat?
+					self:Fail()
+				elseif not self.destination:IsNeutral() and not g_warfare:IsLocationUnderAttackBy( self.destination, self.actor:GetGroup() ) then
+					--Wait until other group finish siege
+					self:Suspend()
+				end
+				return
+			end
+		end
+	end
 	
+	--predict whether target is invalid likes capital lost, etc.
 	if self.remain > elapsed then
 		self.progress = self.progress + elapsed	
 		self.remain = self.remain - elapsed
-		
-		if self.type == TaskType.FRIENDLY_DIPLOMACY 
-		or self.type == TaskType.THREATEN_DIPLOMACY
-		or self.type == TaskType.ALLY_DIPLOMACY
-		or self.type == TaskType.MAKE_PEACE_DIPLOMACY
-		or self.type == TaskType.DECLARE_WAR_DIPLOMACY
-		or self.type == TaskType.BREAK_CONTRACT_DIPLOMACY
-		or self.type == TaskType.SURRENDER_DIPLOMACY then	        
+
+		if self.category == TaskCategory.DIPLOMACY_AFFAIRS then
 			if self.destination ~= self.target:GetCapital() then
 				local oldDestination = self.destination
 				self.destination = self.target:GetCapital()
@@ -355,102 +377,122 @@ function Task:Update( elapsedTime )
 
 	self.remain   = 0
 	self.progress = self.progress + self.remain
+
+	--initial
+	if self.status == TaskStatus.INITIAL then
+		self.status = TaskStatus.PREPARED
+		if self.type == TaskType.HARASS_CITY then
+			self.remain   = CalcCorpsSpendTimeOnRoad( self.actor:GetLocation(), self.destination )
+		elseif self.type == TaskType.EXPEDITION then
+			self.remain   = CalcCorpsSpendTimeOnRoad( self.actor:GetLocation(), self.destination )
+		elseif self.type == CharacterProposal.SIEGE_CITY then
+			self.remain   = CalcCorpsSpendTimeOnRoad( self.actor:GetLocation(), self.destination )
+		end
+		return
+	end
 	
 	if self.status == TaskStatus.SUCCESSED or self.status == TaskStatus.FAILED or self.status == TaskStatus.MOVING then
 		self:MoveOn()
 		return
 	end
-	
+
+	-- "self.status" equals "TaskStatus.PREPARED" now
+
 	if self.type == watchTaskType then		
 		InputUtility_Pause( "Do task=" .. self.id .. " type="..MathUtility_FindEnumName( TaskType, self.type ), " tar=" .. self.target.name, " loc=" .. self.destination.name, " actor=".. self.actor.name )
 	end
-	
+
 	if self.type == TaskType.TECH_RESEARCH then
 		InventTech( self.actor:GetGroup(), self.target )
-		self:Succeed( TaskContribution.NORMAL )
+		self:Succeed( ContributionModulus.NORMAL )
 	elseif self.type == TaskType.CITY_BUILD then
 		CityBuildConstruction( self.destination, self.target )
-		self:Succeed( TaskContribution.NORMAL )
+		self:Succeed( ContributionModulus.NORMAL )
 	elseif self.type == TaskType.CITY_INVEST then
 		CityInvest( self.destination )
-		self:Succeed( TaskContribution.NORMAL )
+		self:Succeed( ContributionModulus.NORMAL )
 	elseif self.type == TaskType.CITY_FARM then
 		CityFarm( self.destination )
-		self:Succeed( TaskContribution.NORMAL )
+		self:Succeed( ContributionModulus.NORMAL )
 	elseif self.type == TaskType.CITY_PATROL then
 		CityPatrol( self.destination )
-		self:Succeed( TaskContribution.NORMAL )
+		self:Succeed( ContributionModulus.NORMAL )
 	elseif self.type == TaskType.CITY_LEVY_TAX then
 		CityLevyTax( self.destination )
-		self:Succeed( TaskContribution.NORMAL )	
+		self:Succeed( ContributionModulus.NORMAL )	
 	elseif self.type == TaskType.CITY_INSTRUCT then
 		CityInstruct( self.destination, self.datas )
-		self:Succeed( TaskContribution.NORMAL )
+		self:Succeed( ContributionModulus.NORMAL )
 	
 	elseif self.type == TaskType.HR_DISPATCH then
 		CharaDispatchToCity( self.target, self.destination )
-		self:Succeed( TaskContribution.LITTLE )
+		self:Succeed( ContributionModulus.LITTLE )
 	elseif self.type == TaskType.HR_CALL then		
 		CharaDispatchToCity( self.target, self.destination )
-		self:Succeed( TaskContribution.LITTLE )
+		self:Succeed( ContributionModulus.LITTLE )
 	elseif self.type == TaskType.HR_HIRE then
 		if CharaHired( self.target, self.destination ) then
-			self:Succeed( TaskContribution.LESS )
+			self:Succeed( ContributionModulus.LESS )
 		else
 			self:Fail()
 		end
 	elseif self.type == TaskType.HR_EXILE then
 		CharaExile( self.target, self.destination )
-		self:Succeed( TaskContribution.FEW )
+		self:Succeed( ContributionModulus.FEW )
 	elseif self.type == TaskType.HR_PROMOTE then
 		CharaPromote( self.target, self.destination )
-		self:Succeed( TaskContribution.FEW )
+		self:Succeed( ContributionModulus.FEW )
 	elseif self.type == TaskType.HR_LOOKFORTALENT then
 		if CharaLookforTalent( self.destination ) then
-			self:Succeed( TaskContribution.NORMAL )
+			self:Succeed( ContributionModulus.NORMAL )
 		else
-			self:Fail( TaskContribution.FEW )
+			self:Fail( ContributionModulus.FEW )
 		end		
 		
 	elseif self.type == TaskType.RECRUIT_TROOP then
 		CityRecruitTroop( self.destination, self.datas )
-		self:Succeed( TaskContribution.NORMAL )
+		self:Succeed( ContributionModulus.NORMAL )
 	elseif self.type == TaskType.LEAD_TROOP then
 		CharaLeadTroop( self.actor, self.target )
-		self:Succeed( TaskContribution.FEW )
+		self:Succeed( ContributionModulus.FEW )
 	elseif self.type == TaskType.ESTABLISH_CORPS then
 		if self.target then
 			CharaEstablishCorpsByTroop( self.destination, self.target )
 		else
 			CharaEstablishCorps( self.destination )
 		end
-		self:Succeed( TaskContribution.LITTLE )	
+		self:Succeed( ContributionModulus.LITTLE )	
 	elseif self.type == TaskType.REINFORCE_CORPS then
 		CorpsReinforce( self.target, self.datas )
-		self:Succeed( TaskContribution.FEW )		
+		self:Succeed( ContributionModulus.FEW )		
 	elseif self.type == TaskType.REGROUP_CORPS then
 		CorpsRegroup( self.datas, self.target )
-		self:Succeed( TaskContribution.FEW )
+		self:Succeed( ContributionModulus.FEW )
 	elseif self.type == TaskType.TRAIN_CORPS then
 		CorpsTrain( self.target, self.datas )
-		self:Succeed( TaskContribution.FEW )
+		self:Succeed( ContributionModulus.FEW )
 		
-	elseif self.type == TaskType.ATTACK_CITY then
-		CorpsAttack( self.actor, self.destination )		
+	elseif self.type == TaskType.HARASS_CITY then
+		--print( self.id, NameIDToString( self.actor ), "harass city=", self.destination.name )
+		if CorpsInvade( self.actor, self.destination, false ) then
+			self:Succeed( ContributionModulus.NORMAL )
+		else
+			self.status = TaskStatus.EXECUTING
+		end
+	elseif self.type == TaskType.EXPEDITION or self.type == TaskType.SIEGE_CITY then
+		--print( self.id, NameIDToString( self.actor ), "siege city=", self.destination.name )
+		CorpsInvade( self.actor, self.destination, true )
 		self.status = TaskStatus.EXECUTING
-	elseif self.type == TaskType.EXPEDITION then
-		CorpsAttack( self.actor, self.destination )
-		self.status = TaskStatus.EXECUTING
-	elseif self.type == TaskType.SIEGE_CITY then
-		ShowText( NameIDToString( self.actor ), "siege city", self.destination.name )
-		CorpsSiegeCity( self.actor, self.destination )
+	elseif self.type == TaskType.DEFEND_CITY then		
 		self.status = TaskStatus.EXECUTING
 	elseif self.type == TaskType.DISPATCH_CORPS then
+--		g_statistic:TrackGroup( NameIDToString( self.actor ) .. " dispatch " .. NameIDToString( self.destination ) .. self.destination:DumpTagDetail( "" ), self.actor:GetGroup() )
 		CorpsDispatchToCity( self.actor, self.destination, true )
-		self:Succeed( TaskContribution.LITTLE )		
+		self:Succeed( ContributionModulus.LITTLE )		
 	elseif self.type == TaskType.DISPATCH_TROOPS then
-		TroopDispatchToCity( self.actor, self.destination, true )
-		self:Succeed( TaskContribution.LITTLE )
+		g_statistic:TrackGroup( NameIDToString( self.actor ) .. " dispatch " .. NameIDToString( self.destination ) .. self.destination:DumpTagDetail( "" ), self.actor:GetGroup() )
+--		TroopDispatchToCity( self.actor, self.destination, true )
+		self:Succeed( ContributionModulus.LITTLE )
 		
 	--Diplomacy
 	elseif self.type == TaskType.FRIENDLY_DIPLOMACY then
@@ -471,13 +513,13 @@ function Task:Update( elapsedTime )
 	--Personal
 	elseif self.type == TaskType.CHARA_BACKHOME then
 		CharaMoveToCity( self.target, self.destination )
-		self:Finish( TaskContribution.NONE )
+		self:Finish( ContributionModulus.NONE )
 	elseif self.type == TaskType.CORPS_MOVETO then
 		CorpsMoveToCity( self.target, self.destination, true )
-		self:Finish( TaskContribution.NONE )
+		self:Finish( ContributionModulus.NONE )
 	elseif self.type == TaskType.TROOP_MOVETO then
 		TroopMoveToCity( self.target, self.destination )
-		self:Finish( TaskContribution.NONE )
+		self:Finish( ContributionModulus.NONE )
 	end	
 end
 
@@ -502,7 +544,7 @@ function Task:IssueMoveTask( taskType, actor, home )
 	self.remain   = CalcSpendTimeOnRoad( self.actor:GetLocation(), self.destination )
 	self.progress = 0
 	self.begDate  = g_calendar:GetDateValue()
-	self.status   = TaskStatus.BEGINNING
+	self.status   = TaskStatus.PREPARED
 	self:DumpIssue()
 end
 
@@ -514,7 +556,7 @@ function Task:IssueByProposal( proposal )
 	
 	self.actor       = proposal.actor
 	self.contributor = nil
-	self.status      = TaskStatus.BEGINNING
+	self.status      = TaskStatus.PREPARED
 	self.progress    = 0
 	self.begDate     = g_calendar:GetDateValue()
 	self.proposer    = proposal.proposer
@@ -658,45 +700,59 @@ function Task:IssueByProposal( proposal )
 		self.contributor = self.datas:GetLeader()
 	
 	--Military
-	elseif proposal.type == CharacterProposal.ATTACK_CITY then
-		self.category = TaskCategory.MILITARY_AFFAIRS
-		self.type     = TaskType.ATTACK_CITY
-		self.target   = proposal.target
+	elseif proposal.type == CharacterProposal.HARASS_CITY then
+		self.category    = TaskCategory.MILITARY_AFFAIRS
+		self.type        = TaskType.HARASS_CITY
+		self.target      = proposal.target
 		self.destination = proposal.target
-		self.remain   = CalcCorpsSpendTimeOnRoad( self.actor:GetLocation(), self.destination )		
+		self.remain      = CalcCorpsPrepareTime( self.actor )
+		self.status      = TaskStatus.INITIAL
+		--print( "attack", proposal.target.name, self.remain, self.id )
 	elseif proposal.type == CharacterProposal.EXPEDITION then
-		self.category = TaskCategory.MILITARY_AFFAIRS
-		self.type     = TaskType.EXPEDITION
-		self.target   = proposal.target
+		self.category    = TaskCategory.MILITARY_AFFAIRS
+		self.type        = TaskType.EXPEDITION
+		self.target      = proposal.target
 		self.destination = proposal.target
-		self.remain   = CalcCorpsSpendTimeOnRoad( self.actor:GetLocation(), self.destination )
+		self.remain      = CalcCorpsPrepareTime( self.actor )
+		self.status      = TaskStatus.INITIAL
 	elseif proposal.type == CharacterProposal.SIEGE_CITY then
-		self.category = TaskCategory.MILITARY_AFFAIRS
-		self.type     = TaskType.SIEGE_CITY
-		self.target   = proposal.target
-		self.datas    = proposal.data
+		self.category    = TaskCategory.MILITARY_AFFAIRS
+		self.type        = TaskType.SIEGE_CITY
+		self.target      = proposal.target
+		self.datas       = proposal.data
 		self.destination = proposal.target
-		self.remain   = CalcCorpsSpendTimeOnRoad( self.actor:GetLocation(), self.destination )
-		--InputUtility_Pause( self.remain )
+		self.remain      = CalcCorpsPrepareTime( self.actor )
+		self.status      = TaskStatus.INITIAL
+		--print( "siege", self.remain, self.id, NameIDToString( self.destination ) )
+	elseif proposal.type == CharacterProposal.DEFEND_CITY then
+		self.category    = TaskCategory.MILITARY_AFFAIRS
+		self.type        = TaskType.DEFEND_CITY
+		self.target      = proposal.target
+		self.datas       = proposal.data
+		self.destination = proposal.target
+		self.status      = TaskStatus.EXECUTING
+		self.remain      = CalcCorpsPrepareTime( self.actor )
 	elseif proposal.type == CharacterProposal.DISPATCH_CORPS then
-		self.category = TaskCategory.MILITARY_AFFAIRS
-		self.type     = TaskType.DISPATCH_CORPS
+		self.category    = TaskCategory.MILITARY_AFFAIRS
+		self.type        = TaskType.DISPATCH_CORPS
 		self.target      = proposal.target
 		self.destination = proposal.target
 		self.contributor = self.actor:GetLeader()
+		self:GotoDestination( self.destination )
+		--[[
 		if self.actor:GetLocation():IsAdjacentLocation( self.destination ) then
-			self.remain   = CalcSpendTimeOnRoad( self.actor:GetLocation(), self.destination )
+			self.remain  = CalcSpendTimeOnRoad( self.actor:GetLocation(), self.destination )
 		else
-			InputUtility_Pause( "dispatch to faraway" )
 			self:GotoDestination( self.destination )
-		end		
+		end
+		]]
 	elseif proposal.type == CharacterProposal.DISPATCH_TROOPS then
-		self.category = TaskCategory.MILITARY_AFFAIRS
-		self.type     = TaskType.DISPATCH_TROOPS
+		self.category    = TaskCategory.MILITARY_AFFAIRS
+		self.type        = TaskType.DISPATCH_TROOPS
 		self.target      = proposal.target
-		self.datas    = proposal.data
+		self.datas       = proposal.data
 		self.destination = proposal.target
-		self.remain   = CalcSpendTimeOnRoad( self.actor:GetLocation(), self.destination )
+		self.remain      = CalcSpendTimeOnRoad( self.actor:GetLocation(), self.destination )
 		self.contributor = self.actor:GetLeader()
 		
 	--Diplomacy
@@ -761,6 +817,8 @@ function Task:IssueByProposal( proposal )
 		self.status = TaskStatus.SUSPENDED
 		return
 	end
+
+	if not self.remain then InputUtility_Pause( self:CreateDesc() ) end
 	
 	self:DumpIssue()
 	
@@ -805,19 +863,10 @@ function TaskManager:__init()
 	self.taskAllocateId = 0
 	self.taskList = {}
 
-	self.actorTaskList = {}
-	self.targetTaskList = {}
-	self.removeList = {}
-end
-
-function TaskManager:Clear()
-	self.taskAllocateId = 1
-	self.taskList = {}
-	
-	self.actorTaskList = {}
-	self.targetTaskList = {}
-	
-	self.removeList = {}
+	self.actorTaskList  = {}
+	self.targetTaskList = {}	
+	self.removeList     = {}
+	self.intelTaskList  = {}
 end
 
 function TaskManager:Dump()
@@ -871,6 +920,16 @@ function TaskManager:HasTask( actor )
 	if not actor then return false end
 	return not actor:IsNoneTask()
 	--return self:GetTaskByActor( actor )
+end
+
+function TaskManager:GetIntelTaskList( destination )
+	local list = {}
+	for k, task in ipairs( self.intelTaskList ) do
+		if task.destination == destination and not task:IsFinished() then
+			table.insert( list, task )
+		end
+	end
+	return list
 end
 
 -- Check actor is executing any task
@@ -1004,7 +1063,7 @@ function TaskManager:IssueTaskByProposal( proposal )
 
 	self.taskAllocateId = newId	
 	if proposal.type > CharacterProposal.AFFAIRS_PROPOSAL then
-		task:Reward( proposal.proposer, TaskContribution.FEW )
+		task:Reward( proposal.proposer, ContributionModulus.FEW )
 	end
 
 	table.insert( self.taskList, task )
@@ -1026,6 +1085,11 @@ function TaskManager:IssueTaskByProposal( proposal )
 			--InputUtility_Pause( "est", task.destination.name )
 			self:AddActorData( task.target, task )
 			self:AddTargetData( task.destination, task )
+			for _, troop in ipairs( task.destination.troops ) do
+				if troop:IsNoneTask() then
+					self:AddActorData( troop, task )
+				end
+			end
 		elseif task.type == TaskType.REINFORCE_CORPS then
 			self:AddActorData( task.target, task )
 		elseif task.type == TaskType.REGROUP_CORPS then
@@ -1053,7 +1117,7 @@ function TaskManager:IssueTaskByProposal( proposal )
 	elseif task.category == TaskCategory.DIPLOMACY_AFFAIRS then
 		self:AddTargetData( task.target, task )
 	elseif task.category == TaskCategory.MILITARY_AFFAIRS then
-		if task.type == TaskType.SIEGE_CITY or task.type == TaskType.DISPATCH_CORPS then
+		if task.type == TaskType.SIEGE_CITY or task.type == TaskType.DISPATCH_CORPS or task.type == TaskType.DEFEND_CITY then
 			for k, troop in ipairs( task.actor.troops ) do
 				self:AddActorData( troop, task )
 				if troop:GetLeader() then
@@ -1065,7 +1129,9 @@ function TaskManager:IssueTaskByProposal( proposal )
 				self:AddActorData( task.actor:GetLeader(), task )
 			end
 		end
-		--self:AddTargetData( task.target, task )
+		if task:IsInvasionTask() or task:IsDefendTask() then
+			table.insert( self.intelTaskList, task )
+		end
 	elseif task.category == TaskCategory.TECH_AFFAIRS then
 		self:AddTargetData( task.datas, task )
 	end
@@ -1090,6 +1156,11 @@ function TaskManager:EndTask( task )
 		elseif task.type == TaskType.ESTABLISH_CORPS then
 			self:RemoveActorData( task.target, task )
 			self:RemoveTargetData( task.destination, task )
+			for _, troop in ipairs( task.destination.troops ) do
+				if self:GetTaskByActor( troop ) == task then
+					self:RemoveActorData( troop, task )
+				end
+			end
 		elseif task.type == TaskType.REINFORCE_CORPS then
 			self:RemoveActorData( task.target, task )
 		elseif task.type == TaskType.REGROUP_CORPS then
@@ -1117,7 +1188,7 @@ function TaskManager:EndTask( task )
 	elseif task.category == TaskCategory.DIPLOMACY_AFFAIRS then
 		self:RemoveTargetData( task.target, task )
 	elseif task.category == TaskCategory.MILITARY_AFFAIRS then
-		if task.type == TaskType.SIEGE_CITY or task.type == TaskType.DISPATCH_CORPS then
+		if task.type == TaskType.SIEGE_CITY or task.type == TaskType.DISPATCH_CORPS or task.type == TaskType.DEFEND_CITY then
 			for k, troop in ipairs( task.actor.troops ) do
 				self:RemoveActorData( troop )
 				if troop:GetLeader() then
@@ -1134,6 +1205,7 @@ function TaskManager:EndTask( task )
 	end
 	
 	MathUtility_Remove( self.taskList, task.id, "id" )
+	MathUtility_Remove( self.intelTaskList, task.id, "id" )
 end
 
 function TaskManager:FinishTask( group, taskType, target )
@@ -1181,6 +1253,12 @@ end
 
 function TaskManager:Update( elapsedTime )
 	table.sort( self.taskList, function ( left, right )
+		if not left.remain then
+			print( left:CreateDesc() )
+		end
+		if not right.remain then
+			print( right:CreateDesc() )
+		end
   		return left.remain < right.remain
   		end )
 	local removeList = {}
@@ -1280,23 +1358,15 @@ function TaskManager:HasConflictProposal( proposal )
 	
 	--Military Affairs
 	elseif type >= CharacterProposal.MILITARY_AFFAIRS and type <= CharacterProposal.MILITARY_AFFAIRS_END then
-		if taskType == TaskType.DISPATCH_TROOPS then			
-			for k, troop in ipairs( data ) do
-				if self:HasTask( troop ) then
-					return true
-				end
-			end
-			return self:HasTask( actor )
-		elseif taskType == TaskType.SIEGE_CITY then
-			for k, corps in ipairs( data ) do
-				if self:HasTask( corps ) then
+		if taskType == TaskType.DISPATCH_TROOPS or taskType == TaskType.SIEGE_CITY or taskType == TaskType.DEFEND_CITY then
+			for k, obj in ipairs( data ) do
+				if self:HasTask( obj ) then
 					return true
 				end
 			end
 			return false
-		else
-			return self:HasTask( actor )
 		end
+		return self:HasTask( actor )
 	
 	--Warpareparedness Affairs
 	elseif type == CharacterProposal.LEAD_TROOP then
@@ -1308,12 +1378,20 @@ function TaskManager:HasConflictProposal( proposal )
 	elseif type == CharacterProposal.REINFORCE_CORPS then
 		return self:HasTask( actor )  or self:HasTask( target )
 	elseif type == CharacterProposal.ESTABLISH_CORPS then
+		local hasFreeTroop = false
 		if target then
 			for k, singleTar in ipairs( target ) do
 				if self:HasTask( singleTar ) then return true end
 			end
+		else
+			for k, troop in ipairs(  data.troops ) do
+				if troop:IsNoneTask() then
+					hasFreeTroop = true
+					break
+				end
+			end
 		end
-		return self:HasTask( actor ) or self:HasConflictTarget( taskType, nil, data )
+		return not hasFreeTroop or self:HasTask( actor ) or self:HasConflictTarget( taskType, nil, data )
 	elseif type == CharacterProposal.TRAIN_CORPS then
 		return self:HasTask( actor ) or self:HasTask( target )
 	elseif type == CharacterProposal.REGROUP_CORPS then

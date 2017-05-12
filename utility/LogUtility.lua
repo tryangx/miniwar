@@ -62,7 +62,7 @@ function LogUtility:ConvertContent( ... )
 	for i = 1, #args do
 		local type = typeof( args[i] )
 		if type == "string" or type == "number" then
-			content = content .. args[i]
+			content = content .. " " .. args[i]
 		end
 	end
 	return content

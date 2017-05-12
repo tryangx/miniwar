@@ -10,6 +10,7 @@ require "Scenario_Demo_GroupRelationTable"
 require "Scenario_Demo_BattlefieldTable"
 require "Scenario_Demo_TraitTable"
 require "Scenario_Demo_Data_threekindoms"
+--require "Scenario_Demo_Data_chuhan"
 --require "Scenario_Demo_Data_warringstates"
 
 --------------------------

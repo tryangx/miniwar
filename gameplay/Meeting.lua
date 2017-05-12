@@ -94,7 +94,7 @@ MeetingSubFlow =
 	SUB_TRAIN_CORPS      = 56,
 	SUB_CONSCRIPT_TROOP  = 57,
 	
-	SUB_ATTACK_CITY      = 61,
+	SUB_HARASS_CITY      = 61,
 	SUB_EXPEDITION       = 62,
 	SUB_CONTROL_PLOT     = 63,
 	SUB_DISPATCH_CORPS   = 64,
@@ -379,14 +379,21 @@ function Meeting:ConfirmProposalFlow( proposal )
 		else			
 			--multiple actor
 			if proposal.type == CharacterProposal.DISPATCH_TROOPS then
-				--InputUtility_Pause( "!!!Issue Multiple" .. Proposal_CreateDesc( proposal ) .. " by " .. proposal.proposer.name )
+				ShowText( "!!!Issue Multiple" .. Proposal_CreateDesc( proposal ) .. " by " .. proposal.proposer.name )
 				local IssueProposal = MathUtility_Copy( proposal )
 				for k, troop in ipairs( proposal.data ) do					
 					proposal.actor = troop
 					g_taskMng:IssueTaskByProposal( proposal )
 				end
 			elseif proposal.type == CharacterProposal.SIEGE_CITY then
-				--ShowDebug( "!!!Issue Multiple" .. Proposal_CreateDesc( proposal ) .. " by " .. proposal.proposer.name )
+				ShowText( "!!!Issue Multiple" .. Proposal_CreateDesc( proposal ) .. " by " .. proposal.proposer.name )
+				local IssueProposal = MathUtility_Copy( proposal )
+				for k, corps in ipairs( proposal.data ) do					
+					proposal.actor = corps
+					g_taskMng:IssueTaskByProposal( proposal )
+				end
+			elseif proposal.type == CharacterProposal.DEFEND_CITY then
+				ShowText( "!!!Issue Multiple" .. Proposal_CreateDesc( proposal ) .. " by " .. proposal.proposer.name )
 				local IssueProposal = MathUtility_Copy( proposal )
 				for k, corps in ipairs( proposal.data ) do					
 					proposal.actor = corps
@@ -541,7 +548,7 @@ function Meeting:SubmitProposalFlow( chara )
 			
 		elseif self.flow == MeetingFlow.MILITARY_FLOW then
 			if #self._city:GetAdjacentBelligerentCityList() > 0 then
-				AddSubMenuItem( "Attack City", CharacterProposal.ATTACK_CITY )
+				AddSubMenuItem( "Attack City", CharacterProposal.HARASS_CITY )
 			end
 			if #self._group:GetReachableBelligerentCityList() > 0 then
 				AddSubMenuItem( "Expedition", CharacterProposal.EXPEDITION )
@@ -1107,12 +1114,12 @@ function Meeting:ProcessSubMenu()
 		end
 		
 	--Attack Sub Menu
-	elseif self.subFlow == MeetingSubFlow.SUB_ATTACK_CITY or self.subFlow == MeetingSubFlow.SUB_EXPEDITION then
+	elseif self.subFlow == MeetingSubFlow.SUB_HARASS_CITY or self.subFlow == MeetingSubFlow.SUB_EXPEDITION then
 		local SelectCity = SelectAdjacentEnemyCity( self._city )
 		local SelectCorps = SelectCity and SelectCityIdleCorps( sel._city ) or nil
 		if SelectCorps then
-			if self.subFlow == MeetingSubFlow.SUB_ATTACK_CITY then
-				_chara:SubmitProposal( { type = CharacterProposal.ATTACK_CITY, target = SelectCity, data = SelectCorps, proposer =_chara, actor = _actor } )
+			if self.subFlow == MeetingSubFlow.SUB_HARASS_CITY then
+				_chara:SubmitProposal( { type = CharacterProposal.HARASS_CITY, target = SelectCity, data = SelectCorps, proposer =_chara, actor = _actor } )
 			elseif self.subFlow == MeetingSubFlow.SUB_EXPEDITION then
 				_chara:SubmitProposal( { type = CharacterProposal.EXPEDITION, target = SelectCity, data = SelectCorps, proposer =_chara, actor = _actor } )
 			end
@@ -1418,7 +1425,10 @@ function Meeting:HoldCityMeeting( game, city )
 		local cityList = city:GetAdjacentBelligerentCityList()
 		local neutralCityList = city:GetAdjacentNeutralCityList()
 		local corpsList = city:GetPreparedToAttackCorpsList()		
+		city:AppendTag( CityTag.NO_PROPOSAL, 1 )
 		g_statistic:AcceptProposal( "No proposal=" ..#self._participants .. " " .. g_calendar:CreateCurrentDateDesc( true ), city )
+	else
+		city:RemoveTag( CityTag.NO_PROPOSAL )
 	end
 	--ShowText( "++++++++++ City Meeting End ++++++++++++++++" )
 	--ShowText( "" )

@@ -117,8 +117,46 @@ local plotNumber = #city.plots
 	return math.ceil( req ) * plotNumber
 end
 
-function QueryCitySupportSoldier()
-	
+function QueryCitySupportSoldier( city )
+	return city.agriculture * PlotParams.PLOT_AGRICULTURE_NEED_POPULATION
+end
+
+function GuessCityPower( tarCity, currentCity )
+	if tarCity == currentCity then
+		return tarCity:GetPower()
+	end
+	local power = tarCity:GetReqMilitaryPower() + tarCity.guards
+	return power
+end
+
+-- How many people required for each work position 
+function CalcCityMinPopulation( city )
+	local agr, maxAgr, ecn, maxEcn, prd, maxPrd = city:GetGrowthData()
+	local farmer   = agr * PlotParams.PLOT_AGRICULTURE_NEED_POPULATION
+	local merchant = ecn * PlotParams.PLOT_ECONOMY_NEED_POPULATION
+	local worker   = prd * PlotParams.PLOT_PRODUCTION_NEED_POPULATION
+	local rate = PlotParams.PLOT_NEED_POPULATION_MODULUS
+	local total = math.ceil( ( farmer + merchant + worker ) * rate )
+	--InputUtility_Pause( city.name .. " need population=" .. total .. " now=" .. city.population .. " productivity=" .. productivity )
+	return total
+end
+
+-- How many people required for normal working status
+function CalcCityReqPopulation( city )
+	local agr, maxAgr, ecn, maxEcn, prd, maxPrd = city:GetGrowthData()
+	local farmer   = agr * PlotParams.PLOT_AGRICULTURE_NEED_POPULATION
+	local merchant = ecn * PlotParams.PLOT_ECONOMY_NEED_POPULATION
+	local worker   = prd * PlotParams.PLOT_PRODUCTION_NEED_POPULATION
+	--Temporary, use security as a factor to calculate rpoductivity
+	local productivity = MathUtility_Clamp( 1.1 - 0.004 * city.security, 0.2, 1 )
+	local total = math.ceil( ( farmer + merchant + worker ) * productivity )
+	--InputUtility_Pause( city.name .. " need population=" .. total .. " now=" .. city.population .. " productivity=" .. productivity )
+	return total
+end
+
+function CalcCityMilitaryService( city )
+	local militaryService = city.population * PlotParams.PLOT_POPULATION_MSERVICE_CONSTANT
+	return militaryService
 end
 
 ------------------------------
@@ -157,8 +195,13 @@ function CalcPlotPopulation( livingSpace )
 end
 
 -- How many people can raised by agriculture unit
-function CalcPlotSupply( agriculture )
-	return math.ceil( agriculture * PlotParams.PLOT_SUPPLY_OUTPUT_CONSTANT )
+function CalcPlotSupplyPopulation( agriculture )
+	return math.ceil( agriculture * PlotParams.PLOT_SUPPLY_POPULATION_CONSTANT )
+end
+
+-- How many soldier can supplied
+function CalcPlotSupplySoldier( agriculture )
+	return math.ceil( agriculture * PlotParams.PLOT_SUPPLY_SOLDIER_CONSTANT )
 end
 
 function CalcPlotIncome( population, economy )
@@ -167,41 +210,6 @@ function CalcPlotIncome( population, economy )
 	return part1 + part2
 end
 
---------------------------
--- City
-
-function GuessCityPower( tarCity, currentCity )
-	if tarCity == currentCity then
-		return tarCity:GetPower()
-	end
-	local power = tarCity:GetReqMilitaryPower() + tarCity.guards
-	return power
-end
-
--- How many people required for each work position 
-function CalcCityMinPopulation( city )
-	local agr, maxAgr, ecn, maxEcn, prd, maxPrd = city:GetGrowthData()
-	local farmer   = city.agriculture * PlotParams.PLOT_AGRICULTURE_NEED_POPULATION
-	local merchant = city.economy * PlotParams.PLOT_ECONOMY_NEED_POPULATION
-	local worker   = city.production * PlotParams.PLOT_PRODUCTION_NEED_POPULATION
-	local rate = PlotParams.PLOT_NEED_POPULATION_MODULUS
-	local total = math.ceil( ( farmer + merchant + worker ) * rate )
-	--InputUtility_Pause( city.name .. " need population=" .. total .. " now=" .. city.population .. " productivity=" .. productivity )
-	return total
-end
-
--- How many people required for normal working status
-function CalcCityReqPopulation( city )
-	local agr, maxAgr, ecn, maxEcn, prd, maxPrd = city:GetGrowthData()
-	local farmer   = city.agriculture * PlotParams.PLOT_AGRICULTURE_NEED_POPULATION
-	local merchant = city.economy * PlotParams.PLOT_ECONOMY_NEED_POPULATION
-	local worker   = city.production * PlotParams.PLOT_PRODUCTION_NEED_POPULATION
-	--Temporary, use security as a factor to calculate rpoductivity
-	local productivity = MathUtility_Clamp( 1.1 - 0.004 * city.security, 0.2, 1 )
-	local total = math.ceil( ( farmer + merchant + worker ) * productivity )
-	--InputUtility_Pause( city.name .. " need population=" .. total .. " now=" .. city.population .. " productivity=" .. productivity )
-	return total
-end
 
 --------------------------
 -- Time spend on the task
@@ -226,6 +234,11 @@ function CalcSpendTimeOnRoad( currentCity, targetCity )
 	local distance = math.abs( pos1.x - pos2.x ) + math.abs( pos1.y - pos2.y )
 	--InputUtility_Pause( "distance", currentCity.name, targetCity.name, distance, distance * GlobalConst.MOVE_TIME )
 	return distance * GlobalConst.CHARA_MOVE_TIME
+end
+
+function CalcCorpsPrepareTime( corps )
+	local numOfTroop = #corps.troops
+	return GlobalConst.CORPS_PREPARE_TIME + math.max( 0, GlobalConst.TROOP_PREPARE_TIME * ( numOfTroop - 1 ) )
 end
 
 function CalcCorpsSpendTimeOnRoad( currentCity, targetCity )

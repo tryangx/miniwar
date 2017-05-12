@@ -79,25 +79,29 @@ function Plot:InitPlotAssets( params )
 	self.maxEconomy     = self:GetBonusValue( PlotResourceBonusType.ECONOMY )
 	self.maxProduction  = self:GetBonusValue( PlotResourceBonusType.PRODUCTION )
 	self._livingSpace   = self:GetBonusValue( PlotResourceBonusType.LIVING_SPACE )
-	prob = Random_SyncGetRange( 60, 80 )
+	prob = Random_SyncGetRange( 50, 90 )
 	self:SetAsset( PlotAssetType.AGRICULTURE, math.floor( prob * self.maxAgriculture * 0.01 ) )
-	prob = Random_SyncGetRange( 50, 80 )
+	prob = Random_SyncGetRange( 50, 90 )
 	self:SetAsset( PlotAssetType.ECONOMY, math.floor( prob * self.maxEconomy * 0.01 ) )
-	prob = Random_SyncGetRange( 50, 80 )
+	prob = Random_SyncGetRange( 50, 90 )
 	self:SetAsset( PlotAssetType.PRODUCTION, math.floor( prob * self.maxProduction * 0.01 ) )
 	
 	--status evaluation
 	prob = Random_SyncGetRange( 40, 80 )
 	self:SetAsset( PlotAssetType.SECURITY, math.floor( prob * PlotParams.MAX_PLOT_SECURITY * 0.01 ) )
 	
-	--population
-	local prob = 100--Random_SyncGetRange( 25 + settlement * 50, 35 + settlement * 50 )
-	local living = CalcPlotPopulation( self._livingSpace )
-	local supply = CalcPlotSupply( self:GetAsset( PlotAssetType.AGRICULTURE ) )	
-	local population = math.min( living, math.floor( prob * supply * 0.01 ) )
-	self:SetAsset( PlotAssetType.POPULATION, population )
+	--population	
+	if settlement >= 0 then
+		local living = CalcPlotPopulation( self._livingSpace )		
+		local agr = self:GetAsset( PlotAssetType.AGRICULTURE )
+		local supply = CalcPlotSupplyPopulation( agr )
+		local prob = settlement * 10 + Random_SyncGetRange( 1, 35 )
+		local population = math.floor( prob * supply * 0.01 )
+		self:SetAsset( PlotAssetType.POPULATION, population )
+		--print( "popu=".. population .. " set="..settlement .. " agr=" .. agr .. " sup=" .. supply .. " prob=" .. prob .. " p1=" .. math.floor( prob * supply * 0.01 ), NameIDToString( params and params.city or nil ) )
+		--InputUtility_Pause( self.x, self.y, population, settlement, prob, living, supply, params and params.city.name or "" )
+	end	
 	
-	--InputUtility_Pause( self.x, self.y, population, settlement, prob, living, supply, params and params.city.name or "" )
 	--ShowText( "agr="..self:GetAsset( PlotAssetType.AGRICULTURE ), "popu=" .. self:GetAsset( PlotAssetType.POPULATION ), population )
 end
 

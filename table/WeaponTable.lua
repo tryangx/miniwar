@@ -1,42 +1,3 @@
-WeaponDamageType = 
-{
-	-- Normal damage type
-	NORMAL       = 1,	
-	-- Spear or some like it
-	PIERCE       = 2,	
-	-- Advanced to defence
-	SIEGE        = 3,
-		
-	--FIRE         = 4,
-}
-
-WeaponBallistic =
-{
-	-- Siege weapon	
-	CLOSE      = 1,
-
-	-- Normal weapon like sword, knife, fork
-	MELEE      = 2,	
-	
-	-- Only use in charge attack
-	CHARGE     = 3,	
-
-	-- Anti charge attack
-	LONG       = 4,	
-
-	-- CrossBow or rifle
-	SHOOT      = 5,	
-	
-	-- Bow or high ballistic
-	MISSILE    = 6,
-}
-
-WeaponParams =
-{
-	LONG_RANGE_WEAPON_LENGTH = 20,
-	LONG_WEAPON_LENGTH       = 4,
-}
-
 WeaponTable = class()
 
 function WeaponTable:Load( data )
@@ -64,7 +25,6 @@ function WeaponTable:Load( data )
 end
 
 function WeaponTable:IsFireWeapon()
-	--print( "is fire weapon",self.name, self.range )
 	return self.ballistic == WeaponBallistic.SHOOT or self.ballistic == WeaponBallistic.MISSILE
 end
 

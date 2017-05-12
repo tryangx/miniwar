@@ -1,7 +1,7 @@
 package.path = package.path .. ";asset/Scenario/Standard/?.lua"
 
 g_gameId = os.time()
---g_gameId = 1492585842
+g_gameId = 1492585842
 
 g_language = "eng"--"chs"
 
@@ -30,6 +30,7 @@ require "DataManager"
 require "Report"
 require "DataUtility"
 require "Statistic"
+require "Chronicle"
 
 ---------------------------------------
 -- Configure
@@ -121,6 +122,8 @@ g_calendar = Calendar()
 
 g_statistic = Statistic()
 
+g_chronicle = Chronicle()
+
 g_charaTemplate = CharacterTemplate()
 
 g_gameEvent = GameEvent()
@@ -182,6 +185,8 @@ combatEventTrigger = CombatEventTrigger()
 g_reporter = Report()
 
 g_menu = MenuUtility()
+
+g_gameMode = GameMode.SCENARIO_GAME
 
 ---------------------------
 -- Running Data

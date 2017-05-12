@@ -533,12 +533,12 @@ function GroupRelation:IsMethodValid( method, group, target )
 			return false
 		end	
 		--InputUtility_Pause( "group=" .. #group.corps .. " need=" .. QueryGroupNeedCorpsForWar( group ) .. " " .. group.name )
-	elseif method == DiplomacyMethod.MAKE_PEACE then
+	elseif method == DiplomacyMethod.MAKE_PEACE then		
 		if self.type == GroupRelationType.BELLIGERENT then
 			local detail = self:GetDetail( GroupRelationDetail.BELLIGERENT_DURATION )
 			--InputUtility_Pause( "bel " .. detail.value .. "+" .. GroupRelationParam.MAKE_PEACE_BELLIGERENT_TIME )
 			if detail and detail.value >= GroupRelationParam.MAKE_PEACE_BELLIGERENT_TIME then
-				return true
+				return false--true
 			end
 		end		
 		return false

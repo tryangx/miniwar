@@ -1331,7 +1331,7 @@ function Combat:RunOneDay()
 	repeat		
 		self:Run()
 	until self:IsEnd()
-	print( "Combat=", self.id, " Phase=", self.phase, " Status=", MathUtility_FindEnumName( CombatResult, self.result ) )
+	--print( "Combat=", self.id, " Phase=", self.phase, " Status=", MathUtility_FindEnumName( CombatResult, self.result ) )
 end
 
 function Combat:Run()

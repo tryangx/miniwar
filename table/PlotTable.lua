@@ -62,7 +62,7 @@ PlotResourceBonusType =
 
 PlotTraits = 
 {
-	[1] = { { type = "AGRICULTURE", value = 150 }, { type = "ECONOMY", value = 0 }, { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 500 }, },--LAND	
+	[1] = { { type = "AGRICULTURE", value = 150 }, { type = "ECONOMY", value = 0 }, { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 1000 }, },--LAND	
 	[2] = { { type = "AGRICULTURE", value = 50 },  { type = "ECONOMY", value = 0 }, { type = "PRODUCTION", value = 100 }, { type = "LIVING_SPACE", value = 100 }, },--HILLS	
 	[3] = { { type = "AGRICULTURE", value = 0 },   { type = "ECONOMY", value = 0 }, { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 0 }, },--MOUNTAIN	
 	[4] = { { type = "AGRICULTURE", value = 0 },   { type = "ECONOMY", value = 0 }, { type = "PRODUCTION", value = 0 },   { type = "LIVING_SPACE", value = 0 }, },--WATER

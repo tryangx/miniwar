@@ -1,3 +1,9 @@
+GameMode = 
+{
+	SCENARIO_GAME = 1,
+	COMBAT_GAME   = 2,
+}
+
 PlotAdjacentOffsets = {
 	{ x = -1, y = -1, distance = 1, },
 	{ x = 0,  y = -1, distance = 1, },
@@ -88,6 +94,10 @@ GlobalConst =
 	-- Move Time     : Standard Time, use to move entity like characters, corps.	
 	CHARA_MOVE_TIME = 1,
 	CORPS_MOVE_TIME = 2,
+
+	-- Prepare Time
+	CORPS_PREPARE_TIME = 10,
+	TROOP_PREPARE_TIME = 1,
 	------------------------	
 	
 	--assets
@@ -111,17 +121,25 @@ PlotParams =
 	MAX_PLOT_SECURITY    = 100,
 	SAFETY_PLOT_SECURITY = 60,
 
+	--[[
+	Renew Agriculture Method
+
+	]]
+
 	-------------------------
 	--Population
 	-- How many people lived in livingspace unit
-	PLOT_POPULATION_CONSTANT         = 100,
+	PLOT_POPULATION_CONSTANT          = 100,
+	PLOT_POPULATION_MSERVICE_CONSTANT = 10,
+	
 	-- Growth & Death Rate Per Year
 	PLOT_POPULATION_GROWTH_RATE      = 24,
 	PLOT_POPULATION_DEATH_RATE       = 16,
 	PLOT_POPULATION_FLUCTUATION_RATE = 6,
 	
 	--Agriculture -> Supply
-	PLOT_SUPPLY_OUTPUT_CONSTANT      = 100,	
+	PLOT_SUPPLY_POPULATION_CONSTANT  = 100,	
+	PLOT_SUPPLY_SOLDIER_CONSTANT     = 20,		
 
 	--Economy -> Income
 	PLOT_INCOME_CAPITATION_CONSTNAT = 1,
@@ -165,7 +183,11 @@ PlotResourceBonusType =
 
 WarfarePlanParams = 
 {
-	MAX_TARGETCITY_POWER_MODULUS = 2,
+	--When self-corps power is more than SIEGECITY_GARRISONPOWER_MORETHAN_TIMES times to garrison power, Siege City can occured
+	SIEGECITY_GARRISONPOWER_MORETHAN_TIMES  = 2,
+
+	--When enemy-corps power is less than DEFENDCITY_ENEMYPOWER_LESSTHAN_TIMES to self-city power, Defend City can occured
+	DEFENDCITY_ENEMYPOWER_LESSTHAN_TIMES = 2,
 }
 
 
@@ -188,8 +210,15 @@ CombatType =
 
 CombatPurpose = 
 {
+	-- 1. Harass and Power ratio between [50, 150]
 	PROBING       = 0,	
+	
+	--Harass / Siege and
 	CONVENTIONAL  = 1,
+	
+	--1. Siege 
+	--2. No retreat
+	--3. Besiege
 	DESPERATE     = 2,
 }
 
@@ -204,7 +233,8 @@ CombatSide =
 CombatResult = 
 {
 	--Time out
-	DRAW              = 0,	
+	DRAW              = 0,
+	---------------------------
 	--At least gain more advantage than opponent
 	TACTICAL_VICTORY  = 1,	
 	--All troops neutralized or fled
@@ -220,6 +250,8 @@ CombatResult =
 	--
 	BRILLIANT_VICTORY = 5,
 	DISASTROUS_LOSE   = 6,
+
+
 }
 
 CombatTroopPurpose = 
@@ -244,13 +276,22 @@ CombatTactic =
 	DEFEND       = 4,
 }
 
+CombatBuff = 
+{
+	--Morale relative
+	MORALE_BREAKDOWN  = 10,
+	MORALE_DOWNCAST   = 11,
+	MORALE_EXCITED    = 12,
+	MORALE_MOVTIVATED = 13,
+}
+
 -----------------------------------------
 
 TroopCategory =
 {
 	CATEGORY_BEG = 10,
 	FOOTSOLDIER  = 10,
-	ARTILLERY    = 20,	
+	ARTILLERY    = 20,
 	CAVALRY      = 30,	
 	SIEGE_WEAPON = 40,	
 	CATEGORY_END = 40,	
@@ -389,6 +430,7 @@ CityTag =
 
 	SUBMIT_PROPOSAL = 1,
 	ACCEPT_PROPOSAL = 2,
+	NO_PROPOSAL     = 3,
 
 	------------------------------
 	--     Position & Rank
@@ -589,26 +631,85 @@ CityParams =
 
 ----------------------------------------
 -- Combat
+WeaponDamageType = 
+{
+	-- Normal damage type
+	NORMAL       = 1,	
+	-- Spear or some like it
+	PIERCE       = 2,	
+	-- Advanced to defence
+	SIEGE        = 3,		
+	--FIRE         = 4,
+}
+
+WeaponBallistic =
+{
+	-- Siege weapon	
+	CLOSE      = 1,
+	-- Normal weapon like sword, knife, fork
+	MELEE      = 2,		
+	-- Only use in charge attack
+	CHARGE     = 3,	
+	-- Anti charge attack
+	LONG       = 4,	
+	-- CrossBow or rifle
+	SHOOT      = 5,		
+	-- Bow or high ballistic
+	MISSILE    = 6,
+}
+
+WeaponParams =
+{
+	LONG_RANGE_WEAPON_LENGTH = 20,
+	LONG_WEAPON_LENGTH       = 4,
+}
+
+ArmorType =
+{
+	NONE         = 0,	
+	LIGHT        = 1,	
+	MEDIUM       = 2,	
+	HEAVY        = 3,	
+	FORTIFIED    = 4,	
+	WOODEN       = 5,
+}
+
+ArmorPart = 
+{
+	BODY      = 1,		
+	HEAD      = 2,	
+	SHIELD    = 3,
+	LEG       = 4,		
+	ACCESSORY = 5,
+}
+
+ArmorTrait = 
+{
+	-- resist missile
+	SHIELD = 1,	
+	--
+}
+
 --Combat Damage Bonus Table
 DamageBonusTable = {
 	--------------- Normal, Pierce, Siege,   Fire
 	--NONE Armor
-	[0]          = { 100,   150,     150,    200 },
+	[0]          = { 60,    100,      70,    100 },
 	 
 	--LIGHT Armor
-	[1]          = { 100,   200,     100,     80 },
+	[1]          = { 70,    110,      80,     80 },
 	
 	--Medium Armor
-	[2]          = { 150,   100,     100,    120 },
+	[2]          = { 80,     90,     100,    100 },
 	
 	--Heavy Armor
-	[3]          = {  80,    50,     150,    150 },
+	[3]          = { 100,    70,     120,    120 },
 	
 	--FORTIFIED Armor
-	[4]          = {  70,    50,     200,     20 },
+	[4]          = { 100,    60,     200,     40 },
 	
 	--WOODEN Armor
-	[5]          = { 100,    80,     100,    200 },
+	[5]          = { 100,    70,     120,    300 },
 }
 
 --------------------------------
@@ -1674,13 +1775,14 @@ CharacterProposal =
 	
 	-- Military
 	MILITARY_AFFAIRS = 60,
-	ATTACK_CITY      = 61,
+	HARASS_CITY      = 61,
 	EXPEDITION       = 62,
 	CONTROL_PLOT     = 63,--Need AI
 	DISPATCH_CORPS   = 64,
 	SIEGE_CITY       = 65,
 	MEET_ATTACK      = 66,
 	DISPATCH_TROOPS  = 67,
+	DEFEND_CITY      = 68,
 	MILITARY_AFFAIRS_END = 69,
 
 	-- Diplomacy
@@ -1712,6 +1814,18 @@ CharacterProposal =
 	
 	NEXT_TOPIC              = 310,
 	END_MEETING             = 311,
+}
+
+ContributionModulus =
+{
+	NONE    = 0,
+	FEW     = 0.001,
+	LITTLE  = 0.002,
+	LESS    = 0.005,
+	NORMAL  = 0.01,
+	MORE    = 0.02,
+	MASSIVE = 0.03,
+	HUGE    = 0.05,
 }
 
 CharacterParams =

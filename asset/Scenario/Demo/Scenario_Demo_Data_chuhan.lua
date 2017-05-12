@@ -2,7 +2,7 @@ local CharaData =
 {
 	[100] = 
 	{
-		name = "Liu Bei",
+		name = "Liu Bang",
 		birth = -520,
 		ca          = 60,
 		ap          = 80,
@@ -12,7 +12,7 @@ local CharaData =
 	},
 	[101] = 
 	{
-		name = "Zhuge Liang",	
+		name = "Zhang Liang",	
 		birth = -520,		
 		ca          = 60,
 		ap          = 80,
@@ -22,7 +22,7 @@ local CharaData =
 	},	
 	[102] = 
 	{
-		name = "Guan Yu",	
+		name = "Xiao He",	
 		birth = -520,		
 		ca          = 60,
 		ap          = 80,
@@ -32,7 +32,7 @@ local CharaData =
 	},
 	[103] = 
 	{
-		name = "Zhang Fei",	
+		name = "Han Xin",	
 		birth = -550,		
 		ca          = 60,
 		ap          = 80,		
@@ -43,7 +43,7 @@ local CharaData =
 	
 	[200] = 
 	{
-		name = "Cao cao",
+		name = "Xiang Yu",
 		birth = -550,
 		ca          = 50,
 		ap          = 90,		
@@ -53,7 +53,7 @@ local CharaData =
 	},
 	[201] = 
 	{
-		name = "Xun Yu",
+		name = "Fan Zen",
 		birth = -550,		
 		ca          = 50,
 		ap          = 90,		
@@ -62,7 +62,7 @@ local CharaData =
 	},
 	[202] = 
 	{
-		name = "XiaHou Yuan",
+		name = "Zhong Limei",
 		birth = -550,		
 		ca          = 50,
 		ap          = 90,		
@@ -71,52 +71,11 @@ local CharaData =
 	},
 	[203] = 
 	{
-		name = "XiaHou Dun",		
+		name = "Long Qie",		
 		birth = -550,
 		ca          = 50,
 		ap          = 90,		
 		purpose     = 0,		
-		traits = { 1001, 1010, 1040 },
-	},
-	
-	[300] = 
-	{
-		name = "Sun Quan",
-		birth = -550,
-		ca          = 50,
-		ap          = 90,		
-		purpose     = 0,	
-		job         = "KING",		
-		traits = { 1001, 1010, 1040 },
-	},
-	[301] = 
-	{
-		name = "Zhou Yu",
-		birth = -550,
-		ca          = 50,
-		ap          = 90,		
-		purpose     = 0,	
-		job         = "KING",		
-		traits = { 1001, 1010, 1040 },
-	},	
-	[302] = 
-	{
-		name = "Taishi ci",
-		birth = -550,
-		ca          = 50,
-		ap          = 90,		
-		purpose     = 0,	
-		job         = "KING",		
-		traits = { 1001, 1010, 1040 },
-	},
-	[303] = 
-	{
-		name = "Gan Lin",
-		birth = -550,
-		ca          = 50,
-		ap          = 90,		
-		purpose     = 0,	
-		job         = "KING",		
 		traits = { 1001, 1010, 1040 },
 	},
 }
@@ -382,6 +341,7 @@ local CorpsData =
 	]]
 }
 
+--[[
 local CityData = 
 {
 	--North of HuangHe
@@ -610,7 +570,7 @@ local CityData =
 	[1000] = 
 	{
 		name = "Cheng Du",
-		coordinate = { x = 15, y = 42 },
+		coordinate = { x = 18, y = 42 },
 		level = 13,
 		charas = { 100, 101, 102, 103 },
 		adjacentCities = { 901, 1001, 1002 },
@@ -625,23 +585,44 @@ local CityData =
 	[1002] = 
 	{
 		name = "Jian Ling",
-		coordinate = { x = 12, y = 54 },
+		coordinate = { x = 18, y = 51 },
 		level = 6,
 		adjacentCities = { 1000, 1003 },
 	},
 	[1003] = 
 	{
 		name = "Yong An",
-		coordinate = { x = 9, y = 57 },
+		coordinate = { x = 12, y = 57 },
 		level = 5,
 		adjacentCities = { 1002, 1004 },
 	},
 	[1004] = 
 	{
 		name = "Yun Nan",
-		coordinate = { x = 6, y = 63 },
+		coordinate = { x = 12, y = 63 },
 		level = 6,
 		adjacentCities = { 1003 },
+	},
+}
+]]
+
+local CityData = 
+{
+	[1000] = 
+	{
+		name = "Han Zhong",
+		coordinate = { x = 18, y = 42 },
+		level = 13,
+		charas = { 100, 101, 102, 103 },
+		adjacentCities = { 200 },
+	},	
+	[200] = 
+	{
+		name = "Peng Chen",
+		coordinate = { x = 54, y = 27 },
+		level = 11,
+		charas = { 200, 201, 202, 203 },
+		adjacentCities = { 1000 },
 	},
 }
 
@@ -649,8 +630,8 @@ local GroupData =
 {
 	[1] =
 	{
-		name = "SHU",
-		goals = { { type="DOMINATION_TERRIORITY", target = 100 } },
+		name = "CHU",
+		goals = { { type="DOMINATION_TERRIORITY", target = 75 } },
 		leader = 100,
 		capital = 1000,
 		cities = { 1000 },		
@@ -664,27 +645,14 @@ local GroupData =
 	},	
 	[2] =
 	{
-		name = "WEI",
-		goals = { { type="DOMINATION_TERRIORITY", target = 100 } },
+		name = "HAN",
+		goals = { { type="DOMINATION_TERRIORITY", target = 75 } },
 		leader = 200,
 		capital = 200,
 		cities = { 200 },
 		charas = { 200, 201, 202, 203 },
 		troops = {},
 		corps = {},
-		relations = {  },
-	},
-	[3] =
-	{
-		name = "WU",
-		goals = { { type="DOMINATION_TERRIORITY", target = 100 } },
-		leader = 300,		
-		money = 10000,
-		capital = 500,
-		cities = { 500 },
-		charas = { 300, 301, 302, 303 },
-		troops = {},
-		corps = {},		
 		relations = {  },
 	},
 }

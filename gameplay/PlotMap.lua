@@ -286,36 +286,46 @@ function PlotMap:AllocateToCity()
 	15 14 13
 	]]
 	local maxDistance = 3
-	
+
+	function AddPlot( plot, city, settlement, plots )
+		--if not plot:HasResource() then plot.resource = 500 end
+		local adjaCityPlot = 0			
+		for k, offset in ipairs( PlotAdjacentOffsets ) do
+			if offset.distance == 1 then
+				for _, adjaPlot in ipairs( plots ) do
+					if adjaPlot.x == offset.x + plot.x and adjaPlot.y == offset.y + plot.y then
+						adjaCityPlot = adjaCityPlot + 1						
+					end
+				end
+			end
+		end
+		--print( city.name, adjaCityPlot + settlement )
+		plot:SetData( { city = city, settlement = adjaCityPlot + settlement } )
+	end
+
 	--1st, allocate plots to city
 	g_cityDataMng:Foreach( function ( city )
 		local plots = {}
+		local settlement = {}
 		local pos = city:GetCoordinate()
-		function AddPlot( list, x, y, settlement )
-			local plot = self:GetPlot( x, y )
-			if plot then
-				if not plot:HasResource() then
-					plot.resource = 500
-				end
-				if ( not plot:GetData() or settlement == maxDistance ) then
-					table.insert( list, plot )
-					plot:SetData( { city = city, settlement = settlement } )
-					return 1
-				end
-			end
-			return 0
-		end
-		AddPlot( plots, pos.x, pos.y, maxDistance )
-		
 		--allocate adjacent plot to the city
-		local left = city.level	- 1		
+		local left = city.level	- 1
 		--ShowText( city.name, x, y, left, #PlotAdjacentOffsets )
 		for k, offset in ipairs( PlotAdjacentOffsets ) do		
 			if left > 0 and offset.distance < maxDistance then
-				left = left - AddPlot( plots, pos.x + offset.x, pos.y + offset.y, maxDistance - offset.distance )
-			else
-				break
+				local plot = self:GetPlot( pos.x + offset.x, pos.y + offset.y )
+				if not plot:GetData() then
+					table.insert( plots, plot )
+					settlement[plot] = ( maxDistance - offset.distance ) * 2
+					left = left - 1--AddPlot( plots, plot, maxDistance - offset.distance )
+				end
 			end
+		end
+		local plot = self:GetPlot( pos.x, pos.y )
+		settlement[plot] = maxDistance * 2
+		AddPlot( plot, city, settlement[plot], plots )
+		for k, plot in ipairs( plots ) do
+			AddPlot( plot, city, settlement[plot], plots )
 		end
 		city:SetPlots( plots )
 	end )

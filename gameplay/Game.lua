@@ -28,17 +28,11 @@
 -- 2. Intelligence System, every group has a intel-lib which store other group's info detail as troop, corps, character, city, group, etc
 -- 3. Scenario Event
 -- 4. Treasure( book / antique / beauty /  )
+-- 5. 
 --
 --
 
 require "Global"
-
-GameMode =
-{
-	NEW_GAME    = 1,	
-	LOAD_GAME   = 1,	
-	COMBAT_GAME = 2,
-}
 
 Game = class()
 
@@ -72,7 +66,6 @@ function Game:PopupSystemMenu()
 	if self.turn == 0 then
 		table.insert( menus, { c = index, content = "New Game", fn = function()
 			self:NewGame()
-			self:StartGame()
 		end } )		
 		index = index + 1
 	end
@@ -85,22 +78,20 @@ function Game:PopupSystemMenu()
 	end
 	table.insert( menus, { c = index, content = "Load", fn = function()
 		self:LoadGame()
-		self:StartGame()
 	end } )
 	index = index + 1
 	if self.turn == 0 then
 		table.insert( menus, { c = index, content = "Skirmish", fn = function()
 			self:TestCombat()
 		end } )
+		index = index + 1
 	end
-	index = index + 1
-	if self.turn > 0 then
-		table.insert( menus, { c = nil, content = "View Data", fn = function()
+	--if self.turn > 0 then
+		table.insert( menus, { c = index, content = "View Data", fn = function()
 			self:ViewData()
 		end } )
 		index = index + 1
-	end
-	index = index + 1
+	--end
 	if self.turn > 0 then
 		table.insert( menus, { c = nil, content = "Next Turn", fn = function()
 		end } )
@@ -116,7 +107,36 @@ end
 ----------------------------
 
 function Game:ViewData()
-	
+	self:TestWeapon()
+end
+
+function Game:ViewTroopTable()
+	g_troopTableMng:Foreach( function ( troop )
+		if troop.category >= TroopCategory.CATEGORY_BEG and troop.category <= TroopCategory.CATEGORY_END then
+			ShowText( "---------------------------" )
+			ShowText( NameIDToString( troop ) )
+			for k, weapon in ipairs( troop.weapons ) do
+				ShowText( "  [WEAPON] " .. weapon.name .. " pow=" .. weapon.power .. " weight=" .. weapon.weight )
+			end
+			for k, armor in ipairs( troop.armors ) do
+				ShowText( "  [ARMOR] " .. armor.name .. " protection=" .. armor.protection .. " weight=" .. armor.weight )
+			end
+		end
+	end )
+end
+
+function Game:TestWeapon()
+	g_weaponTableMng:Foreach( 
+		function ( weapon )
+			if weapon.id < 400 then
+				g_armorTableMng:Foreach( function ( armor )					
+					local dmg = Combat:CalcWeaponDamage( 200, weapon, armor )					
+					ShowText( weapon.name .. " VS " .. armor.name .. " num=" .. 200 .. " dmg=" .. dmg .. " times=" .. Combat:CalcAttackTimes( weapon ) )
+					ShowText( "-----------------")
+				end )
+			end
+		end
+	)
 end
 
 ----------------------------
@@ -145,7 +165,9 @@ function Game:NewGame()
 	ShowText( "Select ["..NameIDToString( self.player ) .. "] as player's character" )
 	
 	--Game Mode
-	self.gameMode = GameMode.NEW_GAME
+	g_gameMode = GameMode.SCENARIO_GAME
+
+	self:StartGame()
 end
 
 function Game:LoadGame()
@@ -173,7 +195,9 @@ function Game:LoadGame()
 	
 	ShowText( "turn=", self.turn )
 	
-	self.gameMode = GameMode.LOAD_GAME
+	g_gameMode = GameMode.SCENARIO_GAME
+
+	self:StartGame()
 end
 
 function Game:SaveGame()
@@ -211,7 +235,7 @@ function Game:Init()
 	Debug_SetPrinterNode( false )
 
 	self.turn = 0
-	self.maxTurn = 3*12*20
+	self.maxTurn = 3*12*30
 	
 	g_gameEvent:InitData()
 	
@@ -289,7 +313,7 @@ function Game:PreprocessGameData()
 	end )
 	g_cityDataMng:Foreach( function ( data )
 		data:InitAdjacentCity()
-		if self.gameMode == GameMode.NEW_GAME then
+		if g_gameMode == GameMode.SCENARIO_GAME then
 			data:Harvest()
 		end
 	end )
@@ -396,16 +420,16 @@ function Game:StartGame()
 end
 
 function Game:TestCombat()	
-	self:NewGame()
-		
+	--self:NewGame()
+
 	self:PreprocessGameData()
 	
-	local atkCorps = GenerateCorps( { 1000, })-- 1000, 1001, 1001, } )
-	local defCorps = GenerateCorps( { 501, })-- 501, 511, 511, } )
+	local atkCorps = GenerateCorps( { 1000, 1000, 1000, 1000, 1002 } )
+	local defCorps = GenerateCorps( { 1000, 1000, 1000, 1000, 1003 } )
 	
 	Warfare:Test( { atkCorps }, { defCorps } )
 	
-	self.gameMode = GameMode.COMBAT_GAME
+	g_gameMode = GameMode.COMBAT_GAME
 
 	self:Run()
 end
@@ -424,24 +448,25 @@ function Game:End()
 	g_movingActorMng:Dump()
 	g_statistic:Dump()
 	g_gameMap:DrawAll()	
+	g_chronicle:BrowseEvent()
 	if self.winner then
-		InputUtility_Wait( "winner="..self.winner.name, "end" )
+		InputUtility_Pause( "winner="..self.winner.name )
 	end
 end
 
 function Game:Run()
-	while self.turn < self.maxTurn do
-		if self.gameMode == GameMode.NEW_GAME or self.gameMode == GameMode.LOAD_GAME then
-			self:NextTurn()
-		elseif self.gameMode == GameMode.COMBAT_GAME then
-			Warfare:RunOneDay()
+	if g_gameMode == GameMode.SCENARIO_GAME then
+		while self.turn < self.maxTurn do
+			self:NextTurn()			
+			if self.winner then break end
 		end
-		if self.winner then break end
+		if self.turn >= self.maxTurn or self.winner then self:End() end
+	elseif g_gameMode == GameMode.COMBAT_GAME then
+		while g_warfare:GetCombatCount() > 0 do
+			g_warfare:RunOneDay()
+		end
 	end
-	--game finished
-	if self.turn >= self.maxTurn or self.winner then
-		self:End()
-	end
+	
 end
 
 ----------------------------------------------

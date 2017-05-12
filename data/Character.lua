@@ -143,7 +143,13 @@ function Character:ConvertID2Data()
 end
 
 function Character:CreateBrief()
-	local content = NameIDToString( self ) .. " loc=" .. self.location.name .. " stu=" .. MathUtility_FindEnumName( CharacterStatus, self.status ), "task=" .. ( g_taskMng:GetTaskByActor( self ) and "busy" or "idle" ), " troop=" .. ( self:GetTroop() and self:GetTroop().name or "" )
+	local content = ""
+	content = content .. NameIDToString( self )
+	content = content .. " group=" .. NameIDToString( self.group )
+	content = content .. " home=" .. NameIDToString( self.home ) .. " loc=" .. NameIDToString( self.location )
+	content = content .. " stu=" .. MathUtility_FindEnumName( CharacterStatus, self.status )
+	content = content .. " task=" .. ( g_taskMng:GetTaskByActor( self ) and "busy" or "idle" )
+	content = content .. " troop=" .. ( self:GetTroop() and self:GetTroop().name or "" )
 	return content
 end
 
@@ -280,7 +286,10 @@ function Character:ChoiceAction( action )
 	--ShowText( NameIDToString( self ) .. " Choice " .. MathUtility_FindEnumName( CharacterAction, action ) )
 end
 
-function Character:Contribute( contribution )
+function Character:Contribute( contribution, modulus )
+	if not contribution then
+		contribution = math.ceil( CharacterParams.ATTRIBUTE.MAX_CONTRIBUTION * modulus )
+	end
 	self.contribution = MathUtility_Clamp( self.contribution + contribution, 0, CharacterParams.ATTRIBUTE.MAX_CONTRIBUTION )
 	Debug_Normal( "["..self.name.."] contribute " .. contribution .. " to " .. self.contribution )
 end
@@ -304,18 +313,20 @@ end
 
 function Character:JoinCity( city )
 	if city and city:GetGroup() ~= self:GetGroup() then
-		ShowDebug( "Join", self.name, city:GetGroup(), self:GetGroup(), city.name )
-		InputUtility_Pause( city.name .. "["..( city:GetGroup() and city:GetGroup().name or "" ).."] is not ", ( self:GetGroup() and self:GetGroup().name or "" ) )
+		ShowText( "Join", self.name, city:GetGroup(), self:GetGroup(), city.name )
+		InputUtility_Pause( city.name .. "["..( city:GetGroup() and city:GetGroup().name or "" ).."] is not ", ( self:GetGroup() and self:GetGroup().name or "" ), NameIDToString( self ).." cann't join" )
 		k.p = 1
 	end
 	self.home = city
-	--ShowDebug( NameIDToString( self ), "join=" .. ( city and city.name or "" ) )	
+	ShowText( NameIDToString( self ), " join city=" .. NameIDToString( city ), " at city=" .. NameIDToString( self.location ) )
+	--if self.id == 308 and not city then k.p = 1 end
 end
 
 function Character:JoinGroup( group )
-	if group and self.group and self.group ~= group then ShowDebug( self.name .. "	join ", group.name ) end
+	if group and self.group and self.group ~= group then
+		ShowText( self.name .. "	join ", group.name )
+	end
 	self.group = group
-	--if self.id == 800 then InputUtility_Pause( "join", self.name, group and group.name or "" ) end
 end
 
 -- When the group which character works in is fallen,

@@ -160,14 +160,14 @@ function Helper_SumIf( datas, itemName, itemValue, countName, itemNameEnum )
 	local ret = 0
 	if itemNameEnum then
 		for k, data in ipairs( datas ) do					
-			if itemNameEnum[data[itemName]] == itemValue then
+			if not itemValue or itemNameEnum[data[itemName]] == itemValue then
 				--print( itemName, data[itemName], itemNameEnum[data[itemName]], itemValue )
 				ret = ret + data[countName]
 			end
 		end
 	else
 		for k, data in ipairs( datas ) do		
-			if data[itemName] == itemValue then
+			if not itemValue or data[itemName] == itemValue then
 				ret = ret + data[countName]
 			end
 		end

@@ -234,15 +234,17 @@ function City:UpdatePlots( allocate )
 	self.security = math.floor( self.security / #self.plots )
 	
 	if self:GetGroup() then 
-		print( self.name .. " plot="..#self.plots .. " lv=" .. self.level )
+		ShowText( self.name .. " plot="..#self.plots .. " lv=" .. self.level )
 		--ShowText( plotDesc )
-		print( "popu1=" .. Helper_CreateNumberDesc( self.population ) .. "/" .. Helper_CreateNumberDesc( CalcPlotPopulation( self.livingspace ) ) .. "("..self.livingspace..")" )	
-		print( "popu2=" .. self:GetMinPopulation() .. "(Min)/" .. self:GetMilitaryService() .. "(Serv)" )
-		print( "agr="..self.agriculture.."/"..self.maxAgriculture.." Supply="..Helper_CreateNumberDesc( CalcPlotSupply( self.agriculture ) - self.population ) .. "/" .. Helper_CreateNumberDesc( CalcPlotSupply( self.maxAgriculture ) - self.population ) .. " Surplus="..Helper_CreateNumberDesc( CalcPlotSupply( self.agriculture ) - self.population ).."/"..Helper_CreateNumberDesc( CalcPlotSupply( self.maxAgriculture ) - CalcPlotPopulation( self.livingspace ) ) )
-		print( "eco="..self.economy.."/"..self.maxEconomy.. " pro="..self.production.."/"..self.maxProduction .. " sec=" ..self.security )	
-		print( "military=" .. self:GetMilitaryPower() .. "/" .. self:GetReqMilitaryPower() )	
+		ShowText( "popu1=" .. Helper_CreateNumberDesc( self.population ) .. "/" .. Helper_CreateNumberDesc( CalcPlotPopulation( self.livingspace ) ) )
+		ShowText( "popu2=" .. self:GetMinPopulation() .. "(Min)/" .. self:GetMilitaryService() .. "(Serv)" )
+		ShowText( "agr="..self.agriculture.."/"..self.maxAgriculture )
+		ShowText( "supply="..Helper_CreateNumberDesc( CalcPlotSupplyPopulation( self.agriculture ) - self.population ) .. "/" .. Helper_CreateNumberDesc( CalcPlotSupplyPopulation( self.maxAgriculture ) - self.population ) .. " Surplus="..Helper_CreateNumberDesc( CalcPlotSupplyPopulation( self.agriculture ) - self.population ).."/"..Helper_CreateNumberDesc( CalcPlotSupplyPopulation( self.maxAgriculture ) - CalcPlotPopulation( self.livingspace ) ) )
+		ShowText( "eco="..self.economy.."/"..self.maxEconomy.. " pro="..self.production.."/"..self.maxProduction .. " sec=" ..self.security )	
+		ShowText( "military=" .. self:GetMilitaryPower() .. "/" .. self:GetReqMilitaryPower() )			
 		--InputUtility_Pause()
 	end
+
 	if allocate then self.plots = plots end
 end
 
@@ -296,6 +298,10 @@ end
 
 function City:IsExpandable()
 	return self:GetTag( CityTag.EXPANDABLE )
+end
+
+function City:IsConnected()
+	return self:GetTag( CityTag.CONNECTED )
 end
 
 -- Is city in conflict, like g_warfare, rebellion
@@ -463,16 +469,56 @@ function City:GetAdjacentDefendGoalSelfGroupCityList()
 	end )
 end
 
-function City:GetConnectFrontierSelfGroupCityList()
+function City:GetConnectOccupyGoalSelfGroupCityList()
+	if self:GetTag( CityTag.CONNECTED ) then
+		return Helper_ListIf( self.group.cities, function( city )
+			return city ~= self and city:IsAdjacentOccupyCityGoal()
+		end )
+	else
+		return Helper_ListIf( self.adjacentCities, function( city )
+			return city:GetGroup() == self:GetGroup() and city:IsAdjacentOccupyCityGoal()
+		end )
+	end
+end
+
+function City:GetConnectDefendGoalSelfGroupCityList()
 	if self:GetTag( CityTag.CONNECTED ) then
 		--connect to capital
 		return Helper_ListIf( self.group.cities, function( city )
-			return city:GetTag( CityTag.CONNECTED ) and city:GetTag( CityTag.FRONTIER )
+			return city ~= self and city:GetTag( CityTag.CONNECTED ) and city:IsDefendGoal()
 		end )
 	else
 		--isolation
 		return Helper_ListIf( self.adjacentCities, function( city )
-			return city:GetTag( CityTag.FRONTIER )
+			return city:GetGroup() == self:GetGroup() and city:IsDefendGoal()
+		end )
+	end
+end
+
+function City:GetConnectFrontierSelfGroupCityList()
+	if self:GetTag( CityTag.CONNECTED ) then
+		--connect to capital
+		return Helper_ListIf( self.group.cities, function( city )
+			return city ~= self and city:GetTag( CityTag.CONNECTED ) and city:GetTag( CityTag.FRONTIER )
+		end )
+	else
+		--isolation
+		return Helper_ListIf( self.adjacentCities, function( city )
+			return city:GetGroup() == self:GetGroup() and city:GetTag( CityTag.FRONTIER )
+		end )
+	end
+end
+
+function City:GetConnectExpandableSelfGroupCityList()
+	if self:GetTag( CityTag.CONNECTED ) then
+		--connect to capital
+		return Helper_ListIf( self.group.cities, function( city )
+			return city ~= self and city:GetTag( CityTag.CONNECTED ) and city:GetTag( CityTag.EXPANDABLE )
+		end )
+	else
+		--isolation
+		return Helper_ListIf( self.adjacentCities, function( city )
+			return city:GetGroup() == self:GetGroup() and city:GetTag( CityTag.EXPANDABLE )
 		end )
 	end
 end
@@ -607,15 +653,18 @@ function City:GetMinPopulation()
 	return CalcCityMinPopulation( self )
 end
 
-function City:GetMilitaryService()
-	local militaryService = self.population - self:GetMinPopulation()
-	--no female, XD
-	militaryService = math.ceil( militaryService * GlobalConst.MALE_PROPORTION )
-	return math.max( 0, militaryService )
-end
-
 function City:GetReqMilitaryPower()
 	return QueryCityReqMilitaryPower( self )
+end
+
+function City:GetMilitaryService()
+	local militaryService = CalcCityMilitaryService( self )
+	local freePopulation = self.population - self:GetMinPopulation()
+	return math.max( 0, math.min( militaryService, freePopulation ) - self._militaryPower )
+end
+
+function City:GetSupplySoldier()
+	return CalcPlotSupplySoldier( self.agriculture )
 end
 
 function City:GetSupplyBonus()
@@ -648,13 +697,13 @@ function City:GetSupplyBonus()
 end
 
 function City:GetHarvestFood()
-	local output = ( self:GetSupply() - self.population ) * CityParams.HARVEST.HARVEST_CYCLE_TIME
+	local output = ( self:GetSupplyPopulation() - self.population ) * CityParams.HARVEST.HARVEST_CYCLE_TIME
 	return math.max( output, 0 )
 end
 
-function City:GetSupply()
+function City:GetSupplyPopulation()
 	local bonus, modulus = self:GetSupplyBonus()
-	local supply = CalcPlotSupply( ( self.agriculture + bonus ) * modulus )
+	local supply = CalcPlotSupplyPopulation( ( self.agriculture + bonus ) * modulus )
 	local ret = supply
 	--InputUtility_Pause( self.name, "output=" .. supply, "popu=".. self.population, " surplus="..ret, bonus, modulus)
 	return ret
@@ -662,7 +711,7 @@ end
 
 function City:GetMaxSupply()
 	local bonus, modulus = self:GetSupplyBonus()
-	local supply = CalcPlotSupply( ( self.agriculture + bonus ) * modulus )
+	local supply = CalcPlotSupplyPopulation( ( self.agriculture + bonus ) * modulus )
 	return supply - self.population
 end
 
@@ -797,7 +846,7 @@ function City:CanInstruct()
 end
 function City:CanRecruit()
 	if self.security < GroupParams.RECRUIT.RECRUIT_NEED_SECURITY then return false end
-	return #self:GetRecruitList() > 0 and not self:IsInSiege()-- and self:IsPopulationEnough() 
+	return #self:GetRecruitList() > 0 and not self:IsInSiege()
 end
 function City:CanRecruitTroop( troop )
 	if troop.prerequisites.constrs then
@@ -940,6 +989,7 @@ function City:DumpTagDetail( indent, brief, printer )
 	else
 		ShowText( content )
 	end
+	return content
 end
 
 function City:DumpSimple( indent )
@@ -961,13 +1011,14 @@ end
 function City:DumpBrief()
 	local indent = ""
 	ShowText( '>>>>>>>>>>>  City >>>>>>>>>>>>>>>>>' )
-	ShowText( indent .. '[City] #' .. self.id .. ' Name=' .. self.name .. ' Group=' .. ( self.group and self.group.name or "[none]" ) )
+	ShowText( indent .. '[City] #' .. self.id .. ' Name=' .. self.name .. ' Group=' .. NameIDToString( self.group ) )
 	self:DumpAdjacentDetail( indent )
-	ShowText( indent .. 'Popu/Mil Serv  ', Helper_CreateNumberDesc( self.population ) .. "/" .. Helper_CreateNumberDesc( self:GetMilitaryService() ) .. "(Mil)+" .. self.militaryService )
+	ShowText( indent .. 'Popu/Mil Serv  ', Helper_CreateNumberDesc( self.population ) .. "/" .. self:GetMilitaryService() .. "(Mil)+" .. self.militaryService )
 	ShowText( indent .. 'Agri+Ecom+Prod ', self.agriculture .. "/" .. self.maxAgriculture .. " " .. self.economy .. "/" .. self.maxEconomy .. " " .. self.production .. "/" .. self.maxProduction )
-	ShowText( indent .. 'Secu/Min Popu  ', self.security .. "/" .. Helper_CreateNumberDesc( self:GetReqPopulation() ) .. "(Req)/" .. Helper_CreateNumberDesc( self:GetMinPopulation() ) .. "(Min)" )
+	ShowText( indent .. 'Secu / Supply  ', self.security .. "/" .. Helper_CreateNumberDesc( self:GetSupplyPopulation() ) )
+	ShowText( indent .. 'Req / Min Popu ', Helper_CreateNumberDesc( self:GetReqPopulation() ) .. "/" .. Helper_CreateNumberDesc( self:GetMinPopulation() ) )
 	ShowText( indent .. 'Money / Food   ', Helper_CreateNumberDesc( self.money ) .. ' / ' .. Helper_CreateNumberDesc( self.food ) .. "+" .. ( self:GetConsumeFood() > 0 and math.floor( self.food / self:GetConsumeFood() ) or "*" ) )
-	ShowText( indent .. 'Supply/Harvest ', Helper_CreateNumberDesc( self:GetSupply() ) .. ' / ' .. Helper_CreateNumberDesc( self:GetHarvestFood() ) )	
+	--ShowText( indent .. 'Supply/Harvest ', Helper_CreateNumberDesc( self:GetSupplyPopulation() ) .. ' / ' .. Helper_CreateNumberDesc( self:GetHarvestFood() ) )	
 	ShowText( indent .. 'Power/Req Pow  ', self:GetMilitaryPower() .. "/" .. self:GetReqMilitaryPower() .. " Guard=" .. self.guards )
 	ShowText( indent .. 'Charas         ', ( self.leader and self.leader.name or "" ) .. " " .. #self.charas )	
 	self:DumpTagDetail( indent )
@@ -987,11 +1038,11 @@ function City:Dump( indent, force )
 	ShowText( '>>>>>>>>>>>  City >>>>>>>>>>>>>>>>>' )
 	ShowText( indent .. '[City] #' .. self.id .. ' Name=' .. self.name .. ' Group=' .. ( self.group and self.group.name or "[none]" ) )
 	self:DumpAdjacentDetail( indent )
-	ShowText( indent .. 'Popu/Mil Serv  ', Helper_CreateNumberDesc( self.population ) .. "/" .. Helper_CreateNumberDesc( self:GetMilitaryService() ) .. "(Mil)+" .. self.militaryService )
-	ShowText( indent .. 'Agri+Ecom+Prod ', self.agriculture .. "/" .. self.maxAgriculture .. " " .. self.economy .. "/" .. self.maxEconomy .. " " .. self.production .. "/" .. self.maxProduction )
+	ShowText( indent .. 'Popu/Supply    ', Helper_CreateNumberDesc( self.population ) .. "/" .. Helper_CreateNumberDesc( self:GetSupplyPopulation() ) )
+	ShowText( indent .. 'Mil Serv/Supp  ', Helper_CreateNumberDesc( self:GetMilitaryService() ) .. "/" .. Helper_CreateNumberDesc( self:GetSupplySoldier() ) )
 	ShowText( indent .. 'Secu/Min Popu  ', self.security .. "/" .. Helper_CreateNumberDesc( self:GetReqPopulation() ) .. "(Req)/" .. Helper_CreateNumberDesc( self:GetMinPopulation() ) .. "(Min)" )
+	ShowText( indent .. 'Agri+Ecom+Prod ', self.agriculture .. "/" .. self.maxAgriculture .. " " .. self.economy .. "/" .. self.maxEconomy .. " " .. self.production .. "/" .. self.maxProduction )
 	ShowText( indent .. 'Money / Food   ', Helper_CreateNumberDesc( self.money ) .. ' / ' .. Helper_CreateNumberDesc( self.food ) .. "+" .. ( self:GetConsumeFood() > 0 and math.floor( self.food / self:GetConsumeFood() ) or "*" ) )
-	ShowText( indent .. 'Supply/Harvest ', Helper_CreateNumberDesc( self:GetSupply() ) .. ' / ' .. Helper_CreateNumberDesc( self:GetHarvestFood() ) )	
 	ShowText( indent .. 'Power/Req Pow  ', self:GetMilitaryPower() .. "/" .. self:GetReqMilitaryPower() .. " Guard=" .. self.guards )
 	ShowText( indent .. 'Charas         ', ( self.leader and self.leader.name or "" ) .. " " .. #self.charas .. " Need=" .. QueryCityNeedChara( self ) .. " Limit=" .. QueryCityCharaLimit( self ) )
 	self:DumpCharaDetail( indent )
@@ -1120,6 +1171,15 @@ function City:Harvest()
 	--ShowText( self.name, "Harvest food", oldValue .. "+" .. harvest .. "->" .. self.food )
 end
 
+function City:Pillaged()
+	if self.agriculture > self.maxAgriculture * 0.35 then
+		self.agriculture = MathUtility_Clamp( self.agriculture - math.ceil( Random_SyncGetRange( 5, 10 ) * self.agriculture * 0.01 ), 0, nil )		
+	end
+	if self.economy > self.maxEconomy * 0.35 then
+		self.economy     = MathUtility_Clamp( self.economy - math.ceil( Random_SyncGetRange( 5, 10 ) * self.economy * 0.01 ), 0, nil )		
+	end
+end
+
 function City:GetConsumeFood()
 	return self:GetMilitaryPower()
 end
@@ -1205,6 +1265,7 @@ function City:BuildConstruction( constr )
 end
 
 function City:FindAdjacentCityByGroup( group )
+	if not group then return nil end
 	local cities = {}
 	for k, city in ipairs( self.adjacentCities ) do
 		if city:GetGroup() == group then
@@ -1212,9 +1273,7 @@ function City:FindAdjacentCityByGroup( group )
 		end
 	end
 	if #cities == 0 then
-		if self:GetGroup() then
-			return self:GetGroup():GetCapital()
-		end
+		return group:GetCapital()
 	end
 	local index = Random_SyncGetRange( 1, #cities )
 	return cities[index]
@@ -1278,9 +1337,9 @@ function City:CheckData()
 	function CheckData( datas, city )
 		for k, data in ipairs( datas ) do
 			if data:GetHome() ~= city then
-				local content = ( NameIDToString( data ) .. " isn't in " .. city.name .. ", now is in " .. ( data:GetHome() and data:GetHome().name or "none" ) ) .. " | "
+				local content = NameIDToString( data ) .. " home="..NameIDToString( data:GetHome() ) .. " not=" .. NameIDToString( city ) .. ", now in=" .. NameIDToString( data:GetLocation() )
 				hint = hint .. content
-				print( content )
+				ShowText( content )
 			end
 		end
 	end
@@ -1378,7 +1437,6 @@ function City:Update()
 		self:RemoveTag( CityTag.ADVANTAGE )
 		self:RemoveTag( CityTag.FRONTIER )
 		self:RemoveTag( CityTag.BATTLEFRONT )
-
 		self:AppendTag( CityTag.SAFE, 1 )
 
 		--Adjacent
@@ -1406,7 +1464,7 @@ function City:Update()
 				self:AppendTag( CityTag.EXPANDABLE, 1, CityTag.MAX_VALUE["EXPANDABLE"] )
 			end
 		end
-		
+
 		if isFrontier then
 			--In-danger Tag
 			local totalPower, maxPower, minPower, number = self:QueryAdajacentCityMilitaryPower()
