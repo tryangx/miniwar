@@ -337,7 +337,8 @@ end
 function City:HasOutsideCorps( corps )
 	for k, corps in ipairs( self.corps ) do
 		if corps:GetHome() ~= corps:GetLocation() or g_movingActorMng:HasActor( MovingActorType.CORPS, corps ) then
-			ShowText( "outside", NameIDToString( corps ), NameIDToString( corps:GetHome() ) ..",".. NameIDToString( corps:GetLocation() ) )
+			local task = g_taskMng:GetTaskByActor( corps )
+			ShowText( "outside", NameIDToString( corps ) .. " home=" .. NameIDToString( corps:GetHome() ) .." loc=".. NameIDToString( corps:GetLocation() ) .. " task=" .. ( task and task:CreateBrief() or "" ) )
 			return true
 		end
 	end

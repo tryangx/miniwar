@@ -52,7 +52,6 @@ function MovingActor:Init( type )
 		self.status = MovingActorStatus.SUSPENDED
 		return
 	end
-	--ShowText( MathUtility_FindEnumName( MovingActorType, type ) .. " " .. self.remainTime, "next" )	
 end
 	
 function MovingActor:Update( type, elapsedTime )
@@ -160,9 +159,7 @@ function MovingActorManager:Dump()
 	ShowText( ">>>>>>>>>>>>>>>>>MovingActor Statistic" )
 	for actorType, list in pairs( self.lists ) do
 		local len = MathUtility_CountLength( list )
-		--if len > 0 then
-			ShowText( MathUtility_FindEnumName( MovingActorType, actorType ) .. "=" .. len )
-		--end
+		ShowText( MathUtility_FindEnumName( MovingActorType, actorType ) .. "=" .. len )
 	end
 	ShowText( "<<<<<<<<<<<<<<<<" )
 end
@@ -178,5 +175,5 @@ function MovingActorManager:Update( elapsedTime )
 		end
 	end
 	
-	self:Dump()
+	--self:Dump()
 end

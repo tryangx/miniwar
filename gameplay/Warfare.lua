@@ -1,3 +1,8 @@
+--[[
+	When Field-Combat, Defender should retreat to city when intel about third-party corps attack the city.
+
+]]
+
 Warfare = class()
 
 function Warfare:__init()
@@ -85,6 +90,8 @@ function Warfare:AddFieldCombatPlan( atkCorps, defCorpsList, location )
 		--InputUtility_Pause( NameIDToString( atkCorps ), atkCorps:GetHome().name, city.name )
 		return
 	end
+
+	ShowText( "Add field combat in=" .. NameIDToString( location ) .. " atkcorps=" .. atkCorps:CreateBrief() .. " deflist=" .. #defCorpsList )
 	
 	-- only support siege combat now
 	local plan     = {}
@@ -100,32 +107,32 @@ function Warfare:Update( elapasedTime )
 	-- process all plans
 	for city, locationPlan in pairs( self.plans ) do		
 		for k, plan in ipairs( locationPlan.plans ) do
-			if plan.siege then				
-				local existCombat = self:GetSiegeCombat( city )
-				local attend = true
-				if existCombat then
-					--print( existCombat:CreateDesc() )
-					local attacker = existCombat and existCombat:GetSideGroup( CombatSide.ATTACKER ) or nil
-					local reinforcer = plan.attacker:GetGroup()
-					--3rd party attack the city, we should check it is the ally
-					if reinforcer and reinforcer ~= attacker then
-						local relation = attacker:GetGroupRelation( reinforcer.id )
-						if not relation:IsAllyOrDependence() then
-							--retreat or wait?
-							attend = false
-							g_taskMng:TerminateTaskByActor( plan.attacker, "attack target is in siege by other group" )
-						else
-							--ally reinforce
-							print( "ally="..reinforcer.name, "attacker="..attacker.name )
-						end
+			local existCombat = self:GetSiegeCombat( city )
+			local attend = true
+			if existCombat then
+				--print( existCombat:CreateBrief() )
+				local attacker = existCombat and existCombat:GetSideGroup( CombatSide.ATTACKER ) or nil
+				local reinforcer = plan.attacker:GetGroup()
+				--3rd party attack the city, we should check it is the ally
+				if reinforcer and reinforcer ~= attacker then
+					local relation = attacker:GetGroupRelation( reinforcer.id )
+					if not relation:IsAllyOrDependence() then
+						--retreat or wait?
+						attend = false
+						g_taskMng:TerminateTaskByActor( plan.attacker, "attack target is in siege by other group" )
+					else
+						--ally reinforce
+						print( "ally="..reinforcer.name, "attacker="..attacker.name )
 					end
 				end
-				--ShowText( NameIDToString( plan.attacker ), " city=", city.name .. " combat=", existCombat, " attend=" .. ( attend and "true" or "false" ) )
-				if attend then
+			end
+			--ShowText( NameIDToString( plan.attacker ), " city=", city.name .. " combat=", existCombat, " attend=" .. ( attend and "true" or "false" ) )
+			if attend then
+				if plan.siege then
 					self:AddSiegeCombat( plan.attacker, city )
+				else
+					self:AddFieldCombat( plan.attacker, plan.defender, city )
 				end
-			else
-				self:AddFieldCombat( plan.attacker, plan.defender, city )
 			end
 		end
 	end
@@ -284,9 +291,8 @@ end
 function Warfare:ProcessCombatResult( combat )
 	if not combat:GetLocation() then return end
 
-	g_statistic:CombatOccured( combat:CreateDesc(), combat:GetLocation() )
-	g_chronicle:RecordEvent( combat.type == CombatType.FIELD_COMBAT and HistroyEventType.FIELD_COMBAT_OCCURED or HistroyEventType.SIEGE_COMBAT_OCCURED,
-		combat:CreateDesc(), combat.endDate )
+	g_statistic:CombatOccured( combat:CreateBrief(), combat:GetLocation() )
+	g_chronicle:RecordEvent( combat.type == CombatType.FIELD_COMBAT and HistroyEventType.FIELD_COMBAT_OCCURED or HistroyEventType.SIEGE_COMBAT_OCCURED, combat:CreateBrief(), combat.endDate )
 
 	--combat:Dump()
 	combat:EndCombat()
@@ -321,33 +327,33 @@ function Warfare:ProcessCombatResult( combat )
 					end
 				end
 				if task:IsDefendTask() then
-					ShowText( "success--", task:CreateDesc() )
+					ShowText( "success--", task:CreateBrief() )
 					task:Succeed( ContributionModulus.NORMAL )
 				else
-					ShowText( "cointinue--", task:CreateDesc() )
+					ShowText( "cointinue--", task:CreateBrief() )
 					task:Continue()
 				end				
 			else
-				ShowText( "fail--", task:CreateDesc() )
+				ShowText( "fail--", task:CreateBrief() )
 				task:Fail()
 			end
 			--[[
 			if winner == CombatSide.ATTACKER then
 				if task:IsInvasionTask() then
 					task:Continue()
-					ShowText( "cointinue--", task:CreateDesc() )
+					ShowText( "cointinue--", task:CreateBrief() )
 				end
 				if task:IsDefendTask() then
 					
 				end
 			elseif winner == CombatSide.DEFENDER then
 				if task:IsInvasionTask() then
-					ShowText( "fail--", task:CreateDesc() )
+					ShowText( "fail--", task:CreateBrief() )
 					task:Fail()
 				end
 				if task:IsDefendTask() then					
 					task:Continue()
-					ShowText( "cointinue--", task:CreateDesc() )
+					ShowText( "cointinue--", task:CreateBrief() )
 				end
 			end
 			]]
@@ -411,7 +417,7 @@ function Warfare:ProcessCombatResult( combat )
 			end )
 		end
 	end
-	if combat.type == CombatType.FIELD_COBMAT then InputUtility_Pause( "end combat", combat:CreateDesc() ) end
+	if combat.type == CombatType.FIELD_COBMAT then InputUtility_Pause( "end combat", combat:CreateBrief() ) end
 end
 
 function Warfare:EndCombat( combat )

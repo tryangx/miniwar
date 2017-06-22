@@ -86,13 +86,28 @@ CombatStatus =
 	SIDE_FLEE     = 5,
 }
 
+CombatIntelGrade = 
+{
+	UNKNOW = 0,
+	CLEAR  = 6000,
+	ALL    = 10000,
+
+	UNIT            = 0.0001,
+	INTEL_MIN_RANGE = 60,
+	INTEL_MAX_RANGE = 120,
+	CHARGE_INTEL = 25,
+	MELEE_INTEL  = 35,
+	SIEGE_INTEL  = 15,
+	TOWER_INTEL  = 10,	
+}
+
 CombatAttitude = 
 {
 	--Probing Combat
 	[0] =
 	{
 		--Start Combat Condition
-		FIGHT_MORALE                   = 80,
+		FIGHT_MORALE                   = 75,
 
 		--Surrender( Both Field-Combat, Siege-Combat )
 		--SURRENDER_MORALE               = 30,
@@ -101,6 +116,8 @@ CombatAttitude =
 		--Flee( Both Field-Combat, Siege-Combat )
 		FLEE_MORALE                    = 45,
 		FLEE_CASUALTY_RATE             = 30,
+		FLEE_POWER_TIMES_IN_SIEGECOMBAT   = 2,
+		FLEE_POWER_TIMES_IN_FIELDCOMBAT   = 2,
 
 		--Retreat( Field-Combat )
 		RETREAT_MORALE                 = 60,
@@ -110,13 +127,15 @@ CombatAttitude =
 	--Conventional Combat
 	[1] =
 	{
-		FIGHT_MORALE                   = 70,
+		FIGHT_MORALE                   = 65,
 
 		--SURRENDER_MORALE               = 30,
 		--SURRENDER_CASUALTY_RATE        = 80,
 
 		FLEE_MORALE                    = 35,
 		FLEE_CASUALTY_RATE             = 45,
+		FLEE_POWER_TIMES_IN_SIEGECOMBAT   = 2,
+		FLEE_POWER_TIMES_IN_FIELDCOMBAT   = 2,
 
 		RETREAT_MORALE                 = 50,
 		RETREAT_CASUALTY_RATE          = 30,
@@ -125,13 +144,15 @@ CombatAttitude =
 	--Desperate Combat
 	[2] =
 	{
-		FIGHT_MORALE                   = 60,
+		FIGHT_MORALE                   = 55,
 
 		--SURRENDER_MORALE               = 20,
 		--SURRENDER_CASUALTY_RATE        = 90,
 
 		FLEE_MORALE                    = 25,
 		FLEE_CASUALTY_RATE             = 65,
+		FLEE_POWER_TIMES_IN_SIEGECOMBAT   = 2,
+		FLEE_POWER_TIMES_IN_FIELDCOMBAT   = 2,
 
 		RETREAT_MORALE                 = 40,
 		RETREAT_CASUALTY_RATE          = 55,	
@@ -224,7 +245,7 @@ CombatFlow =
 		end,
 		condition = function ( combat )
 			local purpose = combat:GetPurpose( CombatSide.ATTACKER )
-			return purpose == CombatPurpose.PROBING and combat.type == CombatType.SIEGE_COMBAT
+			return purpose == CombatPurpose.PROBING and combat.type == CombatType.SIEGE_COMBAT and combat.shootRound <= 0
 		end
 	},
 	--Charge in siege-combat
@@ -249,14 +270,13 @@ CombatFlow =
 			combat:RunRound( CombatRound.FIGHT_ROUND )
 		end,
 	},
-	--Check pursue first time
 	{
 		action = function ( combat )
-			combat:RunRound( CombatRound.PURSUE_ROUND )
+			combat:RunRound( CombatRound.END_ROUND )
 		end,
 		condition = function ( combat )
-			return combat.round == CombatRound.PURSUE_ROUND
-		end
+			return combat:CheckResult()
+		end,
 	},
 	--End combat when any side is probing
 	{
@@ -301,14 +321,13 @@ CombatFlow =
 			return combat.type == CombatType.FIELD_COMBAT and ( atkPurpose == CombatPurpose.DESPERATE or defPurpose == CombatPurpose.DESPERATE )
 		end,
 	},
-	--Check pursue last time
 	{
 		action = function ( combat )
-			combat:RunRound( CombatRound.PURSUE_ROUND )
+			combat:RunRound( CombatRound.END_ROUND )
 		end,
 		condition = function ( combat )
-			return combat.round == CombatRound.PURSUE_ROUND
-		end
+			return combat:CheckResult()
+		end,
 	},
 }
 
@@ -346,6 +365,8 @@ function Combat:__init()
 	
 	--statistic
 	self.totalSoldier = 0
+	self.atkTroopNumber = 0
+	self.defTroopNumber = 0
 	self.atkNumber = 0
 	self.defNumber = 0
 	self.atkKill = 0
@@ -390,7 +411,7 @@ function Combat:Brief()
 	self:ShowText( content )
 end
 
-function Combat:CreateDesc()
+function Combat:CreateBrief()
 	if not self.endDate then self.endDate = g_calendar:GetDateValue() end
 	local desc = self.id .. " " .. ( self.atkGroup and self.atkGroup.name or "Neutral" ) .. " v " .. ( self.defGroup and self.defGroup.name or "Neutral" )
 	desc = desc .. " @" .. ( self.location and self.location.name or "" )
@@ -557,10 +578,14 @@ function Combat:SetLocation( location )
 	self.location = location
 end
 
-function Combat:SetSide( side, data )
-	self.sideOptions[side] = data
-
-	self:ShowText( "Set side=" .. MathUtility_FindEnumName( CombatSide, side ) .." purpose=" .. MathUtility_FindEnumName( CombatPurpose, data.purpose ) )
+function Combat:SetSideValue( side, key, value )
+	local options = self.sideOptions[side]
+	if not options then
+		options = {}		
+		self.sideOptions[side] = options
+	end
+	options[key] = value
+--	self:ShowText( "Set side=" .. MathUtility_FindEnumName( CombatSide, side ) .." purpose=" .. MathUtility_FindEnumName( CombatPurpose, data.purpose ) )
 end
 
 function Combat:SetBattlefield( id )
@@ -574,8 +599,13 @@ function Combat:SetClimate( id )
 	g_climate:SetCurrentWeather( g_climate:GetCurrentWeather() )
 end
 
+function Combat:TerminateCombat()
+	self.day = self.endDay
+end
+
 function Combat:EndCombat()
-	--InputUtility_Pause( "end combat="..self:CreateDesc())
+	--InputUtility_Pause( "end combat="..self:CreateBrief())
+	self:Log( "Combat="..self.id .. " End" )
 	self.endDate = g_calendar:GetDateValue()
 	
 	for k, troop in ipairs( self.troops ) do
@@ -619,6 +649,8 @@ function Combat:Embattle()
 	self.defTotal    = 0
 	self.atkMorale   = 0
 	self.defMorale   = 0
+	self.atkTroopNumber = 0
+	self.defTroopNumber = 0
 	for k, troop in ipairs( self.troops ) do
 		if troop._combatSide == CombatSide.ATTACKER then
 			table.insert( self.attackers, troop )
@@ -657,22 +689,17 @@ function Combat:Embattle()
 			--self:ShowText( "embattle siege", troop.name, MathUtility_FindEnumName( TroopStartLine, troop._startLine ) )
 		end
 
-		if self.day > 1 then
-			troop:NextCombatDay()
-			local rate = 0.05
-			if self.type == CombatType.SIEGE_COMBAT and troop._combatSide == CombatSide.ATTACKER then
-				rate = rate + 0.05
-			end
-			troop:RecoverMorale( math.ceil( troop.morale + ( troop:GetMaxMorale() - troop.morale ) * rate ) )
-		end
+		troop:NextCombatDay()
 
 		if troop:IsCombatUnit() then
 			self.totalSoldier = self.totalSoldier + troop.number
 			if troop._combatSide == CombatSide.ATTACKER then
+				self.atkTroopNumber = self.atkTroopNumber + 1
 				self.atkNumber = self.atkNumber + troop.number
 				self.atkTotal  = self.atkTotal + troop:GetCombatOrganization()
 				self.atkMorale = self.atkMorale + troop.morale * troop.number
 			else
+				self.defTroopNumber = self.defTroopNumber + 1
 				self.defNumber = self.defNumber + troop.number
 				self.defTotal  = self.defTotal + troop:GetCombatOrganization()
 				self.defMorale = self.defMorale + troop.morale * troop.number
@@ -685,40 +712,40 @@ function Combat:InitPurpose()
 	function SetPurpose( side, powerRatio )
 		if self.type == CombatType.FIELD_COMBAT then
 			if powerRatio < 50 then
-				self:SetSide( side, { purpose = CombatPurpose.PROBING } )
+				self:SetSideValue( side, "purpose", CombatPurpose.PROBING )
 			elseif powerRatio > 75 then
 				if Random_SyncGetProb() < 7000 then
-					self:SetSide( side, { purpose = CombatPurpose.CONVENTIONAL } )
+					self:SetSideValue( side, "purpose", CombatPurpose.CONVENTIONAL )
 				else
-					self:SetSide( side, { purpose = CombatPurpose.DESPERATE } )
+					self:SetSideValue( side, "purpose", CombatPurpose.DESPERATE )
 				end			
 			else
-				self:SetSide( side, { purpose = CombatPurpose.CONVENTIONAL } )
+				self:SetSideValue( side, "purpose", CombatPurpose.CONVENTIONAL )
 			end
 		elseif self.type == CombatType.SIEGE_COMBAT then
 			if side == CombatSide.ATTACKER then
 				if powerRatio < 50 then
-					self:SetSide( side, { purpose = CombatPurpose.PROBING } )
+					self:SetSideValue( side, "purpose", CombatPurpose.PROBING )
 				elseif powerRatio > 80 then
-					self:SetSide( side, { purpose = CombatPurpose.DESPERATE } )
+					self:SetSideValue( side, "purpose", CombatPurpose.DESPERATE )
 				elseif powerRatio < 75 then
 					if Random_SyncGetProb() < 7000 then
-						self:SetSide( side, { purpose = CombatPurpose.CONVENTIONAL } )
+						self:SetSideValue( side, "purpose", CombatPurpose.CONVENTIONAL )
 					else
-						self:SetSide( side, { purpose = CombatPurpose.PROBING } )
+						self:SetSideValue( side, "purpose", CombatPurpose.PROBING )
 					end
 				else
-					self:SetSide( side, { purpose = CombatPurpose.CONVENTIONAL } )
+					self:SetSideValue( side, "purpose", CombatPurpose.CONVENTIONAL )
 				end
 			elseif side == CombatSide.DEFENDER then
 				if powerRatio > 35 or not self.location:IsConnected() then
 					if Random_SyncGetProb() < 7000 then
-						self:SetSide( side, { purpose = CombatPurpose.CONVENTIONAL } )
+						self:SetSideValue( side, "purpose", CombatPurpose.CONVENTIONAL )
 					else
-						self:SetSide( side, { purpose = CombatPurpose.DESPERATE } )
+						self:SetSideValue( side, "purpose", CombatPurpose.DESPERATE )
 					end
 				else
-					self:SetSide( side, { purpose = CombatPurpose.CONVENTIONAL } )
+					self:SetSideValue( side, "purpose", CombatPurpose.CONVENTIONAL )
 				end
 			end			
 		end
@@ -767,23 +794,32 @@ end
 
 function Combat:GetPurpose( side )
 	local purpose = CombatPurpose.CONVENTIONAL	
-	if self.sideOptions[side] then
+	if self.sideOptions[side] and self.sideOptions[side].purpose then
 		purpose = self.sideOptions[side].purpose
 	end
 	return purpose
 end
 
 function Combat:GetAttitude( side )
-	local purpose = CombatPurpose.CONVENTIONAL	
-	if self.sideOptions[side] then
-		purpose = self.sideOptions[side].purpose
-	end
-	return CombatAttitude[purpose]
+	return CombatAttitude[self:GetPurpose( side )]
 end
 
+function Combat:GetIntelGrade( side )
+	local intelGrade = CombatIntelGrade.UNKNOW
+	if self.sideOptions[side] and self.sideOptions[side].intelGrade then
+		intelGrade = self.sideOptions[side].intelGrade
+	end
+	return intelGrade
+end
 
 function Combat:IsCombatEnd()
-	if self.result > CombatResult.COMBAT_END_RESULT or ( self.endDay and self.endDay < self.day ) then
+	if self.endDay and self.endDay < self.day then
+		return true
+	end
+	if not self:HasStatus( CombatStatus.SIDE_FLEE )	and not self:HasStatus( CombatStatus.SIDE_RETREAT ) then
+		return false
+	end
+	if self.result > CombatResult.COMBAT_END_RESULT then
 		return true
 	end
 	local atkPurpose = self:GetPurpose( CombatSide.ATTACKER )	
@@ -891,6 +927,19 @@ end
 
 -------------------------------
 
+function Combat:Rest()
+	for k, troop in ipairs( self.troops ) do
+		local rate = 0.05
+		if self.type == CombatType.SIEGE_COMBAT and troop._combatSide == CombatSide.ATTACKER then
+			rate = rate + 0.05
+		end
+		local morale = math.ceil( troop.morale + ( troop:GetMaxMorale() - troop.morale ) * rate )
+		troop:RecoverMorale( morale )
+		troop:RestADay()
+		self:ShowText( NameIDToString( troop ), " reocver mor=" .. morale )
+	end
+end
+
 function Combat:NextDay()
 	--if self.day >= 1 then InputUtility_Pause( "next day", MathUtility_FindEnumName( CombatResult, self.reuslt ) ) end
 	
@@ -911,16 +960,19 @@ function Combat:NextDay()
 	local atkAttitude = self:GetAttitude( CombatSide.ATTACKER )
 	local defAttitude = self:GetAttitude( CombatSide.DEFENDER )
 	if self.atkMorale < atkAttitude.FIGHT_MORALE and self.defMorale < defAttitude.FIGHT_MORALE then
-		self.restDay = self.restDay + 1
-		--InputUtility_Pause( "rest", self.atkMorale, atkAttitude.FIGHT_MORALE, self.defMorale, defAttitude.FIGHT_MORALE )
+		self:ShowText( "rest a day", self.atkMorale, atkAttitude.FIGHT_MORALE, self.defMorale, defAttitude.FIGHT_MORALE )
+		self.restDay = self.restDay + 1		
+		self:Rest()
 		return false
 	end
+
+	self:ShowText( "atkmor=" .. self.atkMorale, " defmor=" .. self.defMorale )
 
 	local defNum = self:GetSideStatus( CombatSide.DEFENDER )
 	if defNum <= 0 then
 		self.round = CombatRound.END_ROUND
 		self.result = CombatResult.BRILLIANT_VICTORY
-		InputUtility_Pause( "next day end" )
+		--InputUtility_Pause( "next day end" )
 	end
 
 	return true
@@ -935,7 +987,6 @@ function Combat:RunOneDay()
 		self:Run()
 	until self:IsDayEnd() or self:IsCombatEnd()
 	
-	--self:Dump()
 	self:DumpResult()
 end
 
@@ -1020,22 +1071,44 @@ function Combat:Run()
 	self:UpdateFlow()
 end
 
-function Combat:NextTurn()
-	for k, troop in ipairs( self.troops ) do
-		if troop:IsInCombat() then
-			troop:NextCombatTurn()
-		end
-	end
-
-	local side, sideCount = nil, 0
+function Combat:CheckResult()
+local side, sideCount = nil, 0
 
 	local atkAttitude = self:GetAttitude( CombatSide.ATTACKER )
 	local defAttitude = self:GetAttitude( CombatSide.DEFENDER )
 	local atkNum, atkTroop, atkMorale, atkFatigue, atkStartNum, atkMaxNum = self:GetSideStatus( CombatSide.ATTACKER )
 	local defNum, defTroop, defMorale, defFatigue, defStartNum, defMaxNum = self:GetSideStatus( CombatSide.DEFENDER )	
-	local atkCasulaty = math.floor( ( atkStartNum - atkNum ) * 100 / atkStartNum )
-	local defCasulaty = math.floor( ( defStartNum - defNum ) * 100 / defStartNum )
+	local atkCasulaty = atkStartNum == 0 and 0 or math.floor( ( atkStartNum - atkNum ) * 100 / atkStartNum )
+	local defCasulaty = defStartNum == 0 and 0 or math.floor( ( defStartNum - defNum ) * 100 / defStartNum )
 	self:ShowText( "casualty=",  atkCasulaty, defCasulaty )
+
+	--check intel
+	local atkIntelGrade = self:GetIntelGrade( CombatSide.ATTACKER )
+	local defIntelGrade = self:GetIntelGrade( CombatSide.DEFENDER )
+	if self.type == CombatType.SIEGE_COMBAT then
+		if atkIntelGrade > CombatIntelGrade.CLEAR then
+			if atkNum * atkAttitude.FLEE_POWER_TIMES_IN_SIEGECOMBAT < defNum then
+				side = CombatSide.ATTACKER
+				self:AddStatus( CombatStatus.SIDE_FLEE )
+				self.result = side == CombatSide.ATTACKER and CombatResult.STRATEGIC_LOSE or CombatResult.STRATEGIC_VICTORY
+				self:Log( "retreat by intel ", atkNum,defNum )
+			end
+		end
+	elseif self.type == CombatType.SIEGE_COMBAT then
+		if atkIntelGrade > CombatIntelGrade.CLEAR or defIntelGrade > CombatIntelGrade.CLEAR then
+			if atkNum * atkAttitude.FLEE_POWER_TIMES_IN_FIELDCOMBAT < defNum then
+				side = CombatSide.ATTACKER
+				self:AddStatus( CombatStatus.SIDE_FLEE )
+				self.result = side == CombatSide.ATTACKER and CombatResult.STRATEGIC_LOSE or CombatResult.STRATEGIC_VICTORY
+				self:Log( "retreat by intel ", atkNum,defNum )
+			elseif defNum * defAttitude.FLEE_POWER_TIMES_IN_FIELDCOMBAT < atkNum then
+				side = CombatSide.DEFENDER
+				self:AddStatus( CombatStatus.SIDE_FLEE )
+				self.result = side == CombatSide.ATTACKER and CombatResult.STRATEGIC_LOSE or CombatResult.STRATEGIC_VICTORY
+				self:Log( "retreat by intel ", atkNum, defNum )
+			end
+		end
+	end
 
 	--All troop fled or terminated
 	if not side then
@@ -1048,6 +1121,7 @@ function Combat:NextTurn()
 			sideCount = sideCount + 1
 		end
 		if sideCount == 1 then
+			self:AddStatus( CombatStatus.SIDE_FLEE )
 			self.result = side == CombatSide.ATTACKER and CombatResult.DISASTROUS_LOSE or CombatResult.BRILLIANT_VICTORY
 			self:ShowText( "fled leads retreat", side )
 		end
@@ -1065,7 +1139,7 @@ function Combat:NextTurn()
 		end
 		if sideCount == 1 then
 			self:AddStatus( CombatStatus.SIDE_FLEE )
-			self.result = side == CombatSide.ATTACKER and CombatResult.STRATEGIC_LOSE or CombatResult.STRATEGIC_VICTORY			
+			self.result = side == CombatSide.ATTACKER and CombatResult.STRATEGIC_LOSE or CombatResult.STRATEGIC_VICTORY
 			self:ShowText( "Low morale leads flee", atkCasualty, defCasulaty, self.atkMorale, self.defMorale )
 		end
 	end
@@ -1087,7 +1161,7 @@ function Combat:NextTurn()
 		elseif sideCount == 2 then
 			if self.type == CombatType.FIELD_COMBAT then
 				--end combat, both sides are high casualty rate
-				self.day = self.endDay
+				self:TerminateCombat()
 			end
 		end
 	end
@@ -1110,7 +1184,7 @@ function Combat:NextTurn()
 			elseif sideCount == 2 then
 				if self.type == CombatType.FIELD_COMBAT then
 					--end combat, both sides are high casualty rate
-					self.day = self.endDay
+					self:TerminateCombat()
 				end
 			end
 		end
@@ -1138,8 +1212,10 @@ function Combat:NextTurn()
 			--InputUtility_Pause( "draw", self.atkMorale, self.defMorale )			
 			self.round = CombatRound.END_ROUND
 			self.result = CombatResult.DRAW
-			return
+			return true
 		end
+
+		self:Log( "side="..MathUtility_FindEnumName( CombatSide, side ) .. " retreat" )
 
 		for _, troop in ipairs( self.troops ) do
 			if troop:IsCombatUnit() and troop._combatSide == side then
@@ -1157,7 +1233,16 @@ function Combat:NextTurn()
 			end
 		end
 		self.round = CombatRound.END_ROUND
-		return
+		return true
+	end
+	return false
+end
+
+function Combat:NextTurn()
+	for k, troop in ipairs( self.troops ) do
+		if troop:IsInCombat() then
+			troop:NextCombatTurn()
+		end
 	end
 
 	self.result = self:GetResult()
@@ -1313,8 +1398,8 @@ function Combat:CalcWeaponDamage( modNumber, weapon, armor, params )
 	local dmg = 0
 	local weaponRate = armor and weapon.power * math.min( 100, ( 100 - math.min( 100, armor.protection ) ) ) or weapon.power	
 	for k = 1, atkTimes do		
-		local curDmg = math.ceil( modNumber * weaponRate * 0.0001 )	
-		if params.criticalProb > 0 and Random_SyncGetRange( 1, RandomParams.MAX_PROBABILITY, "critical prob" ) < params.criticalProb then
+		local curDmg = math.ceil( modNumber * weaponRate * 0.0001 )
+		if params.criticalProb and params.criticalProb > 0 and Random_SyncGetRange( 1, RandomParams.MAX_PROBABILITY, "critical prob" ) < params.criticalProb then
 			curDmg = curDmg * CombatParams.CRITICAL_MODULUS
 		end
 		dmg = dmg + curDmg
@@ -1369,6 +1454,12 @@ function Combat:CalcDamage( troop, target, weapon, armor, params )
 		elseif troop._combatSide == CombatSide.DEFENDER then
 			dmg = dmg * 0.65
 		end
+	end
+
+	local intelGrade = self:GetIntelGrade( troop._combatSide )
+	if intelGrade < CombatIntelGrade.CLEAR then
+		dmg = dmg * ( 1 - ( CombatIntelGrade.CLEAR - intelGrade ) * CombatIntelGrade.UNIT )
+		--InputUtility_Pause( "intel="..intelGrade.." reduce" .. ( CombatIntelGrade.CLEAR - intelGrade ) * CombatIntelGrade.UNIT )
 	end
 	
 	-----------------------------
@@ -1470,8 +1561,8 @@ function Combat:Hit( troop, target, params )
 	-------------------------------------	
 	local atkWeapon = nil
 	if params.isMissile then atkWeapon = troop:GetRangeWeapon()
-	elseif params.isCharge then atkWeapon = troop:GetChargeWeapon()
-	elseif params.isMelee then atkWeapon = troop:GetCloseWeapon()		
+	elseif params.isCharge then atkWeapon = troop:GetChargeWeapon() or troop:GetLongWeapon() or troop:GetCloseWeapon()
+	elseif params.isMelee then atkWeapon = troop:GetCloseWeapon()
 	elseif params.isSiege then atkWeapon = troop:GetSiegeWeapon()
 	elseif params.isTower then atkWeapon = troop:GetRangeWeapon()
 	end
@@ -1526,6 +1617,20 @@ function Combat:Hit( troop, target, params )
 	if not params.isPursue and not target:IsInCombat() then
 		troop:Banish()
 	end
+
+	-------------------------------------
+	-- Intel
+	-------------------------------------
+	local intelSide = troop._combatSide
+	local troopNumber = intelSide == CombatSide.ATTACKER and self.defTroopNumber or self.atkTroopNumber
+	local gainIntel = Random_SyncGetRange( CombatIntelGrade.INTEL_MIN_RANGE, CombatIntelGrade.INTEL_MAX_RANGE ) / troopNumber
+	if params.isCharge then gainIntel = gainIntel * CombatIntelGrade.CHARGE_INTEL
+	elseif params.isMelee then gainIntel = gainIntel * CombatIntelGrade.MELEE_INTEL
+	elseif params.isSiege then gainIntel = gainIntel * CombatIntelGrade.SIEGE_INTEL
+	elseif params.isTower then gainIntel = gainIntel * CombatIntelGrade.TOWER_INTEL
+	end
+	local grade = self:GetIntelGrade( intelSide )
+	self:SetSideValue( intelSide, "intelGrade", grade + gainIntel )
 	
 	-------------------------------------
 	-- Counterattack
@@ -1634,8 +1739,8 @@ end
 function Combat:Charge()
 	local lineTroops = self:GetLineTroop( self.chargeLine )
 	for k, troop in ipairs( lineTroops ) do
-		self:ShowText( NameIDToString( troop ), "charge", troop:CanCharge() )
-		if troop:IsInCombat() and troop:CanCharge() then			
+		self:ShowText( NameIDToString( troop ), "charge" )
+		if troop:IsInCombat() then
 			local target = self:FindLinetarget( troop )
 			if target then
 				self:Hit( troop, target, { isCharge = true } )

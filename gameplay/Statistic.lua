@@ -140,14 +140,14 @@ end
 
 function Statistic:TrackGroup( desc, group )
 	desc = desc .. " " .. g_calendar:CreateCurrentDateDesc()
-	ShowText( desc )
+	--ShowText( desc )
 	if not self.groupTracks[group] then self.groupTracks[group] = {} end
 	table.insert( self.groupTracks[group], desc )
 end
 
 function Statistic:TrackCity( desc, city )
 	desc = desc .. g_calendar:CreateCurrentDateDesc()
-	ShowText( desc )
+	--ShowText( desc )
 	if not self.cityTracks[city] then self.cityTracks[city] = {} end
 	table.insert( self.cityTracks[city], desc )
 end
@@ -391,10 +391,7 @@ function Statistic:Dump()
 	for k, desc in ipairs( self.combatDetails ) do self:DumpText( "	" .. desc ) end
 	
 	self:DumpText( "Die in Combat = " .. self.numOfDieInCombat )
-	self:DumpText( "Soldier       = " .. self.numOfSoldier .. "(cur)/" .. self.maxNumOfSoldier .. "(max)" )
-	self:DumpText( "Corps         = " .. #self.corpsList )
-	self:DumpText( "Troop         = " .. #self.troopList )
-	
+	self:DumpText( "Soldier       = " .. self.numOfSoldier .. "(cur)/" .. self.maxNumOfSoldier .. "(max)" )	
 	self:DumpText( "Die Natural   = " .. self.numOfDieNatural )
 	self:DumpText( "Born Natural  = " .. self.numOfBornNatural )	
 	self:DumpText( "Tot Population= " .. self.totalPopulation .. "/" .. self.maxTotalPopulation .. "(max)/" .. self.minTotalPopulation .. "(min)/" .. self.pouplationUnderRule .. "(city)" )
@@ -410,6 +407,13 @@ function Statistic:Dump()
 			self:DumpText( city.name .. " occured_combat=" .. ( self.combatLocations[city] and self.combatLocations[city] or "0" ) )
 		end
 	end
+
+	self:DumpText( "Corps         = " .. #self.corpsList )
+	for k, corps in ipairs( self.corpsList ) do
+		self:DumpText( corps:CreateBrief() )
+	end
+
+	self:DumpText( "Troop         = " .. #self.troopList )	
 
 --[[
 	self:DumpText( "Submit Proposal:" )

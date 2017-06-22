@@ -82,16 +82,19 @@ function Corps:ConvertID2Data()
 end
 
 function Corps:CreateBrief()
-	local content = "Corps=".. NameIDToString( self ).." Stay=".. NameIDToString( self.location ) .."/"..self.home.name
-	content = content .. " LD=" .. ( self.leader and self.leader.name or "" ) .. " num=" .. #self.troops .. " pow=" .. self:GetPower()
+	local content = "Corps=".. NameIDToString( self ).." Stay=".. NameIDToString( self.location ) .."/".. NameIDToString( self.home )
+	content = content .. " LD=" .. NameIDToString( self.leader ) .. " num=" .. #self.troops .. " pow=" .. self:GetPower()
 	local task = g_taskMng:GetTaskByActor( self )
 	if task then
-		content = content .. " TASK=" .. task:CreateDesc()
+		content = content .. " TASK=" .. task:CreateShortBreif()
 	end
 	if self:IsPreparedToAttack() then
 		content = content .. " PREPARED"
 	else
 		content = content .. " IDLE"
+	end
+	for k2, troop in ipairs( self.troops ) do
+		--content = content .. " " .. troop:CreateBrief()
 	end
 	return content
 end
@@ -118,13 +121,14 @@ function Corps:AddTroop( troop )
 	end	
 	if not self.leader and troop:GetLeader() then
 		self.leader = troop:GetLeader()
+		--ShowText( "Corps [".. NameIDToString( self ) .. "] set leader to [".. ( chara and chara.name or "" ).. "]" )
 	end
-
-	--ShowText( "add troop " .. NameIDToString( troop ) .. " to corps=" .. NameIDToString( self ) )
+	ShowText( "add troop " .. NameIDToString( troop ) .. " to corps=" .. NameIDToString( self ) )
 end
 
 function Corps:RemoveTroop( troop )
 	MathUtility_Remove( self.troops, troop )
+	ShowText( NameIDToString( self ) .. " lose troop=" .. NameIDToString( troop ) )
 end
 
 function Corps:VoteLeader()
@@ -264,26 +268,13 @@ function Corps:IsStayCity( city )
 end
 
 function Corps:IsPreparedToAttack()
-	local rate = 0.6
-	local curNumber, maxNumber = 0, 0
-	local curMorale, maxMorale = 0, 0
+	local value, totalNumber = 0, 0
 	for k, troop in ipairs( self.troops ) do
-		curNumber = curNumber + troop.number
-		maxNumber = maxNumber + troop.maxNumber
-		curMorale = curMorale + troop.morale
-		maxMorale = maxMorale + troop.maxMorale
-		--[[
-		if troop.number < troop.maxNumber * rate then 			
-			if self.home.id == 801 then InputUtility_Pause( "number not enough", troop.number, troop.maxNumber ) end
-			return false
-		end
-		if troop.morale < troop.maxMorale * rate then
-			if self.home.id == 801 then InputUtility_Pause( "morale not enough", troop.morale, troop.maxMorale ) end
-			return false
-		end
-		]]
+		value = value + troop.number * troop.morale
+		totalNumber = totalNumber + troop.number
 	end
-	if curNumber < maxNumber * rate or curMorale < maxMorale * rate then
+	local rate = 0.6
+	if totalNumber == 0 or value / totalNumber < rate then
 		--InputUtility_Pause( "morale or number not enough", curNumber, maxNumber * rate, curMorale, maxMorale * rate )
 		return false
 	end
@@ -338,7 +329,7 @@ end
 
 function Corps:LeadByChara( chara )
 	self.leader = chara	
-	--InputUtility_Pause( "Corps [".. NameIDToString( self ) .. "] lead by [".. ( chara and chara.name or "" ).. "]" )
+	ShowText( "Corps [".. NameIDToString( self ) .. "] lead by [".. ( chara and chara.name or "" ).. "]" )
 end
 
 function Corps:Reinforce( reinforcement )

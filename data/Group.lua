@@ -456,10 +456,10 @@ function Group:GetPopulation()
 end
 
 --[[
-function Group:GetSupply()
+function Group:GetSupplyPopulation()
 	local num = 0
 	for k, city in ipairs( self.cities ) do
-		num = city:GetSupply()
+		num = city:GetSupplyPopulation()
 	end
 	return num
 end
@@ -493,7 +493,6 @@ end
 function Group:GetGroupRelation( id )
 	if id == self.id then
 		ShowText( "None relation to self", id )
-		k.a = 2
 		return nil
 	end
 	
@@ -519,7 +518,7 @@ function Group:GetGroupRelation( id )
 	table.insert( self.relations, relation )
 	table.insert( target.relations, relation )
 	
-	print( "!!!Add new relation in " .. NameIDToString( self ) .. " with " .. NameIDToString( target ) )
+	--print( "!!!Add new relation in " .. NameIDToString( self ) .. " with " .. NameIDToString( target ) )
 	
 	return relation
 end
@@ -847,7 +846,7 @@ function Group:EstablishCorps( corps )
 end
 
 function Group:SelectLeader( leader )
-	print( NameIDToString( self ) .. " select leader=" .. NameIDToString( leader ) .. " old=" .. NameIDToString( self.leader ) )
+	--print( NameIDToString( self ) .. " select leader=" .. NameIDToString( leader ) .. " old=" .. NameIDToString( self.leader ) )
 	self.leader = leader
 end
 

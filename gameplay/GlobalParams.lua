@@ -184,10 +184,10 @@ PlotResourceBonusType =
 WarfarePlanParams = 
 {
 	--When self-corps power is more than SIEGECITY_GARRISONPOWER_MORETHAN_TIMES times to garrison power, Siege City can occured
-	SIEGECITY_GARRISONPOWER_MORETHAN_TIMES  = 2,
+	SIEGECITY_GARRISONPOWER_LESSTHAN_TIMES  = 1.5,
 
 	--When enemy-corps power is less than DEFENDCITY_ENEMYPOWER_LESSTHAN_TIMES to self-city power, Defend City can occured
-	DEFENDCITY_ENEMYPOWER_LESSTHAN_TIMES = 2,
+	DEFENDCITY_ENEMYPOWER_LESSTHAN_TIMES    = 2,
 }
 
 
@@ -279,10 +279,7 @@ CombatTactic =
 CombatBuff = 
 {
 	--Morale relative
-	MORALE_BREAKDOWN  = 10,
-	MORALE_DOWNCAST   = 11,
-	MORALE_EXCITED    = 12,
-	MORALE_MOVTIVATED = 13,
+	MORALE_BUFF       = 1,
 }
 
 -----------------------------------------
@@ -1783,6 +1780,7 @@ CharacterProposal =
 	MEET_ATTACK      = 66,
 	DISPATCH_TROOPS  = 67,
 	DEFEND_CITY      = 68,
+	BACK_CITY        = 69,--call defend-city corps back
 	MILITARY_AFFAIRS_END = 69,
 
 	-- Diplomacy

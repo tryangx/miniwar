@@ -112,6 +112,12 @@ function Troop:ConvertID2Data()
 	if self.morale    == 0 then self.morale    = self.table.maxMorale end
 end
 
+function Troop:CreateBrief()
+	local content = ""
+	content = NameIDToString( self ) .. " LD=" .. NameIDToString( self:GetLeader() ) .. " Home=" .. NameIDToString( self.home ) .. " Loc=" .. NameIDToString( self.location )
+	return content
+end
+
 function Troop:Dump( indent )
 	if not indent then indent = "" end
 	local content = indent .. "Troop=".. self.name .. " Mor=" .. self.morale .. "/" .. self.maxMorale
@@ -135,7 +141,7 @@ function Troop:GetGroup()
 end
 
 function Troop:GetLeader()
-	return self.leader ~= nil
+	return self.leader
 end
 
 function Troop:GetCorps()
@@ -192,6 +198,7 @@ end
 
 function Troop:LeadByChara( chara )
 	self.leader = chara
+	ShowText( NameIDToString( self ) .. " change leader to=" .. NameIDToString( chara ) )	
 end
 
 -----------------------------------
@@ -262,19 +269,19 @@ function Troop:CanForward()
 end
 
 function Troop:CanSiegeAttack()
-	return self:GetSiegeWeapon() ~= nil
+	return self:GetSiegeWeapon()
 end
 
 function Troop:CanShoot()
-	return self:GetRangeWeapon() ~= nil
+	return self:GetRangeWeapon()
 end
 
 function Troop:CanCharge()
-	return self:GetChargeWeapon() ~= nil
+	return self:GetChargeWeapon() or self:GetLongWeapon()
 end
 
 function Troop:CanMeleeFight()
-	return self:GetCloseWeapon() ~= nil
+	return self:GetCloseWeapon()
 end
 
 function Troop:NewCombat()
@@ -318,6 +325,17 @@ end
 
 function Troop:NextCombatDay()
 	self._combatFled = false
+
+	if self.morale >= self:GetMaxMorale() then
+		local buff = self:GetBuff( CombatBuff.MORALE_BUFF )
+		if buff then
+			buff.value = MathUtility_Clamp( buff.value + 1, -2, 2 )
+		end
+		self:RecoverMorale( math.ceil( self.morale + self:GetMaxMorale() * 0.2 ) )
+	end
+end
+
+function Troop:RestADay()
 	self._combatOrganization = math.ceil( self.morale * self.number * 0.01 )
 end
 
@@ -385,10 +403,6 @@ end
 
 function Troop:GetCoordinateDesc()
 	return "(" .. self._combatPosX .. "," .. self._combatPosY .. ") "
-end
-
-function Troop:GetLeader()
-	return self.leader
 end
 
 function Troop:GetArmorWeight()
@@ -517,14 +531,9 @@ function Troop:GetDefendArmor( weapon )
 end
 
 function Troop:GetMaxMorale()
-	if self:HasBuff( CombatBuff.MORALE_BREAKDOWN ) then
-		return math.ceil( self.maxMorale * 0.5 )
-	elseif self:HasBuff( CombatBuff.MORALE_DOWNCAST ) then
-		return math.ceil( self.maxMorale * 0.7 )
-	elseif self:HasBuff( CombatBuff.MORALE_EXCITED ) then
-		return math.ceil( self.maxMorale * 1.2 )
-	elseif self:HasBuff( CombatBuff.MORALE_MOVTIVATED ) then
-		return math.ceil( self.maxMorale * 1.4 )
+	local buff = self:GetBuff( CombatBuff.MORALE_BUFF )
+	if buff then
+		return self.maxMorale * ( 1 + buff.value * 0.2 )
 	end
 	return self.maxMorale
 end
@@ -612,25 +621,22 @@ function Troop:KillSoldier( enemy, damage, neutralized )
 end
 
 function Troop:Banish()
-	self:RemoveBuff( CombatBuff.MORALE_BREAKDOWN )
-	self:RemoveBuff( CombatBuff.MORALE_DOWNCAST )
-	if self:HasBuff( CombatBuff.MORALE_EXCITED ) then
-		self:AddBuff( CombatBuff.MORALE_MOVTIVATED, -1 )
+	local buff = self:GetBuff( CombatBuff.MORALE_BUFF )
+	if buff then
+		buff.value = MathUtility_Clamp( buff.value + 1, -2, 2 )
 	else
-		self:AddBuff( CombatBuff.MORALE_EXCITED, -1 )
-	end	
+		self:AddBuff( CombatBuff.MORALE_BUFF, 1 )
+	end
 	self:RecoverMorale( math.ceil( self.morale + self:GetMaxMorale() * 0.2 ) )
 end
 
 function Troop:Flee()
-	self:RemoveBuff( CombatBuff.MORALE_EXCITED )
-	self:RemoveBuff( CombatBuff.MORALE_MOVTIVATED )
-	if self:HasBuff( CombatBuff.MORALE_DOWNCAST ) then
-		self:AddBuff( CombatBuff.MORALE_BREAKDOWN, -1 )
+	local buff = self:GetBuff( CombatBuff.MORALE_BUFF )
+	if buff then
+		buff.value = MathUtility_Clamp( buff.value - 1, -2, 2 )
 	else
-		self:AddBuff( CombatBuff.MORALE_DOWNCAST, -1 )
+		self:AddBuff( CombatBuff.MORALE_BUFF, -1 )
 	end
-
 	self._combatFled = true
 end
 
@@ -657,8 +663,14 @@ end
 -- Combat Buff
 
 -- duration( minutes )
-function Troop:AddBuff( buffId, duration )
-	table.insert( self.buffs, { id=buffId, duration=duration } )
+function Troop:AddBuff( buffId, duration, value )
+	if not duration then duration = -1 end
+	if not value then value = 0 end
+	table.insert( self.buffs, { id=buffId, duration=duration, value=value } )
+end
+
+function Troop:GetBuff( buffId )
+	return MathUtility_FindData( self.buffs, buffId, "id" )
 end
 
 function Troop:HasBuff( buffId )
@@ -729,6 +741,7 @@ function Troop:Update()
 			if not self:GetCorps() then recoverRate = recoverRate * 0.5 end
 			local recover = recoverRate * self.maxMorale
 			self:RecoverMorale( recover, "update" )
+			--ShowText( "morale ", NameIDToString( self ), self.morale, self.maxMorale, recover )
 		end
 	end
 	

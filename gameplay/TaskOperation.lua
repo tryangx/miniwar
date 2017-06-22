@@ -162,7 +162,7 @@ function CaptureCity( group, city )
 				if corps:IsAtHome() then
 					CaptureCorps( group, corps, prisonCity )
 				else
-					CorpsNeutralize( corps )
+					CorpsNeutralize( corps, false )
 				end
 			end
 
@@ -172,7 +172,7 @@ function CaptureCity( group, city )
 				if troop:IsAtHome() then				
 					CaptureTroop( group, troop, prisonCity )
 				else
-					TroopNeutralize( troop )
+					TroopNeutralize( troop, false, isGroupFallen )
 				end
 			end
 			
@@ -181,6 +181,8 @@ function CaptureCity( group, city )
 				--print( "capture chara", chara.name, chara:IsAtHome() )
 				if chara:IsAtHome() then				
 					CaptureChara( group, chara, prisonCity )
+				elseif isGroupFallen then
+					CharaOut( chara )
 				else
 					CharaLoseHome( chara )
 				end
@@ -443,7 +445,7 @@ function CharaEstablishCorpsByTroop( city, idleTroopList )
 	--put corps into city
 	city:EstablishCorps( corps )
 
-	--ShowText( "establish corps=", NameIDToString( corps ) )
+	ShowText( "establish corps=", NameIDToString( corps ), " pow=" .. corps:GetPower() )
 end
 
 function CharaEstablishCorps( city )
@@ -524,7 +526,7 @@ function CharaEstablishCorps( city )
 	--put corps into city
 	city:EstablishCorps( corps )	
 
-	--ShowText( "establish corps=", NameIDToString( corps ) )
+	ShowText( "establish corps=", NameIDToString( corps ), " pow=" .. corps:GetPower() )
 end
 
 ---------------------------------------------
@@ -626,7 +628,7 @@ function CorpsInvade( corps, city, siege )
 	local taskList = g_taskMng:GetIntelTaskList( city )
 	for k, task in ipairs( taskList ) do
 		if task:IsDefendTask() then
-			--print( "defend task", task:CreateDesc() )
+			--print( "defend task", task:CreateBrief() )
 			table.insert( defendCorpsList, task.actor )
 		end
 	end
@@ -650,7 +652,7 @@ end
 
 function CorpsDispatchToCity( corps, city, includeAll )
 	if city:GetGroup() ~= corps:GetGroup() then
-		print( NameIDToString( corps ) .. " cannot moveto=".. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not=".. corps:GetGroup().name )		
+		ShowText( NameIDToString( corps ) .. " cannot moveto=".. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not=".. corps:GetGroup().name )
 		g_taskMng:TerminateTaskByActor( corps, "city not belongs to us" )
 		g_taskMng:IssueTaskCorpsBackEncampment( corps )
 		return
@@ -683,7 +685,7 @@ end
 
 function CorpsMoveToCity( corps, city )
 	if city:GetGroup() ~= corps:GetGroup() then
-		print( NameIDToString( corps ) .. " cannot moveto=".. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not=".. corps:GetGroup().name )
+		ShowText( NameIDToString( corps ) .. " cannot moveto=".. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not=".. corps:GetGroup().name )
 		g_taskMng:TerminateTaskByActor( corps, "city not belongs to us" )
 		g_taskMng:IssueTaskTroopMoveTo( corps )
 		return
@@ -729,7 +731,7 @@ end
 
 function TroopDispatchToCity( troop, city, includeAll )
 	if city:GetGroup() ~= troop:GetGroup() then
-		print( NameIDToString( troop ) .. " cannot moveto=".. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not=".. troop:GetGroup().name )
+		ShowText( NameIDToString( troop ) .. " cannot moveto=".. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not=".. troop:GetGroup().name )
 		g_taskMng:TerminateTaskByActor( troop, "city not belongs to us" )
 		g_taskMng:IssueTaskTroopMoveTo( troop )
 		return
@@ -756,7 +758,7 @@ end
 
 function TroopMoveToCity( troop, city )
 	if city:GetGroup() ~= troop:GetGroup() then
-		print( NameIDToString( troop ) .. " cannot moveto=".. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not=".. troop:GetGroup().name )
+		ShowText( NameIDToString( troop ) .. " cannot moveto=".. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not=".. troop:GetGroup().name )
 		g_taskMng:TerminateTaskByActor( troop, "city not belongs to us" )
 		g_taskMng:IssueTaskTroopMoveTo( troop )
 		return
@@ -802,7 +804,27 @@ function CharaHired( chara, city )
 	return true
 end
 
+--[[
 function CharaBackHome( chara )
+	g_taskMng:IssueTaskCharaBackHome( chara )
+end
+]]
+
+function CharaLoseHome( chara )	
+	local city = chara:GetGroup() and chara:GetGroup():GetCapital() or nil
+	if not city then
+		InputUtility_Pause( NameIDToString( chara ), " group fallen" )
+		return
+	end
+	ShowText( "Chara=" .. NameIDToString( chara ) .. " lose, escape to city=" .. city.name )
+
+	local home = chara:GetHome()
+	if home then home:RemoveChara( chara ) end
+	
+	chara:JoinCity( city )
+	city:AddChara( chara )
+
+	g_taskMng:TerminateTaskByActor( chara, "chara lose home" )
 	g_taskMng:IssueTaskCharaBackHome( chara )
 end
 
@@ -852,7 +874,7 @@ function CharaDispatchToCity( chara, city )
 	if not chara then return end
 	ShowText( "Chara ".. NameIDToString( chara ) .." dispatch to city=" .. NameIDToString( city ) )
 	if city:GetGroup() ~= chara:GetGroup() then
-		print( NameIDToString( chara ) .. " cannot move to " .. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not="..chara:GetGroup().name )
+		ShowText( NameIDToString( chara ) .. " cannot move to " .. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not="..chara:GetGroup().name )
 		g_taskMng:TerminateTaskByActor( chara, "city not belongs to us" )
 		g_taskMng:IssueTaskCharaBackHome( chara )
 		return
@@ -876,8 +898,6 @@ function CharaLeadTroop( chara, troop )
 		if oldCoprs and oldCoprs:GetLeader() then
 			if oldCoprs:GetLeader() == chara then
 				oldCoprs:LeadByChara( nil )
-			else
-				InputUtility_Pause( "why leader wrong", NameIDToString( oldCoprs ), oldCoprs:GetLeader(), chara.name )
 			end
 		end
 	end
@@ -891,13 +911,7 @@ function CharaLeadTroop( chara, troop )
 			end
 		end
 	end
-	chara:LeadTroop( troop )
-	if nil and chara.id == 312 then		
-		if troop.corps then
-			print( "corps=", NameIDToString( troop.corps ), "loc="..troop.corps.location.name .."/" .. troop.corps.home.name )
-		end
-		InputUtility_Pause( chara.name, "lead", NameIDToString( troop ), "at="..chara.home.name .."/"..chara.location.name.."/"..troop.location.name )
-	end
+	chara:LeadTroop( troop )	
 end
 
 function CharaMoveToLocation( chara, location )
@@ -906,7 +920,7 @@ end
 
 function CharaMoveToCity( chara, city )
 	if city:GetGroup() ~= chara:GetGroup() then
-		print( NameIDToString( chara ) .. " cannot move to " .. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not="..chara:GetGroup().name )
+		ShowText( NameIDToString( chara ) .. " cannot move to " .. city.name .. " belong=" .. ( city:GetGroup() and city:GetGroup().name or "<none>" ) .. " not="..chara:GetGroup().name )
 		g_taskMng:TerminateTaskByActor( chara, "city not belongs to us" )
 		g_taskMng:IssueTaskCharaBackHome( chara )
 		return
@@ -931,6 +945,7 @@ end
 
 function CharaJoinGroup( chara, city )
 	ShowText( "Chara ".. NameIDToString( chara ) .." join group=" .. ( city:GetGroup() and city:GetGroup().name or "NONE" ) .. " in city=" .. NameIDToString( city ) )
+	g_taskMng:TerminateTaskByActor( chara, "join group" )
 	local group = city:GetGroup()
 	chara:JoinGroup( group )
 	chara:JoinCity( city )	
@@ -952,6 +967,7 @@ end
 function CorpsLeaveCity( corps, reason )
 	g_movingActorMng:AddActor( MovingActorType.CORPS, corps, { reason = reason } )
 	for k, troop in ipairs( corps.troops ) do
+		--ShowText( NameIDToString( corps ), NameIDToString( troop ) )
 		TroopLeaveCity( troop )
 	end
 end
@@ -1054,7 +1070,7 @@ function CharaEscapeToCity( chara, city )
 	g_taskMng:IssueTaskCharaBackHome( chara )
 end
 
-function CorpsNeutralize( corps, isCaptured )
+function CorpsNeutralize( corps, isCaptured, isGroupFallen )
 	g_taskMng:TerminateTaskByActor( corps, "corps neutralized" )	
 	for k, troop in ipairs( corps.troops ) do
 		local leader = troop:GetLeader()
@@ -1079,8 +1095,10 @@ function CorpsNeutralize( corps, isCaptured )
 				end
 				if retreatCity then
 					CharaEscapeToCity( leader, retreatCity )
-				else
+				elseif isGroupFallen then					
 					CharaOut( leader )
+				else
+					CharaLoseHome( leader )
 				end
 			end
 		end
@@ -1090,7 +1108,7 @@ function CorpsNeutralize( corps, isCaptured )
 	g_corpsDataMng:RemoveData( corps.id )
 end
 
-function TroopNeutralize( troop )
+function TroopNeutralize( troop, isCaptured, isGroupFallen )
 	g_taskMng:TerminateTaskByActor( troop, "troop neutralized" )
 	
 	local leader = troop:GetLeader()
@@ -1098,8 +1116,12 @@ function TroopNeutralize( troop )
 		leader:LeadTroop( nil )		
 		if leader:GetGroup() and leader:GetGroup():GetCapital() then
 			CharaEscapeToCity( leader, leader:GetGroup():GetCapital() )
-		else
+		elseif isCaptured then
+			CharaCaptured( chara )
+		elseif isGroupFallen then
 			CharaOut( leader )
+		else
+			CharaLoseHome( chara )
 		end
 	end
 	

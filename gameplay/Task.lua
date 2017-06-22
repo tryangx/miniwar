@@ -129,7 +129,16 @@ end
 function Task:Save()
 end
 
-function Task:CreateDesc()
+function Task:CreateShortBreif()
+	local content = "id="..self.id .. " "
+	content = content .. MathUtility_FindEnumName( TaskType, self.type )
+	content = content .. " act=" .. NameIDToString( self.actor )
+	content = content .. " dst=" .. NameIDToString( self.destination )
+	content = content .. " tar=" .. NameIDToString( self.target )
+	return content
+end
+
+function Task:CreateBrief()
 	local content = "id="..self.id .. " "
 	content = content .. MathUtility_FindEnumName( TaskType, self.type )
 	content = content .. " " .. NameIDToString( self.actor )
@@ -194,7 +203,7 @@ function Task:GotoDestination( destination )
 	local location = self.actor:GetLocation()
 	if location == destination then
 		local actor = g_movingActorMng:HasActor( MovingActorType.CORPS, self.actor )
-		ShowText( "goto destination="..location.name, NameIDToString( self.actor ), " actor=",actor )
+		--ShowText( "goto destination="..location.name, NameIDToString( self.actor ), " actor=",actor )
 		self.actor:MoveToLocation( destination )
 		return false
 	end
@@ -216,7 +225,7 @@ function Task:GotoDestination( destination )
 	else
 		self.path = { destination }
 	end	
-	ShowText( "BACK HOME", NameIDToString( self.actor ), "goto=" .. destination.name )
+	--ShowText( "BACK HOME", NameIDToString( self.actor ), "goto=" .. destination.name )
 	self.remain = CalcCorpsSpendTimeOnRoad( self.actor:GetLocation(), destination )	
 	return true
 end
@@ -255,7 +264,7 @@ function Task:Finish( contribution )
 end
 
 function Task:Terminate( reason )
-	ShowText( self:CreateDesc() .. " Terminate!!! Reason=", reason )--( reason and reason or "none" ) )
+	ShowText( self:CreateBrief() .. " Terminate!!! Reason=", reason )--( reason and reason or "none" ) )
 	self.endDate  = g_calendar:GetDateValue()
 	self.status = TaskStatus.FAILED
 	self.remain = 0
@@ -283,6 +292,9 @@ function Task:UpdateDiplomacy( method )
 		if relation then 
 			success = true
 			relation:ExecuteMethod( method, self.actor:GetGroup(), self.actor )
+		else
+			ShowText( "relation same" )
+			InputUtility_Pause( self:CreateBrief() )			
 		end
 	end
 	if success then
@@ -339,7 +351,7 @@ function Task:Update( elapsedTime )
 			end
 		elseif self.category == TaskCategory.MILITARY_AFFAIRS then
 			if not self.destination then
-				print( self:CreateDesc() )
+				print( self:CreateBrief() )
 			end
 			if self.destination:IsInSiege() then
 				if self.type == TaskType.DISPATCH_CORPS or self.type == TaskType.DISPATCH_TROOPS then
@@ -529,7 +541,7 @@ function Task:DumpIssue()
 		or self.type == TaskType.HR_HIRE
 		or self.type == TaskType.HR_LOOKFORTALENT
 		then
-		--g_statistic:FocusTask( self:CreateDesc() )
+		--g_statistic:FocusTask( self:CreateBrief() )
 	end
 	if not focusTaskType or focusTaskType == self.type then
 		ShowText( "issue task=" ..self.id, " type=" .. MathUtility_FindEnumName( TaskType, self.type ), " actor=" .. NameIDToString( self.actor ) .. " tar=" .. ( self.target and self.target.name or "" ) .. " loc=" .. ( self.actor:GetLocation() and self.actor:GetLocation().name or "" ) .. " remain=" .. self.remain .. " dest="..( self.destination and self.destination.name or "" ) .. " proposer=" .. ( self.proposer and self.proposer.name or "" ) )
@@ -818,7 +830,7 @@ function Task:IssueByProposal( proposal )
 		return
 	end
 
-	if not self.remain then InputUtility_Pause( self:CreateDesc() ) end
+	if not self.remain then InputUtility_Pause( self:CreateBrief() ) end
 	
 	self:DumpIssue()
 	
@@ -873,7 +885,7 @@ function TaskManager:Dump()
 	ShowText( ">>>>>>>>>>>>>>>>>Task Statistic" )
 	ShowText( "Active Task=" .. #self.taskList )
 	for k, task in ipairs( self.taskList ) do
-		ShowText( task:CreateDesc() )
+		ShowText( task:CreateBrief() )
 	end
 	ShowText( "----------------")
 	--[[
@@ -943,8 +955,8 @@ function TaskManager:AddActorData( actor, task )
 	local existTask = self.actorTaskList[actor]
 	if existTask then
 		print( "---------actor="..NameIDToString( actor ) )
-		print( "Exist="..existTask:CreateDesc() )
-		print( "Current="..task:CreateDesc() )
+		print( "Exist="..existTask:CreateBrief() )
+		print( "Current="..task:CreateBrief() )
 		InputUtility_Pause( "exist task" )
 		k.p = 1
 	end
@@ -954,7 +966,7 @@ function TaskManager:AddActorData( actor, task )
 		end
 	elseif actor then
 		self.actorTaskList[actor] = task
-		ShowText( "Add Actor Data="..NameIDToString( actor ) .. " Desc=" .. task:CreateDesc() )
+		--ShowText( "Add Actor Data="..NameIDToString( actor ) .. " Desc=" .. task:CreateBrief() )
 	end
 end
 function TaskManager:RemoveActorData( actor, task )
@@ -991,7 +1003,7 @@ function TaskManager:RemoveTargetData( target, task )
 	local taskList = self.targetTaskList[target]
 	if not taskList then return end	
 	if not MathUtility_Remove( taskList, task ) then
-		InputUtility_Pause( "No task with target=", NameIDToString( target ), task:CreateDesc() )
+		InputUtility_Pause( "No task with target=", NameIDToString( target ), task:CreateBrief() )
 	else
 		--print( "remove target", NameIDToString( target ) )
 	end
@@ -1002,14 +1014,14 @@ function TaskManager:DumpTargetData( target )
 	if not taskList then return end
 	print( "Dump target data" )
 	for k, task in pairs( taskList ) do
-		print( task:CreateDesc() )
+		print( task:CreateBrief() )
 	end
 end
 
 function TaskManager:CreateTask( actor )
 	local findTask = self:GetTaskByActor( actor )
 	if findTask then
-		print( findTask:CreateDesc() )
+		print( findTask:CreateBrief() )
 		InputUtility_Pause( NameIDToString( findTask.actor ) .. " is executing task ["..findTask.id.."] now.", "next" )
 		k.f = 1
 		return
@@ -1054,7 +1066,7 @@ function TaskManager:IssueTaskByProposal( proposal )
 
 	if self:GetTaskByActor( proposal.actor ) then
 	--if self:HasConflictProposal( proposal ) then
-		print( "actor has task=", task:CreateDesc() )
+		print( "actor has task=", task:CreateBrief() )
 		quickSimulate = false
 		self:Dump()
 		k.p = 1
@@ -1082,12 +1094,18 @@ function TaskManager:IssueTaskByProposal( proposal )
 		elseif task.type == TaskType.LEAD_TROOP then
 			self:AddActorData( task.target, task )
 		elseif task.type == TaskType.ESTABLISH_CORPS then
-			--InputUtility_Pause( "est", task.destination.name )
-			self:AddActorData( task.target, task )
+			--InputUtility_Pause( "est", task.destination.name, task.target )
+			--self:AddActorData( task.target, task )
 			self:AddTargetData( task.destination, task )
-			for _, troop in ipairs( task.destination.troops ) do
-				if troop:IsNoneTask() then
+			if task.target then
+				for k, troop in ipairs( task.target ) do
 					self:AddActorData( troop, task )
+				end
+			else
+				for _, troop in ipairs( task.destination.troops ) do
+					if troop:IsNoneTask() then
+						self:AddActorData( troop, task )
+					end
 				end
 			end
 		elseif task.type == TaskType.REINFORCE_CORPS then
@@ -1154,11 +1172,17 @@ function TaskManager:EndTask( task )
 		elseif task.type == TaskType.LEAD_TROOP then		
 			self:RemoveActorData( task.target, task )
 		elseif task.type == TaskType.ESTABLISH_CORPS then
-			self:RemoveActorData( task.target, task )
 			self:RemoveTargetData( task.destination, task )
-			for _, troop in ipairs( task.destination.troops ) do
-				if self:GetTaskByActor( troop ) == task then
+			--self:RemoveActorData( task.target, task )
+			if task.target then
+				for k, troop in ipairs( task.target ) do
 					self:RemoveActorData( troop, task )
+				end
+			else
+				for _, troop in ipairs( task.destination.troops ) do
+					if self:GetTaskByActor( troop ) == task then
+						self:RemoveActorData( troop, task )
+					end
 				end
 			end
 		elseif task.type == TaskType.REINFORCE_CORPS then
@@ -1233,7 +1257,7 @@ end
 function TaskManager:TerminateTaskByGroup( group, reason ) 
 	for k, task in pairs( self.taskList ) do
 		if task.actor:GetGroup() == group then
-			g_statistic:CancelTask( "Cancel group -- " .. task:CreateDesc() .. " by ["..reason.."]")
+			g_statistic:CancelTask( "Cancel group -- " .. task:CreateBrief() .. " by ["..reason.."]")
 			self:TerminateTask( task, reason )
 		end
 	end
@@ -1244,7 +1268,7 @@ function TaskManager:CancelTaskFromOtherGroup( group, taskType, target )
 	for k, task in pairs( self.taskList ) do
 		--ShowText( MathUtility_FindEnumName( TaskType, task.type ), task.target.name, target.name, task.actor:GetGroup().name, group.name )
 		if task.type == taskType and task.target == target and task.actor:GetGroup() ~= group then		
-			g_statistic:CancelTask( "Cancel conflict -- " .. task:CreateDesc() )
+			g_statistic:CancelTask( "Cancel conflict -- " .. task:CreateBrief() )
 			ShowText( "start cancel " .. MathUtility_FindEnumName( TaskType, taskType ) )
 			task:Fail()
 		end
@@ -1254,10 +1278,10 @@ end
 function TaskManager:Update( elapsedTime )
 	table.sort( self.taskList, function ( left, right )
 		if not left.remain then
-			print( left:CreateDesc() )
+			print( left:CreateBrief() )
 		end
 		if not right.remain then
-			print( right:CreateDesc() )
+			print( right:CreateBrief() )
 		end
   		return left.remain < right.remain
   		end )
@@ -1292,7 +1316,7 @@ function TaskManager:HasConflictTarget( taskType, category, target, debug )
 	if not taskList then return false end
 	if not taskType and not category then return true end	
 	for k, task in ipairs( taskList ) do
-		--if debug then print( task:CreateDesc() ) end
+		--if debug then print( task:CreateBrief() ) end
 		if task.type == taskType or task.category == category then
 			return true
 		end
@@ -1306,7 +1330,7 @@ function TaskManager:HasConflictTargetByGroup( taskType, category, target, group
 	if not taskList then return false end
 	if not taskType and not category then return true end
 	for k, task in ipairs( taskList ) do
-		--if debug then print( task:CreateDesc() ) end
+		--if debug then print( task:CreateBrief() ) end
 		if task.actor:GetGroup() == group then
 			if task.type == taskType or task.category == category then
 				--print( "has conflict with group " .. group.name )

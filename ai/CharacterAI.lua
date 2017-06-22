@@ -41,7 +41,6 @@ local currentSwitch = defaultSwitch
 
 local function CheckSwitchMode( params )
 	local mode = params.mode
-	--ShowText( mode .. "=", (currentSwitch and currentSwitch[mode] ~= 0) )
 	return currentSwitch and currentSwitch[mode] ~= 0
 end
 
@@ -74,29 +73,6 @@ local function QueryGroupData( dataname )
 	local _city = _blackboard.city
 	local group = _city:GetGroup()
 	local value = nil
-	--[[
-	if dataname == "NUMBER_EMPTY_CITY" then
-		value = 0
-		for k, city in ipairs( group.cities ) do
-			if #city.charas == 0 then
-				value = value + 1
-			end
-		end
-	elseif dataname == "FREE_CHARA_IN_CAPITAL" then
-		value = group:GetCapital():GetNumOfFreeChara()	
-	elseif dataname == "MAX_FREE_CHARA_IN_NONCAPITAL" then
-		value = 0
-		local capital = group:GetCapital()
-		for k, city in ipairs( group.cities ) do
-			if capital ~= city then
-				local number = city:GetNumOfFreeChara()
-				if number > value then
-					value = number
-				end
-			end
-		end
-		--ShowText( "max free", value )
-	]]
 	if dataname == "FREECHARA_NONCAPITAL_LIST" then
 		value = {}
 		local capital = group:GetCapital()
@@ -200,7 +176,6 @@ local function QueryCityData( dataname )
 	elseif dataname == "CONNECT_EXPANDABLE_SELFGROUP_CITYLIST" then
 		value = _city:GetConnectExpandableSelfGroupCityList()
 	end
-	--ShowText( dataname, value )
 	return value
 end
 
@@ -216,7 +191,6 @@ end
 
 local function MemoryCityData( params )
 	if not params.dataname or not params.memname then
-		ShowText( "Missing memory params" )
 		return false
 	end
 	_register[params.memname] = QueryCityData( params.dataname )
@@ -244,7 +218,6 @@ local function QueryComparisonValue( params )
 	local compareValue = params.number
 	if not compareValue then
 		if not params.memname then
-			ShowText( "No memory name" )
 			return false
 		end
 		compareValue = _register[params.memname]
@@ -254,8 +227,6 @@ end
 
 local function CompareData( params, dataFunction )
 	if ( not params.dataname and not params.datamem ) or not params.number or not params.compare then
-		ShowText( "Missing compare params" )
-		MathUtility_Dump( params )
 		return false
 	end
 	--source
@@ -271,11 +242,9 @@ local function CompareData( params, dataFunction )
 	--destination
 	local compareValue = QueryComparisonValue( params )
 	if typeof( value ) == "table" then
-		ShowText( "convert list to length" )
 		value = #value
 	end
 	if type( compareValue ) == "table" then
-		ShowText( "convert list to length" )
 		compareValue = #compareValue
 	end
 	--ShowText( "Compare", value, compareValue, params.dataname, params.datamem )
@@ -602,7 +571,7 @@ local CharacterAI_TechProposal =
 ---------------------------------------------
 
 local function SubmitDiplomacyProposal( params )
-	if _chara:GetTroop() then ShowText( "troop leader do diplomacy", _chara.name, _chara:GetTroop().name, _chara:GetLocation().name ) end
+	--if _chara:GetTroop() then ShowText( "troop leader do diplomacy", _chara.name, _chara:GetTroop().name, _chara:GetLocation().name ) end
 	_chara:SubmitProposal( { type = CharacterProposal[params.proposal], target = _target, proposer = _chara, actor = _actor, prob = _blackboard.targetProb } )
 end
 
@@ -625,7 +594,7 @@ local function GetDiplomacyTarget( params )
 			value = value - relation.prob
 		end
 	end
-	ShowText( "target=", _target.id, _target.name )
+	--ShowText( "target=", _target.id, _target.name )
 	return _target ~= nil
 end
 
@@ -1183,7 +1152,7 @@ end
 
 local function EstablishProposal()
 	local troopList = _register["TROOPLIST"]
-	troopList = nil
+	--troopList = nil
 	_chara:SubmitProposal( { type = CharacterProposal.ESTABLISH_CORPS, data = _blackboard.city, target = troopList, proposer = _chara, actor = _actor } )
 end
 
@@ -1438,18 +1407,20 @@ local function CheckHarassCityPlan()
 		
 	for k, corps in ipairs( corpsList ) do
 		local power = corps:GetPower()
-		if power > maxCorpsPower then
-			if not findCorps or _ai:RandomProb() < 7000 * ( maxCorpsPower / power ) then
+		if power > 0 then
+			if power > maxCorpsPower then
+				if not findCorps or _ai:RandomProb() < 7000 * ( maxCorpsPower / power ) then
+					findCorps = corps
+					maxCorpsPower = power
+				end
+			elseif power > maxCorpsPower * 0.65 then
+				if not findCorps or _ai:RandomProb() < 3000 * ( power / maxCorpsPower ) then
+					findCorps = corps
+					maxCorpsPower = power
+				end
+			elseif not findCorps or _ai:RandomProb() < 5000 then
 				findCorps = corps
-				maxCorpsPower = power
 			end
-		elseif power > maxCorpsPower * 0.65 then
-			if not findCorps or _ai:RandomProb() < 3000 * ( power / maxCorpsPower ) then
-				findCorps = corps
-				maxCorpsPower = power
-			end
-		elseif not findCorps or _ai:RandomProb() < 5000 then
-			findCorps = corps
 		end
 	end
 	local findCity = nil
@@ -1458,13 +1429,14 @@ local function CheckHarassCityPlan()
 		local power = GuessCityPower( adjaCity )
 		--if adjaCity:GetGroup() then print( "NeutralCity="..adjaCity.name, "pow="..power ) end
 		if power > maxCorpsPower then
+			--most situation
 			local prob = 3000 * ( power / maxCorpsPower )
 			if not findCity or _ai:RandomProb() < prob then
 				findCity = adjaCity
 			end
 		else
-			local prob = 7000 * ( maxCorpsPower / power )
-			if not findCity or _ai:RandomProb() < 7000 * ( maxCorpsPower / power ) then
+			local prob = 8000 * ( maxCorpsPower / power )
+			if not findCity or _ai:RandomProb() < prob then
 				findCity = adjaCity
 			end
 		end
@@ -1472,7 +1444,7 @@ local function CheckHarassCityPlan()
 	if findCorps and findCity then
 		_register["CITYTARGET"]  = findCity
 		_register["CORPSTARGET"] = findCorps
-		--print( NameIDToString( findCorps ).."+"..findCorps:GetPower() .. " vs " .. NameIDToString( findCity ).."+".. GuessCityPower( findCity ) )
+		--ShowText( "harass corps=" .. NameIDToString( findCorps ).."+"..findCorps:GetPower() .. " vs " .. NameIDToString( findCity ).."+".. GuessCityPower( findCity ) )
 		return true
 	end
 	return false
@@ -1521,9 +1493,11 @@ local function CheckDispatchProposal()
 	
 	local list = {}
 	for k, city in ipairs( cityList ) do
-		for k2, corps in ipairs( corpsList ) do
+		for k2, corps in ipairs( corpsList ) do			
 			if city:GetSupplySoldier() > city:GetMilitaryPower() + corps:GetPower() then
 				table.insert( list, { city = city, corps = corps } )
+			else
+				ShowText( NameIDToString( city ) .. " sup=" .. city:GetSupplySoldier() .. " pow=" .. city:GetMilitaryPower() .. " corps=" .. corps:GetPower() )
 			end
 		end
 	end
@@ -1574,10 +1548,6 @@ local function DispatchCorpsProposal( params )
 		InputUtility_Pause( "dispatch to same city" )
 	end
 
-	if params then
-		ShowText( "Gather=" .. params.desc .. " city=" .. city.name )
-	end
-	
 	_actor = corps
 	
 	_chara:SubmitProposal( { type = CharacterProposal.DISPATCH_CORPS, target = city, data = corps, proposer = _chara, actor = _actor } )
@@ -1642,26 +1612,21 @@ local function CheckSiegePlan()
 	for k, adjaCity in ipairs( cityList ) do
 		local power = GuessCityPower( adjaCity )
 		--print( power, totalPower, city.name )
-		if power > totalPower then
-			if power < totalPower * WarfarePlanParams.SIEGECITY_GARRISONPOWER_MORETHAN_TIMES then
-				local prob = 3000 * ( power / totalPower )
-				if not findCity or _ai:RandomProb() < prob then
-					findCity = adjaCity
-				else
-					--print( "prob=", prob, adjaCity.name )
-				end
-			end
-		else
+		if power < totalPower then
 			local prob
 			if not adjaCity:GetGroup() then
 				--print( "can attack", totalPower, power, city.name, adjaCity.name )
-				prob = 10000 * ( totalPower / power )
+				prob = 10000
+			elseif totalPower > power * WarfarePlanParams.SIEGECITY_GARRISONPOWER_LESSTHAN_TIMES then
+				prob = 8000
 			else
-				prob = 7000 * ( totalPower / power )
-			end			
-			if not findCity or _ai:RandomProb() < 7000 * ( totalPower / power ) then
+				prob = 5000 * ( totalPower / power )
+			end
+			if not findCity or _ai:RandomProb() < prob then
 				findCity = adjaCity
 			end
+		else
+			--too strong, pass			
 		end
 	end
 
@@ -1689,7 +1654,7 @@ local function CheckSiegePlan()
 	_register["CORPSLIST"] = findCorpsList
 	_register["CORPSLEADER"] = findCorps
 
-	--print( "siegecity pow=" .. totalPower .. "+" ..#findCorpsList .. " city=" .. findCity.name .. "/" .. GuessCityPower( findCity ) )
+	ShowText( "siegecity city=" .. findCity.name .. " pow=" .. totalPower .. "+" ..#findCorpsList .. "/" .. GuessCityPower( findCity ) )
 
 	city:AppendTag( CityTag.SUBMIT_PROPOSAL, 1 )
 
@@ -1798,14 +1763,13 @@ local CharacterAI_DispatchCorpsProposal =
 				},
 				{ type = "SEQUENCE", desc="dispatch to city near goal", children = 
 					{
-						--{ type = "FILTER", condition = MemoryCityData, params = { dataname = "ADJACENT_OCCUPYGOAL_SELFGROUP_CITYLIST", memname = "CITYLIST" } },
 						{ type = "FILTER", condition = MemoryCityData, params = { dataname = "CONNECT_OCCUPYGOAL_SELFGROUP_CITYLIST", memname = "CITYLIST" } },
 						{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "CITYLIST", number = 0 } },
 						{ type = "FILTER", condition = MemoryCityData, params = { dataname = "FREE_CORPSLIST", memname = "CORPSLIST" } },
 						{ type = "FILTER", condition = CompareCityData, params = { compare = "MORE_THAN", datamem = "CORPSLIST", number = 0 } },
 						{ type = "FILTER", condition = CheckProposal, params = { type="DISPATCH_CORPS" } },
 						{ type = "FILTER", condition = CheckDispatchProposal },
-						{ type = "ACTION", action = DispatchCorpsProposal, params = { desc = "dispatch to occupy goal" } },
+						{ type = "ACTION", action = DispatchCorpsProposal },
 					}
 				},		
 				{ type = "SEQUENCE", desc="transfer to frontier", children = 
@@ -1960,7 +1924,7 @@ local function SelectMeetingProposal()
 				end
 			end
 			if #proposalList > 0 then
-				ShowText( "resel", #proposalList)
+				--ShowText( "resel", #proposalList)
 				local index = _ai:GetRandomByRange( 1, #proposalList, "Select proposal" )
 				_chara:SubmitProposal( { type = CharacterProposal.AI_CHOICE_PROPOSAL, proposal = proposalList[index], proposer = _chara, actor = _actor } )
 				return
@@ -2429,7 +2393,6 @@ function CharacterAI:AppendBlackboard( name, data )
 		_blackboard = {}
 	end
 	_blackboard[name] = data
-	--ShowText( "Blackboard=", name, _blackboard[name] )
 end
 
 function CharacterAI:ClearState()

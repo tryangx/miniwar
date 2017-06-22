@@ -235,8 +235,8 @@ function Game:Init()
 	Debug_SetPrinterNode( false )
 
 	self.turn = 0
-	self.maxTurn = 3*12*30
-	
+	self.maxTurn = 3*12*5
+
 	g_gameEvent:InitData()
 	
 	local g_scenarioName = "Demo"
